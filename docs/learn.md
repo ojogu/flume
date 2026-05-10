@@ -1,24 +1,26 @@
 # Flume — Learning Guide
 
-## What You're Building
+## What I'm Building
 
 Flume is a video processing platform with two surfaces built on one shared backend:
 
 - **FlumeAPI** — a REST API that lets developers submit video processing jobs programmatically
-- **Flume** — a chat-based video editor running on Telegram and WhatsApp, powered by LLM
+- **Flume** — a chat-based video editor running on Telegram and WhatsApp, powered by LLM's
 
 Users send a video link or file, describe what they want done, and get back a processed video — trimmed, compressed, joined, converted, or subtitled. Heavy work runs asynchronously in the background. Output is delivered in-chat for small files, via a web URL for large ones.
 
-The system handles social video downloading (yt-dlp), media processing (FFmpeg), job queuing (Celery + RabbitMQ), cloud storage (Cloudflare R2/), and natural language intent parsing (LLM).
+The system handles social video downloading (yt-dlp), media processing (FFmpeg), job queuing (Celery + RabbitMQ), caching (Redis), cloud storage (Cloudflare R2), and natural language intent parsing (LLM's).
 
 ---
 
-## What You'll Learn
+## What I Will Learn
 
 ### Asynchronous Processing & Job Queues
-- How to design a job queue system where work is decoupled from the request that triggered it
+- How I designed a job queue system where work is decoupled from the request that triggered it
 - Celery task lifecycle: queuing, execution, retries, and failure handling
-- Redis as a message broker — how it moves tasks between the API and workers
+- RabbitMQ as a message broker — exchanges, queues, routing keys, and message acknowledgment patterns
+- Why RabbitMQ is purpose-built for queuing vs. Redis-as-broker, and when each is appropriate
+- Redis as a caching layer — storing job state, bot session data, and rate limit counters
 - Job state management: tracking `queued → processing → completed → failed`
 - Webhook delivery on job completion
 
@@ -58,10 +60,10 @@ The system handles social video downloading (yt-dlp), media processing (FFmpeg),
 - Voice note handling — receiving audio and passing it to a transcription service
 
 ### AI Integration
-- Using LLM as an intent orchestrator — parsing ambiguous natural language into structured job parameters
+- Using LLM's as an intent orchestrator — parsing ambiguous natural language into structured job parameters
 - Designing prompts that extract reliable structured output (timestamps, operation types, parameters)
 - Handling multi-turn context — "now do the same but shorter" refers to the previous job
-- Integrating Whisper for audio transcription and feeding output into LLM
+- Integrating Whisper for audio transcription and feeding output into LLM's
 - Knowing when to ask a clarifying question vs. when to proceed with best-guess parameters
 
 ### Error Handling & Resilience
@@ -77,9 +79,26 @@ The system handles social video downloading (yt-dlp), media processing (FFmpeg),
 
 ### Code Organisation & Testability
 - Structuring a monolith with clean internal boundaries — modules that could be extracted later if needed
-- Writing code that is testable despite having external dependencies (FFmpeg, yt-dlp, Redis, S3)
+- Writing code that is testable despite having external dependencies (FFmpeg, yt-dlp, RabbitMQ, S3)
 - Mocking external services in tests
 - Separation of concerns: routing, business logic, and I/O in distinct layers
+
+### CI/CD & GitHub Actions
+- Writing GitHub Actions workflows — triggers, jobs, steps, and environment variables
+- Automated test runs on every push and pull request
+- Environment-specific deployment pipelines (staging vs. production)
+- Managing secrets securely in CI context (GitHub Secrets)
+- Linting and code quality checks as part of the pipeline
+- Build artifacts and Docker image publishing
+- Understanding the full cycle: commit → test → build → deploy
+
+### Event Sourcing
+- What event sourcing is — deriving system state from an immutable log of events rather than direct mutations
+- Modelling the job lifecycle as a sequence of events: `JobCreated → JobQueued → JobStarted → JobCompleted / JobFailed`
+- How event sourcing enables audit trails, temporal queries, and the ability to replay history
+- Where event sourcing adds value vs. where it adds unnecessary complexity
+- Applying the pattern selectively — job lifecycle is a good fit; not every part of the system needs it
+- Practical implementation: storing events in a database and projecting current state from them
 
 ---
 
@@ -87,11 +106,15 @@ The system handles social video downloading (yt-dlp), media processing (FFmpeg),
 
 Most projects teach one or two of these concepts in isolation. Flume forces them to work together:
 
-- The API teaches you request/response design and auth
-- The job queue teaches you async processing and concurrency
-- The media pipeline teaches you I/O-heavy work and external tool integration
-- The bot teaches you event-driven architecture and stateful conversations
-- LLM integration teaches you how to use AI as a functional component, not a gimmick
-- Storage integration teaches you cloud infrastructure fundamentals
+- The API teaches me request/response design and auth
+- The job queue teaches me async processing and concurrency
+- RabbitMQ teaches me purpose-built message brokering; Redis teaches me caching patterns
+- The media pipeline teaches me I/O-heavy work and external tool integration
+- The bot teaches me event-driven architecture and stateful conversations
+- LLM's integration teaches me how to use AI as a functional component, not a gimmick
+- Storage integration teaches me cloud infrastructure fundamentals
+- CI/CD teaches me how professional teams ship software reliably
+- Event sourcing teaches me a powerful pattern for systems where history matters
 
-By the time Flume is built, you will have touched backend API design, distributed task processing, media engineering, cloud storage, bot development, and AI integration — all within one coherent system.
+By the time Flume is built, I will have touched backend API design, distributed task processing, media engineering, cloud storage, bot development, AI integration, deployment pipelines, and event-driven data modelling — all within one coherent system.
+
