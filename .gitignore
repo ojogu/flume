@@ -10,7 +10,7 @@ wheels/
 .venv
 .opencode
 .env
-agent.md
+
 
 # Node.js / Frontend
 node_modules/
@@ -27,3 +27,9 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+#app level
+todo.md
+agent.md
+deploy.sh
+migrate.sh
