@@ -15,14 +15,14 @@ The core insight: video processing is technically complex, but the demand for it
 
 | Component | Technology |
 |---|---|
-| Language | Python |
+| Language | Python, JavaScript (React)|
 | API Framework | FastAPI |
 | Task Queue | Celery + Redis |
 | Video Processing | FFmpeg |
 | Social Downloads | yt-dlp |
 | Storage | Cloudflare R2 (primary) / Amazon S3 (fallback) |
 | Bots | python-telegram-bot, WhatsApp Business API |
-| AI | Claude (intent), Whisper (transcription) |
+| AI | LLM (intent), Whisper (transcription) |
 
 ## High-Level Flow
 
