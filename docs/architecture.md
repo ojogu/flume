@@ -52,7 +52,7 @@ flume/
 │   ├── processor/    # FFmpeg operations
 │   ├── storage/      # R2/S3 abstraction
 │   ├── downloader/   # yt-dlp wrapper, platform handling
-│   └── ai/           # Claude + Whisper integration
+│   └── ai/           # LLM + Whisper integration
 ├── bot/              # Telegram and WhatsApp handlers
 └── web/              # React frontend (flume.ojogulabs.xyz)
 ```
