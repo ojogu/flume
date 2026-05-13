@@ -42,15 +42,19 @@ Client (Flume / FlumeAPI)
 
 ## Internal Modules
 
+> Physical locations: `backend/` → `src/backend/`, `bot/` → `src/bot/`, `web/` → `src/web/`
+
 ```
 flume/
-├── api/          # route handlers, auth, rate limiting
-├── jobs/         # Celery tasks, job state management
-├── downloader/   # yt-dlp wrapper, platform handling
-├── processor/    # FFmpeg operations
-├── storage/      # R2/S3 abstraction
-├── bot/          # Telegram and WhatsApp handlers
-└── ai/           # Claude + Whisper integration
+├── backend/           # FastAPI application
+│   ├── api/          # route handlers, auth, rate limiting
+│   ├── jobs/         # Celery tasks, job state management
+│   ├── processor/    # FFmpeg operations
+│   ├── storage/      # R2/S3 abstraction
+│   ├── downloader/   # yt-dlp wrapper, platform handling
+│   └── ai/           # Claude + Whisper integration
+├── bot/              # Telegram and WhatsApp handlers
+└── web/              # React frontend (flume.ojogulabs.xyz)
 ```
 
 ## Key Design Decisions
