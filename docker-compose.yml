@@ -23,7 +23,7 @@ services:
     ports:
       - "127.0.0.1:5173:80"
     volumes:
-      - ./frontend:/app
+      - ./web:/app
       - /app/node_modules
     depends_on:
       - backend
