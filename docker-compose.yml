@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile
       target: prod
     ports:
-      - "127.0.0.1:5173:80"
+      - "127.0.0.1:5174:80"
     volumes:
       - ./web:/app
       - /app/node_modules
@@ -41,7 +41,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:5000:5000"
+      - "127.0.0.1:5001:5000"
     env_file:
       - ./backend/.env
     deploy:
@@ -68,7 +68,7 @@ services:
   worker:
     build:
       context: ./backend
-    command: celery -A src.celery.celery worker -l info -Q default,fetch_user_id_for_front_sync_task,front_sync_bookmark_task,fetch_user_id_for_backfill_task,backfill_bookmark_task
+    # command: celery -A src.celery.celery worker -l info -Q default,fetch_user_id_for_front_sync_task,front_sync_bookmark_task,fetch_user_id_for_backfill_task,backfill_bookmark_task
     env_file:
       - ./backend/.env
     environment:
@@ -125,11 +125,11 @@ services:
           memory: 256M
         reservations:
           memory: 128M
+    ports:
+      - "5555:5555"
     depends_on:
       - cache
       - queue
-
-      - "5555:5555"
     networks:
       - observability
 
@@ -155,8 +155,7 @@ services:
   queue:
     image: rabbitmq:3.13-management-alpine
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "15673:15672"
     networks:
       - observability
     deploy:
@@ -173,10 +172,6 @@ services:
     container_name: otel-collector
     volumes:
       - ./backend/observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-      - "8888:8888"
     healthcheck:
       disable: true
     depends_on:
@@ -199,8 +194,6 @@ services:
     volumes:
       - ./backend/observability/loki.yaml:/etc/loki/config.yaml
       - loki_data:/loki
-    ports:
-      - "3100:3100"
     networks:
       - observability
     deploy:
@@ -217,9 +210,6 @@ services:
     volumes:
       - ./backend/observability/tempo.yaml:/etc/tempo/config.yaml
       - tempo_data:/var/tempo
-    ports:
-      - "3200:3200"
-      - "9411:9411"
     networks:
       - observability
     deploy:
@@ -239,8 +229,6 @@ services:
     volumes:
       - ./backend/observability/prometheus.yaml:/etc/prometheus/prometheus.yaml
       - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
     networks:
       - observability
     deploy:
@@ -261,7 +249,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./backend/observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       - loki
       - tempo

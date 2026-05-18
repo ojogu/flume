@@ -28,6 +28,8 @@ dist/
 .DS_Store
 Thumbs.db
 
+port.txt
+
 #app level
 todo.md
 agent.md
