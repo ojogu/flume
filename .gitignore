@@ -10,4 +10,28 @@ wheels/
 .venv
 .opencode
 .env
+
+
+# Node.js / Frontend
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+port.txt
+
+#app level
+todo.md
 agent.md
+deploy.sh
+migrate.sh
