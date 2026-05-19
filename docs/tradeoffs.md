@@ -49,7 +49,7 @@ Web account is created first. Telegram/WhatsApp are linked to it via a verificat
 **Option B — Phone number as anchor:**
 Phone number is the universal key across WhatsApp, Telegram, and web. Natural fit for WhatsApp, but Telegram doesn't always expose phone numbers. Phone numbers also change. Requires SMS infrastructure.
 
-**Option C — Link-on-first-use:**
+**Option C — Optonal Linking:**
 Each platform creates its own identity. Users get value immediately. Linking is optional and prompted after a completed task.
 
 **Decision:** Option C, with Option A as the linking mechanism.
