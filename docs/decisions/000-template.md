@@ -1,4 +1,4 @@
-# ADR 000 — Template
+# ADR(Architecture Decision Record) 000 — Template
 
 ## Title
 
