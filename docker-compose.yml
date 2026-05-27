@@ -169,7 +169,7 @@ services:
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    container_name: otel-collector
+    # container_name: otel-collector
     volumes:
       - ./backend/observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml
     healthcheck:
@@ -189,7 +189,7 @@ services:
 
   loki:
     image: grafana/loki:3.0.0
-    container_name: loki
+    # container_name: loki
     command: -config.file=/etc/loki/config.yaml
     volumes:
       - ./backend/observability/loki.yaml:/etc/loki/config.yaml
@@ -205,7 +205,7 @@ services:
 
   tempo:
     image: grafana/tempo:2.4.1
-    container_name: tempo
+    # container_name: tempo
     command: -config.file=/etc/tempo/config.yaml
     volumes:
       - ./backend/observability/tempo.yaml:/etc/tempo/config.yaml
@@ -221,7 +221,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: prometheus
+    # container_name: prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yaml
       - --storage.tsdb.path=/prometheus
@@ -240,7 +240,7 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.2
-    container_name: grafana
+    # container_name: grafana
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
