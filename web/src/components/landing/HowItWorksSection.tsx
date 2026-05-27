@@ -3,18 +3,18 @@ import { Badge } from '@/components/ui/badge'
 const steps = [
   {
     number: '01',
-    title: 'Send a link or file',
-    description: 'Drop a URL or upload directly. Works on Telegram, WhatsApp, or via the API',
+    title: 'Hit the API',
+    description: 'Send a link or upload a file directly. REST API, simple auth, instant job creation.',
   },
   {
     number: '02',
     title: 'We process it',
-    description: 'FFmpeg handles the heavy lifting — trim, compress, convert, whatever you need',
+    description: 'FFmpeg handles the heavy lifting — trim, compress, convert, extract audio, whatever you need.',
   },
   {
     number: '03',
     title: 'Get your result',
-    description: 'Small files come back in-chat. Large files are served via a download link',
+    description: 'Small files returned directly. Large files served via a fast CDN link.',
   },
 ]
 
@@ -24,7 +24,7 @@ export function HowItWorksSection() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)]">
-            How it works
+            Simple by design
           </h2>
         </div>
         

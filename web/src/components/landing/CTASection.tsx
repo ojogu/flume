@@ -12,11 +12,11 @@ export function CTASection() {
       
       <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
         <h2 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)]">
-          Start building today
+          Start building today.
         </h2>
         
         <p className="mt-4 text-lg text-[var(--text-secondary)]">
-          API access for developers. Chat interface for everyone.
+          API-first. Async-native. Built for scale.
         </p>
         
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -29,7 +29,7 @@ export function CTASection() {
           </a>
           
           <a
-            href="https://t.me/flumebot"
+            href="https://t.me/getflume_bot"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center rounded-lg h-9 px-4 gap-1.5 border border-[var(--border-strong)] text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors"

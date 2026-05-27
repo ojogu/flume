@@ -4,7 +4,7 @@ const features = [
   {
     icon: Download,
     title: 'Social Video Download',
-    description: 'Grab video from any major platform with a single link',
+    description: 'Grab video from any major platform with a single API call',
   },
   {
     icon: Cpu,
