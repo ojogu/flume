@@ -27,25 +27,27 @@ export function FeaturesSection() {
   return (
     <section id="features" className="py-20 sm:py-24 bg-[var(--bg-subtle)]">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
+
+        <div className="text-center mb-14">
+          <p className="text-label text-brand mb-3">What we offer</p>
           <h2 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)]">
             Everything you need to process video at scale
           </h2>
         </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="rounded-lg bg-[var(--bg-card)] p-6 shadow-md border border-[var(--border-subtle)]"
+              className="group rounded-xl bg-[var(--bg-card)] p-6 border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200"
             >
               <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-light)]">
-                <feature.icon className="h-5 w-5 text-[var(--brand)]" />
+                <feature.icon className="h-5 w-5 text-brand" />
               </div>
               <h3 className="font-semibold text-[var(--text-primary)] mb-2">
                 {feature.title}
               </h3>
-              <p className="text-sm text-[var(--text-secondary)]">
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
                 {feature.description}
               </p>
             </div>
