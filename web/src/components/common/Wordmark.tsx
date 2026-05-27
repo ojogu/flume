@@ -1,4 +1,7 @@
 import { cn } from '@/lib/utils'
+import logoLight from '@/assets/flume_logo_light.png'
+import logoDark from '@/assets/flume_logo_dark.png'
+import { useTheme } from '@/hooks/useTheme'
 
 interface WordmarkProps {
   variant?: 'light' | 'dark' | 'auto'
@@ -6,30 +9,15 @@ interface WordmarkProps {
 }
 
 export function Wordmark({ variant = 'auto', className }: WordmarkProps) {
-  const getTextColor = () => {
-    if (variant === 'light') return '#1D9E75'
-    if (variant === 'dark') return '#1D9E75'
-    return 'var(--brand)'
-  }
+  const { resolvedTheme } = useTheme()
+
+  const activeVariant = variant === 'auto' ? resolvedTheme : variant
 
   return (
-    <svg
-      viewBox="0 0 76 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn('h-6 w-auto', className)}
-    >
-      <text
-        x="0"
-        y="20"
-        fontFamily="var(--font-serif)"
-        fontSize="22"
-        fontStyle="italic"
-        fontWeight="400"
-        fill={getTextColor()}
-      >
-        Flume
-      </text>
-    </svg>
+    <img
+      src={activeVariant === 'dark' ? logoLight : logoDark}
+      alt="Flume"
+      className={cn('h-8 w-auto', className)}
+    />
   )
 }

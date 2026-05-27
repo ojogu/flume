@@ -6,10 +6,10 @@ import { Wordmark } from './Wordmark'
 import { useTheme } from '@/hooks/useTheme'
 
 const navLinks = [
-  { href: '#features', label: 'Features' },
-  { href: '#how-it-works', label: 'How it works' },
-  { href: '#docs', label: 'Docs' },
+  { href: '/api', label: 'API' },
+  { href: '/bot', label: 'Bot' },
   { href: '#pricing', label: 'Pricing' },
+  { href: '#docs', label: 'Docs' },
 ]
 
 export function Navbar() {
@@ -19,7 +19,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border-subtle)] bg-[var(--bg)]/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <Wordmark />
+          <Wordmark variant={resolvedTheme} />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">

@@ -2,11 +2,13 @@ import { Link } from 'react-router-dom'
 import { Wordmark } from './Wordmark'
 
 const footerLinks = [
+  { href: '/api', label: 'API' },
+  { href: '/bot', label: 'Bot' },
+  { href: '#pricing', label: 'Pricing' },
   { href: '#docs', label: 'Docs' },
-  { href: '#api', label: 'API' },
-  { href: 'https://t.me/flumebot', label: 'Telegram' },
-  { href: 'https://wa.me/flume', label: 'WhatsApp' },
   { href: '#github', label: 'GitHub' },
+  { href: 'https://t.me/getflume_bot', label: 'Telegram' },
+  { href: 'https://wa.me/000000000', label: 'WhatsApp' }, // DUMMY LINK: replace with real WhatsApp number before launch
 ]
 
 export function Footer() {
@@ -19,7 +21,7 @@ export function Footer() {
           </Link>
           
           <p className="text-sm text-[var(--text-muted)] text-center">
-            Video processing for developers and everyone else
+            Video processing for developers and everyone else.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-6">
@@ -35,7 +37,7 @@ export function Footer() {
           </div>
 
           <p className="text-xs text-[var(--text-muted)]">
-            © {new Date().getFullYear()} Flume. All rights reserved.
+            © 2026 Flume. All rights reserved.
           </p>
         </div>
       </div>
