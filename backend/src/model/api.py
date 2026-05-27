@@ -20,3 +20,4 @@ class ApiKey(BaseModel):
 
     #relationship
     user = relationship("User", back_populates="api_keys")
+

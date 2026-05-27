@@ -10,7 +10,8 @@ class Projects(BaseModel):
 class User(BaseModel):
     #TODO: set google oauth
     email = sa.Column(unique=True, nullable=False) 
-    is_active = sa.Column(unique=True, default=False, nullable=False)
+    is_active = sa.Column(unique=True, default=False, nullable=False) 
+    auth_provider = sa.Column(nullable=False)
 
     #relationship
     #parent:user, child:api-key
