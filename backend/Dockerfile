@@ -6,7 +6,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv export --format requirements-txt --no-hashes -o requirements.txt
 RUN uv pip install --system -r requirements.txt
 COPY . .
-COPY logging_config.json .
+
 
 # ---------- Stage 2: Runtime ----------
 FROM python:3.12-slim
