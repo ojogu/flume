@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from src.service.user import UserService
-from src.service.google import google_service
-from src.core.dependency import get_user_service
+from src.core.dependency import get_user_service, google_service
 from src.utils.response import success
 from src.utils.log import get_logger
 
@@ -19,7 +18,7 @@ async def oauth_login():
 @auth_route.get("/callback")
 async def oauth(request: Request, user_service: UserService = Depends(get_user_service)):
     params = dict(request.query_params)
-    logger.info(f"query_params; {params}")
+    logger.info(f"query_params; {params}")  
     data = google_service.handle_callback(request)
     user_data = google_service.verify_id(data["id_token"])
     user_info = {
@@ -40,9 +39,9 @@ async def oauth(request: Request, user_service: UserService = Depends(get_user_s
     existing_user = await user_service.get_user_by_email(email=user_info["email"])
 
     if existing_user:
-        if existing_user.get("email") == user_info["email"]:
+        if existing_user.email == user_info["email"]:
             updated_user = await user_service.update_user(
-                email=existing_user["email"], update_data=user_info
+                email=existing_user.email, update_data=user_info
             )
             logger.info(f"user updated: {updated_user}")
             return success(message="user_updated", data=updated_user)

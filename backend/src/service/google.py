@@ -118,10 +118,3 @@ class GoogleAuthService:
         return creds
 
 
-CLIENT_SECRET_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "client_secret.json"
-)
-google_service = GoogleAuthService(
-    client_secret_file=str(CLIENT_SECRET_PATH),
-    redirect_uri=config.redirect_url,
-)
