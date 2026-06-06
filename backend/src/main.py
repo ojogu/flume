@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import inspect as sa_inspect
 from src.utils.db import engine, init_db
 from src.utils.config import Settings
+from src.utils.redis import setup_redis
 from src.utils.exception import register_error_handlers
 from src.utils.telemetry import setup_telemetry
 from src.utils.log import RequestContextMiddleware, configure_structlog, get_logger
@@ -31,6 +32,10 @@ async def life_span(app: FastAPI):
 
     # Run once at import time, to overide uvicorn setup
     configure_structlog()
+
+    #initialize redis 
+    await setup_redis()
+
 
     # Startup: Initialize the database
     logger.info("server is starting....")
