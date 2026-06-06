@@ -8,10 +8,18 @@ class Projects(BaseModel):
 
 
 class User(BaseModel):
-    #TODO: set google oauth
-    email = sa.Column(unique=True, nullable=False) 
-    is_active = sa.Column(unique=True, default=False, nullable=False) 
-    auth_provider = sa.Column(nullable=False)
+    google_id = sa.Column(sa.String, nullable=True)
+    refresh_token = sa.Column(sa.Text, nullable=True)
+    access_token = sa.Column(sa.Text, nullable=True)
+    email = sa.Column(sa.String, unique=True, nullable=False)
+    email_verified = sa.Column(sa.Boolean, default=False, nullable=False)
+    onboarded = sa.Column(sa.Boolean, default=False, nullable=False)
+    name = sa.Column(sa.String, nullable=True)
+    picture = sa.Column(sa.Text, nullable=True)
+    first_name = sa.Column(sa.String, nullable=True)
+    last_name = sa.Column(sa.String, nullable=True)
+    is_active = sa.Column(sa.Boolean, default=False, nullable=False)
+    auth_provider = sa.Column(sa.String, nullable=False)
 
     #relationship
     #parent:user, child:api-key
