@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 backend/logs/
+backend/logs-root-backup/
 
 # Virtual environments
 .venv
