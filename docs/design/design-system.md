@@ -499,6 +499,59 @@ Dark mode is applied via Tailwind `dark:` variants (e.g. `dark:bg-[#1C1C1E]`), w
 - The `{/* PLACEHOLDER: animated chat demo */}` comment is retained in the section wrapper as a landmark for future changes.
 - To update the animation content (new steps, different copy), edit the `AnimatedChatDemo` internal component and adjust the `setTimeout` cascade in its `useEffect`. Match the `LOOP_DELAY_MS` constant to the last step time + hold duration.
 
+### 6.9 Wordmark
+
+**File:** `web/src/components/common/Wordmark.tsx`
+
+The Wordmark is the primary Flume brand identity element — an inline SVG combining a three-stripe mark with the logotype "flume" in Instrument Serif italic.
+
+#### Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `variant` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Color palette to render. `'auto'` reads `resolvedTheme` from `useTheme` internally. |
+| `className` | `string` | — | Additional Tailwind classes. Default size is `h-8 w-auto`. |
+
+#### Color logic
+
+| Variant | Text color (`currentColor`) |
+|---|---|
+| `'dark'` | `var(--brand-mid)` — lighter green, readable on dark surfaces |
+| `'light'` | `var(--brand-hover)` — deep green, readable on light surfaces |
+| `'auto'` | Resolves to the above based on `resolvedTheme` |
+
+#### Mark anatomy
+
+Three diagonal parallelogram stripes stacked vertically (viewBox `0 0 124 32`):
+
+| Stripe | Fill | Visual role |
+|---|---|---|
+| Top | `var(--brand-light)` | Lightest — creates depth gradient |
+| Middle | `var(--brand-mid)` | Mid tone |
+| Bottom | `var(--brand)` | Darkest — anchors the mark |
+
+The logotype `"flume"` is rendered as an SVG `<text>` element: Instrument Serif, italic, weight 400, `fontSize=22`, `letterSpacing=-0.44`, `fill="currentColor"`.
+
+#### Usage
+
+```tsx
+import { Wordmark } from '@/components/common/Wordmark'
+
+// Most contexts — let the component resolve theme automatically
+<Wordmark />
+
+// Force light palette (e.g. on a dark hero with brand bg)
+<Wordmark variant="light" />
+
+// Override size
+<Wordmark className="h-6 w-auto" />
+```
+
+**Rules:**
+- Always import from `@/components/common/Wordmark` — never inline the SVG in a new file.
+- Do not pass `variant={resolvedTheme}` unless the parent has already called `useTheme` for another purpose. `'auto'` is the correct default for all common cases.
+- Do not resize using `width`/`height` HTML attributes — use the `className` prop with a Tailwind `h-*` utility.
+
 ---
 
 ## 7 — CSS Utilities
@@ -615,13 +668,18 @@ web/src/
 │   │   ├── TwoSurfacesSection.tsx
 │   │   └── CTASection.tsx
 │   │
-│   └── bot/                      ← Bot page sections (in render order)
-│       ├── BotHeroSection.tsx
-│       ├── DemoPlaceholderSection.tsx  ← Telegram-simulated animated chat demo (Framer Motion)
-│       ├── HowItWorksSection.tsx
-│       ├── CapabilitiesSection.tsx
-│       ├── PlatformsSection.tsx
-│       └── CTASection.tsx            ← includes sticky mobile CTA bar
+│   ├── bot/                      ← Bot page sections (in render order)
+│   │   ├── BotHeroSection.tsx
+│   │   ├── DemoPlaceholderSection.tsx  ← Telegram-simulated animated chat demo (Framer Motion)
+│   │   ├── HowItWorksSection.tsx
+│   │   ├── CapabilitiesSection.tsx
+│   │   ├── PlatformsSection.tsx
+│   │   └── CTASection.tsx            ← includes sticky mobile CTA bar
+│   │
+│   └── pricing/                  ← Pricing page sections (in render order)
+│       ├── PricingHero.tsx       ← hero + billing toggle + 3-tier card grid
+│       ├── ComparisonTable.tsx   ← full feature comparison table
+│       └── PricingFAQ.tsx        ← accordion FAQ
 │
 ├── lib/
 │   ├── tokens.css    ← ALL CSS variables. Source of truth.
@@ -644,7 +702,9 @@ web/src/
 | File | Status | Note |
 |---|---|---|
 | `DemoPlaceholderSection.tsx` | ✅ Done | Telegram-simulated animated chat demo. See §6.8 for full documentation. |
-| `PricingSection.tsx` | ⚠️ Placeholder data | Pricing tiers and limits are not final. See `// [PLACEHOLDER]` comment in the file. |
+| `PricingHero.tsx` | ⚠️ Placeholder data | Tier names, prices, and features are not final. See `// [PLACEHOLDER]` comment. |
+| `ComparisonTable.tsx` | ⚠️ Placeholder data | Feature rows and tier limits are not final. See `// [PLACEHOLDER]` comment. |
+| `PricingFAQ.tsx` | ⚠️ Placeholder data | FAQ copy reflects current policy assumptions. See `// [PLACEHOLDER]` comment. |
 | `Footer.tsx` (WhatsApp link) | ⚠️ Dummy link | `https://wa.me/000000000` is a placeholder. Replace with real number before launch. |
 | `BotHeroSection.tsx` (WhatsApp) | ⚠️ Dummy link | Same. |
 | `PlatformsSection.tsx` (WhatsApp) | ⚠️ Coming soon | WhatsApp card is deliberately disabled (`opacity-75`, `pointer-events-none`). Enable when ready. |
@@ -668,3 +728,126 @@ When adding any new section to any page, verify every item:
 - [ ] Any new Tailwind utility is added to `@theme inline` in `index.css`
 - [ ] No hardcoded hex color values in the component file
 - [ ] Component has no `aria` accessibility regressions (labels on icon buttons, no nested `<button>`)
+
+---
+
+## 14 — Pricing Page Components
+
+**Directory:** `web/src/components/pricing/`
+
+The Pricing page is composed of three sections rendered in order: `PricingHero` → `ComparisonTable` → `PricingFAQ`. Billing period state is lifted to the page level and passed down.
+
+```tsx
+// Typical PricingPage composition
+const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly')
+
+<PricingHero billingPeriod={billingPeriod} onBillingPeriodChange={setBillingPeriod} />
+<ComparisonTable billingPeriod={billingPeriod} />
+<PricingFAQ />
+```
+
+---
+
+### 14.1 PricingHero
+
+**File:** `web/src/components/pricing/PricingHero.tsx`
+
+Hero section for the pricing page. Combines a gradient hero header, a billing period toggle, and the three-tier pricing card grid.
+
+#### Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `billingPeriod` | `'monthly' \| 'annual'` | Controls which price is shown in each tier card |
+| `onBillingPeriodChange` | `(p: 'monthly' \| 'annual') => void` | Lifted state setter — called by billing toggle buttons |
+
+#### Layout
+
+- Section: `py-20 sm:py-28` + `gradient-hero` (hero variant — no eyebrow label)
+- Inner header: `mb-12` (not `mb-14` — no subtext paragraph)
+- Billing toggle: `inline-flex rounded-full bg-[var(--bg-subtle)] p-1 border border-[var(--border-subtle)]`; active state: `bg-[var(--bg-card)] shadow-sm`
+- Tier grid: `grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto items-start`
+
+#### `tiers` data shape
+
+```ts
+interface Tier {
+  name: string
+  monthly: { price: string; suffix: string }
+  annual:  { price: string; suffix: string }
+  annualSub: string | null          // shown below price when billingPeriod === 'annual'
+  description: string
+  features: string[]
+  cta: string
+  href: string
+  highlighted: boolean              // only one tier may be true — triggers ring + scale treatment
+}
+```
+
+Tier cards follow the §6.4 Pricing Tier Card pattern. The highlighted card uses `border-[var(--brand)] ring-1 ring-[var(--brand)] shadow-lg scale-[1.02]`. The "Recommended" badge (§6.5) is positioned `absolute -top-3 left-1/2 -translate-x-1/2`.
+
+> ⚠️ `// [PLACEHOLDER]` — prices, features, and CTA links are not final.
+
+---
+
+### 14.2 ComparisonTable
+
+**File:** `web/src/components/pricing/ComparisonTable.tsx`
+
+A full-width feature comparison table across Free, Pro, and Enterprise tiers. Visually highlights the Pro column.
+
+#### Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `billingPeriod` | `'monthly' \| 'annual'` | Drives the price row shown in the table header |
+
+#### Data shapes
+
+```ts
+type CellValue = boolean | string
+
+interface FeatureRow {
+  label: string
+  free: CellValue
+  pro: CellValue
+  enterprise: CellValue
+}
+
+interface FeatureGroup {
+  category: string   // rendered as a full-width category header row
+  rows: FeatureRow[]
+}
+```
+
+`CellValue` rendering: `true` → `<Check h-4 w-4 text-brand>`, `false` → `<Minus h-4 w-4 text-[var(--text-muted)]>`, `string` → plain text.
+
+#### Layout
+
+- Section background: `bg-[var(--bg-subtle)]`
+- Table container: `overflow-x-auto rounded-xl border border-[var(--border-subtle)]`; inner table: `min-w-[560px]` for horizontal scroll safety on mobile
+- Pro column highlight: `bg-brand-light` on both the `<th>` header cell and every `<td>` data cell in the Pro column
+
+> ⚠️ `// [PLACEHOLDER]` — feature rows and tier limits are not final.
+
+---
+
+### 14.3 PricingFAQ
+
+**File:** `web/src/components/pricing/PricingFAQ.tsx`
+
+Self-contained FAQ section using the base-ui-backed `Accordion`.
+
+#### Props
+
+None. The FAQ copy is hardcoded in the component.
+
+#### Accordion notes
+
+The `Accordion` in `web/src/components/ui/accordion.tsx` wraps `@base-ui/react/accordion`, **not** Radix UI. Base UI's accordion:
+- Is always collapsible — do **not** pass a `collapsible` prop (it does not exist on the type and will cause TS2322).
+- Uses `data-open` / `data-closed` attributes instead of Radix's `data-state`.
+
+Each `AccordionItem` uses: `rounded-xl border border-(--border-subtle) bg-(--bg-card) px-6 not-last:border-b data-open:border-(--border-strong) transition-colors duration-200`.
+
+> ⚠️ `// [PLACEHOLDER]` — FAQ copy reflects current policy assumptions and is not final.
