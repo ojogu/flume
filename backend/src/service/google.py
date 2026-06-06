@@ -3,7 +3,6 @@ from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
-from pathlib import Path
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import os
@@ -24,19 +23,28 @@ class GoogleAuthService:
     ]
     CLIENT_ID = config.client_id
     CLIENT_SECRET = config.client_secret
+    REDIRECT_URI = config.redirect_url
 
-    def __init__(self, client_secret_file, redirect_uri):
-        self.client_secret_file = client_secret_file
-        self.redirect_uri = redirect_uri
-        self.flow = None
+    @property
+    def _client_config(self):
+        return {
+            "web": {
+                "client_id": self.CLIENT_ID,
+                "client_secret": self.CLIENT_SECRET,
+                "redirect_uris": [self.REDIRECT_URI],
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+        }
 
     def login_with_google(self):
         try:
             logger.info("Initializing OAuth flow for Google authentication.")
-            flow = Flow.from_client_secrets_file(
-                self.client_secret_file,
+            flow = Flow.from_client_config(
+                self._client_config,
                 scopes=self.SCOPES,
-                redirect_uri=self.redirect_uri,
+                redirect_uri=self.REDIRECT_URI,
+                autogenerate_code_verifier=False,
             )
             auth_url, state = flow.authorization_url(
                 access_type="offline",
@@ -53,26 +61,22 @@ class GoogleAuthService:
                 samesite="Lax",
             )
             return auth_url
-        except FileNotFoundError:
-            logger.error(
-                f"Client secret file not found: {self.client_secret_file}"
-            )
-            raise ServerError("Client secret file not found.")
         except Exception as e:
             logger.exception(
                 f"Error generating Google OAuth authorization URL: {e}"
             )
-            raise ServerError(f"Failed to generate OAuth URL: {e}")
+            raise ServerError()
 
     def handle_callback(self, request: Request):
         try:
             logger.info(f"cookies, {request.cookies}")
 
-            flow = Flow.from_client_secrets_file(
-                self.client_secret_file,
+            flow = Flow.from_client_config(
+                self._client_config,
                 scopes=self.SCOPES,
-                redirect_uri=self.redirect_uri,
+                redirect_uri=self.REDIRECT_URI,
                 state=request.query_params.get("state"),
+                autogenerate_code_verifier=False,
             )
 
             authorization_response = str(request.url)
@@ -89,7 +93,7 @@ class GoogleAuthService:
             return cred
         except Exception as e:
             logger.exception("Error handling OAuth callback: %s", e)
-            raise ServerError(f"OAuth callback failed: {e}")
+            raise ServerError()
 
     def verify_id(self, id_code):
         info = id_token.verify_oauth2_token(

@@ -41,7 +41,7 @@ def create_exception_handler(
 
         # Copy initial detail and override the message dynamically
         response_payload = initial_detail.copy()
-        if hasattr(exc, "message"):
+        if exc.message is not None:
             response_payload["message"] = str(exc.message)
 
         # Validate the response payload using ErrorResponse schema
