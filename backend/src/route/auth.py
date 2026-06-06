@@ -26,6 +26,8 @@ async def oauth(request: Request, user_service: UserService = Depends(get_user_s
         "refresh_token": data["refresh_token"],
         "access_token": data["access_token"],
         "email": user_data["email"],
+        "auth_provider": "google",
+        "is_active": True,
         "oauth_verified": True,
         "onboarded": True,
         "email_verified": user_data["email_verified"],

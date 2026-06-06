@@ -7,6 +7,8 @@ class CreateUser(BaseModel):
     refresh_token: Optional[str] = None
     access_token: Optional[str] = None
     email: str
+    auth_provider: str
+    is_active: bool = False
     email_verified: bool = False
     oauth_verified: bool = False
     onboarded: bool = False
@@ -21,6 +23,7 @@ class UpdateUser(BaseModel):
     refresh_token: Optional[str] = None
     access_token: Optional[str] = None
     email: Optional[str] = None
+    auth_provider: Optional[str] = None
     email_verified: Optional[bool] = None
     oauth_verified: Optional[bool] = None
     onboarded: Optional[bool] = None
