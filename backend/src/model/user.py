@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import relationship
 
 
-class Projects(BaseModel):
+class Project(BaseModel):
     pass 
 
 

@@ -1,12 +1,16 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from src.utils.db import init_db
+from sqlalchemy import inspect as sa_inspect
+from src.utils.db import engine, init_db
 from src.utils.config import Settings
 from src.utils.exception import register_error_handlers
 from src.utils.telemetry import setup_telemetry
-from src.utils.log import RequestContextMiddleware, configure_structlog
+from src.utils.log import RequestContextMiddleware, configure_structlog, get_logger
 from fastapi.middleware.cors import CORSMiddleware
 from src.route.auth import auth_route
+
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -29,9 +33,11 @@ async def life_span(app: FastAPI):
     configure_structlog()
 
     # Startup: Initialize the database
-    print(f"server is starting....")
+    logger.info("server is starting....")
     await init_db()
-    print(f"server has started!!")
+    async with engine.begin() as conn:
+        tables = await conn.run_sync(lambda c: sa_inspect(c).get_table_names())
+        logger.info(f"Tables created: {tables}")
 
     yield
 

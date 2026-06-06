@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.utils.log import get_logger
 from sqlalchemy.pool import NullPool
 from contextlib import asynccontextmanager
+from src.model import *
 
 logger = get_logger(__name__)
 
@@ -15,7 +16,7 @@ engine = create_async_engine(
     url=config.database_url,
     # echo=settings.debug,
     poolclass=NullPool,  # Use NullPool for async operations
-    future=True,
+    future=True, 
 )
 
 
