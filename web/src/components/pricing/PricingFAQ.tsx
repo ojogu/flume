@@ -50,7 +50,7 @@ export function PricingFAQ() {
         </div>
 
         <div className="max-w-3xl mx-auto">
-          <Accordion type="single" collapsible className="flex flex-col gap-2">
+          <Accordion className="flex flex-col gap-2">
             {faqs.map((faq, i) => (
               <AccordionItem
                 key={i}
