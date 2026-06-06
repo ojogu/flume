@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 const navLinks = [
   { href: '/api', label: 'API', internal: true },
   { href: '/bot', label: 'Bot', internal: true },
-  { href: '#pricing', label: 'Pricing', internal: false },
+  { href: '/pricing', label: 'Pricing', internal: true },
   { href: '#docs', label: 'Docs', internal: false },
 ]
 

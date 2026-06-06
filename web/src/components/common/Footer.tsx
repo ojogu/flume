@@ -4,7 +4,7 @@ import { Wordmark } from './Wordmark'
 const productLinks = [
   { href: '/api', label: 'FlumeAPI', internal: true },
   { href: '/bot', label: 'Flume Bot', internal: true },
-  { href: '#pricing', label: 'Pricing', internal: false },
+  { href: '/pricing', label: 'Pricing', internal: true },
 ]
 
 const resourceLinks = [
