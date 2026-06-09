@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Menu, Sun, Moon } from 'lucide-react'
+import { Menu, Sun, Moon, LogIn } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Wordmark } from './Wordmark'
 import { useTheme } from '@/hooks/useTheme'
+import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
@@ -17,6 +18,12 @@ const navLinks = [
 export function Navbar() {
   const { resolvedTheme, toggleTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { accessToken, user, logout, hydrate } = useAuthStore()
+  const isAuthenticated = !!accessToken
+
+  useEffect(() => {
+    hydrate()
+  }, [hydrate])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--border-subtle)] bg-[var(--bg)]/80 backdrop-blur-md">
@@ -65,15 +72,40 @@ export function Navbar() {
             )}
           </Button>
 
-          <a
-            href="#api-access"
-            className={cn(
-              buttonVariants({ variant: 'default', size: 'default' }),
-              'hidden md:inline-flex px-4'
-            )}
-          >
-            Get API Access
-          </a>
+          {isAuthenticated ? (
+            <div className="hidden md:flex items-center gap-3">
+              {user?.picture ? (
+                <img
+                  src={user.picture}
+                  alt={user.name ?? ''}
+                  className="h-8 w-8 rounded-full"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-[var(--brand-light)] flex items-center justify-center">
+                  <span className="text-xs font-semibold text-brand">
+                    {user?.name?.charAt(0) ?? '?'}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={logout}
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-[var(--text-secondary)]')}
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className={cn(
+                buttonVariants({ variant: 'default', size: 'default' }),
+                'hidden md:inline-flex px-4 gap-2'
+              )}
+            >
+              <LogIn className="h-4 w-4" />
+              Sign in
+            </Link>
+          )}
 
           {/* Mobile menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -115,14 +147,24 @@ export function Navbar() {
                     </a>
                   )
                 )}
-                <div className="mt-4 px-1">
-                  <a
-                    href="#api-access"
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(buttonVariants({ variant: 'default' }), 'w-full justify-center px-4')}
-                  >
-                    Get API Access
-                  </a>
+                <div className="mt-4 px-1 flex flex-col gap-2">
+                  {isAuthenticated ? (
+                    <button
+                      onClick={() => { logout(); setMobileOpen(false) }}
+                      className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-center px-4')}
+                    >
+                      Sign out
+                    </button>
+                  ) : (
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(buttonVariants({ variant: 'default' }), 'w-full justify-center px-4 gap-2')}
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Sign in
+                    </Link>
+                  )}
                 </div>
               </div>
             </SheetContent>
