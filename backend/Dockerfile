@@ -18,6 +18,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy app source
 COPY --from=builder /app/src ./src
+COPY --from=builder /app/celery ./celery
 
 
 
