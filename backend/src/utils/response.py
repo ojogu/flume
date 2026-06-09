@@ -11,4 +11,4 @@ def success(
     role: Optional[str] = None,
 ) -> JSONResponse:
     body = SuccessResponse(message=message, data=data, role=role)
-    return JSONResponse(content=body.model_dump(), status_code=status_code)
+    return JSONResponse(content=body.model_dump(mode="json"), status_code=status_code)

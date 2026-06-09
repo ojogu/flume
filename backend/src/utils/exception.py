@@ -328,13 +328,13 @@ def register_error_handlers(app: FastAPI):
     @app.exception_handler(ValidationError)
     async def pydantic_validation_error_handler(request: Request, exc: ValidationError):
         exception_logger.error(f"Pydantic validation error: {str(exc)}")
+        messages = [e["msg"] for e in exc.errors()]
         return JSONResponse(
             content={
                 "status": "error",
                 "message": "Validation error",
                 "error_code": "pydantic_validation_error",
-                "data": exc.json(),
-                "model": exc.model.__name__,
+                "data": messages,
             },
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )

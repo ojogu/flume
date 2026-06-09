@@ -1,6 +1,6 @@
 from .api import ApiKey
 from .base import Base, BaseModel
-from .user import User, Project 
+from .user import User, Project, MagicLinkToken
 
 __all__ = [
     "Base",
@@ -8,4 +8,5 @@ __all__ = [
     "User",
     "Project",
     "ApiKey", 
+    "MagicLinkToken"
 ]

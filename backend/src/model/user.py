@@ -4,14 +4,14 @@ from sqlalchemy.orm import relationship
 
 
 class Project(BaseModel):
-    pass 
+    pass
 
 
 class User(BaseModel):
     google_id = sa.Column(sa.String, nullable=True)
     refresh_token = sa.Column(sa.Text, nullable=True)
     access_token = sa.Column(sa.Text, nullable=True)
-    email = sa.Column(sa.String, unique=True, nullable=False)
+    email = sa.Column(sa.String, unique=True, nullable=False, index=True)
     email_verified = sa.Column(sa.Boolean, default=False, nullable=False)
     oauth_verified = sa.Column(sa.Boolean, default=False, nullable=False)
     onboarded = sa.Column(sa.Boolean, default=False, nullable=False)
@@ -25,4 +25,12 @@ class User(BaseModel):
     #relationship
     #parent:user, child:api-key
     api_keys = relationship("ApiKey", back_populates="user")
+
+
+class MagicLinkToken(BaseModel):
+    token = sa.Column(sa.String, unique=True, nullable=False, index=True)
+    email = sa.Column(sa.String, nullable=False, index=True)
+    resend_email_id = sa.Column(sa.UUID, nullable=True)
+    expires_at = sa.Column(sa.DateTime(timezone=True), nullable=False)
+    used = sa.Column(sa.Boolean, default=False, nullable=False)
 

@@ -8,7 +8,7 @@ from src.utils.exception import register_error_handlers
 from src.utils.telemetry import setup_telemetry
 from src.utils.log import RequestContextMiddleware, configure_structlog, get_logger
 from fastapi.middleware.cors import CORSMiddleware
-from src.route.auth import auth_route
+from src.auth.route import auth_route
 
 
 logger = get_logger(__name__)

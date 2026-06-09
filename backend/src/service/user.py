@@ -1,17 +1,21 @@
+import datetime
+import secrets
 from typing import Optional
 import uuid
 from src.schema import UpdateUser, CreateUser
-from src.model.user import User 
+from src.model import User, MagicLinkToken
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, update
 from src.utils.exception import (
     AlreadyExistsError,
-    DatabaseError
+    DatabaseError,
+    ServerError,
 )
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 
-from src.utils.log import get_logger 
+from src.utils.log import get_logger
+
 logger = get_logger(__name__)
 
 
@@ -83,3 +87,86 @@ class UserService:
             await self.db.rollback()
             logger.error(f"Error updating user: {e}")
             raise DatabaseError() from e
+    
+
+    @staticmethod
+    def generate_token() -> str:
+        return secrets.token_urlsafe(48)
+
+    async def create_magic_link_token(self, email):
+        token = self.generate_token()
+        expired_time = datetime.utcnow() + datetime.timedelta(minutes=15)
+        #check if email exist and log
+        email_exists = await self.get_user_by_email(email=email)
+        if not email_exists:
+            logger.warning(f"Magic link requested for non-existent email: {email}")
+        #store tokens and metadata
+        new_token = MagicLinkToken(
+            email=email, 
+            token=token,
+            expires_at=expired_time
+            )
+        self.db.add(new_token)
+        try:
+            await self.db.flush()
+            await self.db.refresh(new_token)
+            await self.db.commit()
+            logger.info(f"Magic link token created for email: {email}")
+            return token
+        except Exception as e:
+            logger.error(f"Error creating magic link token: {e}")
+            raise ServerError()
+
+
+    async def verify_magic_link_token(self, token: str) -> Optional[str]:
+        result = await self.db.execute(
+            select(MagicLinkToken).where(
+                and_(
+                    MagicLinkToken.token == token,
+                    MagicLinkToken.used == False,
+                    MagicLinkToken.expires_at > datetime.utcnow()
+                )
+            )
+        )
+        token_record = result.scalar_one_or_none()
+        if not token_record:
+            logger.warning(f"Invalid or expired magic link token: {token}")
+            return None
+
+        # Mark the token as used
+        token_record.used = True
+        try:
+            await self.db.flush()
+            await self.db.refresh(token_record)
+            await self.db.commit()
+            logger.info(f"Magic link token verified for email: {token_record.email}")
+            return token_record.email
+        except SQLAlchemyError as e:
+            await self.db.rollback()
+            logger.error(f"Error verifying magic link token: {e}")
+            raise ServerError()
+
+    async def verify_magic_link_and_login(self, token: str) -> Optional[User]:
+        email = await self.verify_magic_link_token(token)
+        if not email:
+            return None
+
+        user = await self.get_user_by_email(email)
+        if user:
+            user = await self.update_user(
+                email=email,
+                update_data={"email_verified": True, "is_active": True},
+            )
+            logger.info(f"Existing user logged in via magic link: {email}")
+        else:
+            user = await self.create_user(
+                email=email,
+                auth_provider="magic_link",
+                email_verified=True,
+                is_active=True,
+            )
+            logger.info(f"New user created via magic link: {email}")
+
+        return user
+
+    

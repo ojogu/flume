@@ -50,7 +50,7 @@ class GoogleAuthService:
                 access_type="offline",
                 include_granted_scopes="true",
                 prompt="consent",
-            )
+            ) 
             logger.info(f"Generated Google OAuth authorization URL: {auth_url}")
             redirect_response = RedirectResponse(auth_url)
             redirect_response.set_cookie(
