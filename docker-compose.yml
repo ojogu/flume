@@ -60,6 +60,7 @@ services:
     volumes:
       - ./backend/logs:/app/logs
       - ./backend/src:/app/src
+      - ./backend/celery_app:/app/celery_app
     command: uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload 
     networks:
       - observability
@@ -68,7 +69,7 @@ services:
   worker:
     build:
       context: ./backend
-    command: celery -A celery.celery.bg_task worker -l info -Q default,email
+    command: celery -A celery_app.celery.bg_task worker -l info -Q default,email
     env_file:
       - ./backend/.env
     environment:
@@ -96,7 +97,7 @@ services:
   celery-beat:
     build:
       context: ./backend
-    command: celery -A celery.celery.bg_task beat -l info
+    command: celery -A celery_app.celery.bg_task beat -l info
     env_file:
       - ./backend/.env
     environment:
@@ -116,7 +117,7 @@ services:
   flower:
     build:
       context: ./backend
-    command: celery -A celery.celery.bg_task flower --port=5555
+    command: celery -A celery_app.celery:bg_task flower --port=5555 --address=0.0.0.0
     env_file:
       - ./backend/.env
     deploy:
@@ -190,9 +191,9 @@ services:
   loki:
     image: grafana/loki:3.0.0
     # container_name: loki
-    command: -config.file=/etc/loki/config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - ./backend/observability/loki.yaml:/etc/loki/config.yaml
+      - ./backend/observability/loki.yaml:/etc/loki/local-config.yaml
       - loki_data:/loki
     networks:
       - observability
