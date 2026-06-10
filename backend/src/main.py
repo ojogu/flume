@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from sqlalchemy import inspect as sa_inspect
-from src.utils.db import engine, init_db
+from src.utils.db import engine
 from src.utils.config import Settings
 from src.utils.redis import setup_redis
 from src.utils.exception import register_error_handlers
@@ -38,9 +38,7 @@ async def life_span(app: FastAPI):
     await setup_redis()
 
 
-    # Startup: Initialize the database
     logger.info("server is starting....")
-    await init_db()
     async with engine.begin() as conn:
         tables = await conn.run_sync(lambda c: sa_inspect(c).get_table_names())
         logger.info(f"Tables created: {tables}")
