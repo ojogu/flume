@@ -6,28 +6,28 @@ This document explains how logging works in Flume — from your app code to Cons
 
 ## 1. High-Level Overview
 
-![alt text](image-3.png)
+![alt text](images/image-3.png)
 ---
 
 ## 2. Structlog Processors
 
 These run **before** rendering — they add metadata to every log event.
 
-![alt text](image-4.png)
+![alt text](images/image-4.png)
 ---
 
 ## 3. Handler Pipeline (Parallel Outputs)
 
 Each handler runs independently. All three receive the same processed event.
 
-![alt text](image-5.png)
+![alt text](images/image-5.png)
 ---
 
 ## 4. Context Flow (Per-Request)
 
 How request-scoped variables get injected into every log.
 
-![alt text](image-6.png)
+![alt text](images/image-6.png)
 
 ---
 
@@ -63,7 +63,7 @@ How request-scoped variables get injected into every log.
 
 How structlog logs also flow to Loki via OpenTelemetry.
 
-![alt text](image-7.png)
+![alt text](images/image-7.png)
 RESULT: Every structlog log goes to TWO places:
   • Console + File (via structlog handlers)
   • Loki (via OTel bridge)
@@ -75,7 +75,7 @@ RESULT: Every structlog log goes to TWO places:
 
 Step-by-step transformation of a log event.
 
-![alt text](image-8.png)
+![alt text](images/image-8.png)
 ---
 
 ## Summary

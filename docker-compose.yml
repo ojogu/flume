@@ -60,6 +60,7 @@ services:
     volumes:
       - ./backend/logs:/app/logs
       - ./backend/src:/app/src
+      - ./backend/celery_app:/app/celery_app
     command: uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload 
     networks:
       - observability
@@ -68,7 +69,7 @@ services:
   worker:
     build:
       context: ./backend
-    # command: celery -A src.celery.celery worker -l info -Q default,fetch_user_id_for_front_sync_task,front_sync_bookmark_task,fetch_user_id_for_backfill_task,backfill_bookmark_task
+    command: celery -A celery_app.celery.bg_task worker -l info -Q default,email
     env_file:
       - ./backend/.env
     environment:
@@ -96,7 +97,7 @@ services:
   celery-beat:
     build:
       context: ./backend
-    command: celery -A src.celery.celery beat -l info
+    command: celery -A celery_app.celery.bg_task beat -l info
     env_file:
       - ./backend/.env
     environment:
@@ -116,7 +117,7 @@ services:
   flower:
     build:
       context: ./backend
-    command: celery -A src.celery.celery flower --port=5555
+    command: celery -A celery_app.celery:bg_task flower --port=5555 --address=0.0.0.0
     env_file:
       - ./backend/.env
     deploy:
@@ -169,7 +170,7 @@ services:
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    container_name: otel-collector
+    # container_name: otel-collector
     volumes:
       - ./backend/observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml
     healthcheck:
@@ -189,10 +190,10 @@ services:
 
   loki:
     image: grafana/loki:3.0.0
-    container_name: loki
-    command: -config.file=/etc/loki/config.yaml
+    # container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - ./backend/observability/loki.yaml:/etc/loki/config.yaml
+      - ./backend/observability/loki.yaml:/etc/loki/local-config.yaml
       - loki_data:/loki
     networks:
       - observability
@@ -205,7 +206,7 @@ services:
 
   tempo:
     image: grafana/tempo:2.4.1
-    container_name: tempo
+    # container_name: tempo
     command: -config.file=/etc/tempo/config.yaml
     volumes:
       - ./backend/observability/tempo.yaml:/etc/tempo/config.yaml
@@ -221,7 +222,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: prometheus
+    # container_name: prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yaml
       - --storage.tsdb.path=/prometheus
@@ -240,7 +241,7 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.2
-    container_name: grafana
+    # container_name: grafana
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin

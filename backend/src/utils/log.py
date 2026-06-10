@@ -124,8 +124,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 # ---------------------------------------------------------------------------
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     """
-    Get a structlog logger. Context bound via middleware or bind_context()
-    is automatically merged into every log line.
+    Get a structlog logger. Context bound via middleware or bind_context() is automatically merged into every log line.
 
     Usage:
         log = get_logger(__name__)

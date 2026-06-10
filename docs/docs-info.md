@@ -15,6 +15,8 @@ docs/
 ├── tradeoffs.md           # significant decisions — what you chose and rejected
 ├── decisions/              # individual ADRs — one file per decision
 │   └── 000-template.md    # use this template for new decisions
+├── design/                 # detailed subsystem designs — logging, observability, services
+│   └── images/            # diagrams for design docs
 ├── postmortem/            # incident reports — what broke and what changed
 │   └── 000-template.md    # use this template for new postmortems
 ├── prd.md                 # product requirements
@@ -99,6 +101,14 @@ These four questions are the whole framework. Every decision in this project sho
 
 ---
 
+### `design/` — How Specific Subsystems Work
+
+The `design/` directory holds detailed design documents for individual subsystems — logging, observability, services, and other focused areas. While `architecture.md` gives the ten-thousand-foot view, these files dive into the component-level details: data flow, configuration, integration points, and diagrams.
+
+**When to update:** When a subsystem's design changes in a meaningful way — a new log handler, a different OTel exporter, an additional service.
+
+---
+
 ### `postmortem/` — What Broke and What Changed
 
 A postmortem is a record of something that went wrong in production. It documents what happened, why it happened, what you changed, and what you learned.
@@ -151,6 +161,12 @@ This is personal documentation — it exists because this project is as much a l
 2. Be specific about the root cause
 3. Make action items concrete and assign them owners
 4. Keep it blameless
+
+### When you design a subsystem
+
+1. Add or update the relevant document in `design/`
+2. Include a diagram in `design/images/` if the data flow is complex
+3. Update `architecture.md` if the high-level structure changes
 
 ### When the system changes
 

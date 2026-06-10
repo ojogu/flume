@@ -7,15 +7,16 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.utils.log import get_logger
 from sqlalchemy.pool import NullPool
 from contextlib import asynccontextmanager
+from src.model import *
 
 logger = get_logger(__name__)
 
 # Create async engine
 engine = create_async_engine(
-    url=config.DATABASE_URL,
+    url=config.database_url,
     # echo=settings.debug,
     poolclass=NullPool,  # Use NullPool for async operations
-    future=True,
+    future=True, 
 )
 
 
@@ -89,19 +90,3 @@ async def init_db():
         logger.error(f"error creating the db: {e}")
 
 
-async def drop_db():
-    """
-    Drop all tables in the database.
-
-    This asynchronous function uses the SQLAlchemy engine to drop all tables
-    that are defined in the Base metadata. It's typically used when you want
-    to completely reset the database structure.
-
-    Caution: This operation will delete all data in the tables. Use with care.
-    """
-    try:
-        async with engine.begin() as conn:
-            # Use run_sync to call the synchronous drop_all method in an async context
-            await conn.run_sync(Base.metadata.drop_all)
-    except SQLAlchemyError as e:
-        logger.error(f"error dropping the db: {e}")

@@ -2,19 +2,24 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Config(BaseSettings):
-    DATABASE_URL: str 
+    database_url: str
     redis_url: str
     jwt_secret_key:str
     jwt_algo:str 
     access_token_expiry:int
     refresh_token_expiry:int
     frontend_url:str
-    bearer_token:str
     celery_beat_interval:int
     encryption_key:str
     celery_broker_url:str
     celery_result_backend:str
-    app_env:str
+    telegram_key:str
+    client_id:str
+    client_secret:str
+    redirect_url:str
+    resend_key:str
+    resend_mail:str
+    app_env:str = "dev"
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

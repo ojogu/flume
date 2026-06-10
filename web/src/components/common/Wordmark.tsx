@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/hooks/useTheme'
 
 interface WordmarkProps {
   variant?: 'light' | 'dark' | 'auto'
@@ -6,29 +7,41 @@ interface WordmarkProps {
 }
 
 export function Wordmark({ variant = 'auto', className }: WordmarkProps) {
-  const getTextColor = () => {
-    if (variant === 'light') return '#1D9E75'
-    if (variant === 'dark') return '#1D9E75'
-    return 'var(--brand)'
-  }
+  const { resolvedTheme } = useTheme()
+
+  const activeVariant = variant === 'auto' ? resolvedTheme : variant
+  const textColor = activeVariant === 'dark' ? 'var(--brand-mid)' : 'var(--brand-hover)'
 
   return (
     <svg
-      viewBox="0 0 76 24"
-      fill="none"
+      viewBox="0 0 124 32"
+      className={cn('h-8 w-auto', className)}
+      style={{ color: textColor }}
+      aria-label="Flume"
+      role="img"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn('h-6 w-auto', className)}
+      fill="none"
     >
+      {/* Mark: three diagonal parallelogram stripes — top = lightest, bottom = darkest */}
+      {/* Top stripe — lightest (brand-light tint) */}
+      <path fill="var(--brand-light)" d="M0 11 L8 5 L26 5 L18 11 Z" />
+      {/* Middle stripe — brand-mid */}
+      <path fill="var(--brand-mid)" d="M0 19 L8 13 L26 13 L18 19 Z" />
+      {/* Bottom stripe — brand (darkest, anchors the mark) */}
+      <path fill="var(--brand)" d="M0 27 L8 21 L26 21 L18 27 Z" />
+
+      {/* Wordmark text — Instrument Serif italic, color driven by currentColor */}
       <text
-        x="0"
-        y="20"
-        fontFamily="var(--font-serif)"
-        fontSize="22"
+        x="34"
+        y="24"
+        fontFamily="Instrument Serif, serif"
         fontStyle="italic"
         fontWeight="400"
-        fill={getTextColor()}
+        fontSize="22"
+        letterSpacing="-0.44"
+        fill="currentColor"
       >
-        Flume
+        flume
       </text>
     </svg>
   )

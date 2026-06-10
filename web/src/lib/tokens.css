@@ -56,11 +56,17 @@
   --card-foreground: #F0F0F4;
   --popover: #1E1E28;
   --popover-foreground: #F0F0F4;
+  --primary: #1D9E75;
+  --primary-foreground: #ffffff;
   --secondary: #1A1A22;
   --secondary-foreground: #F0F0F4;
   --muted: #1A1A22;
   --muted-foreground: #9090A8;
+  --accent: rgba(29,158,117,0.10);
   --accent-foreground: #F0F0F4;
+  --destructive: #EF4444;
+  --destructive-foreground: #ffffff;
   --border: rgba(255,255,255,0.07);
   --input: #1A1A22;
+  --ring: #9FE1CB;
 }

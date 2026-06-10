@@ -2,7 +2,7 @@
 
 ## High-Level Diagram
 
-![high level diagram](image.png)
+![high level diagram](images/image.png)
 
 ---
 
@@ -30,7 +30,7 @@
 
 ## Auto-Instrumentation
 
-![auto-instrumentation](image-2.png)
+![auto-instrumentation](images/image-2.png)
 
 ---
 

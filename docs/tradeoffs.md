@@ -36,8 +36,21 @@ A running record of every significant decision made during the design of Flume, 
 **Why RabbitMQ + Redis:** Better learning value, cleaner architecture, and more representative of how production systems are built.
 
 ---
+## 3. FFmpeg Layer: Wrapper vs. Subprocess CLI
 
-## 3. User Identity: Platform-Native vs. Unified Account
+**Decision: Use the subprocess with spawn CLI to run ffmpeg commands**
+
+**Considered:**
+- Wrapper (ffmpeg-python) — Declarative, chainable API that mirrors FFmpeg's filter graph model closely. Good for complex filter chains.
+- Subprocess + shlex (raw) — Not a wrapper, just shell out directly. More verbose but zero abstraction overhead, and complete control over the command string. Easier to debug.
+
+**Tradeoffs:**
+- Complex commands 
+
+**Why the subprocess:** The ffmpeg libarries are outdated, last commits were 4 and 2 years ago respectively. This presents are some sort of risk/comodity. Ffmpeg is actively updated, and having the last commits this long ago, clearly means these libaries are out of date, and we can't work with that.
+
+
+## 4. User Identity: Platform-Native vs. Unified Account
 
 **Decision: Platform-native identities first, optional linking via web account**
 
@@ -49,7 +62,7 @@ Web account is created first. Telegram/WhatsApp are linked to it via a verificat
 **Option B — Phone number as anchor:**
 Phone number is the universal key across WhatsApp, Telegram, and web. Natural fit for WhatsApp, but Telegram doesn't always expose phone numbers. Phone numbers also change. Requires SMS infrastructure.
 
-**Option C — Link-on-first-use:**
+**Option C — Optional Linking:**
 Each platform creates its own identity. Users get value immediately. Linking is optional and prompted after a completed task.
 
 **Decision:** Option C, with Option A as the linking mechanism.
@@ -60,7 +73,7 @@ Platform-native identities on first use — no signup required. After a task is 
 
 ---
 
-## 4. Account Linking Flow
+## 5. Account Linking Flow
 
 **Decision: Token-based linking in both directions**
 
@@ -83,7 +96,7 @@ User on the web clicks "Link Telegram" or "Link WhatsApp." Web generates a short
 
 ---
 
-## 5. Data Ownership: Job History Across Platforms
+## 6. Data Ownership: Job History Across Platforms
 
 **Decision: Each platform owns its own jobs. Linking is done via a shared user_id foreign key.**
 
@@ -100,7 +113,7 @@ User on the web clicks "Link Telegram" or "Link WhatsApp." Web generates a short
 
 ---
 
-## 6. Output Delivery
+## 7. Output Delivery
 
 **Decision: In-chat for small files, web URL for large files**
 
@@ -118,7 +131,7 @@ User on the web clicks "Link Telegram" or "Link WhatsApp." Web generates a short
 
 ---
 
-## 7. Event Sourcing
+## 8. Event Sourcing
 
 **Decision: Apply selectively to the job lifecycle only**
 
@@ -131,7 +144,7 @@ User on the web clicks "Link Telegram" or "Link WhatsApp." Web generates a short
 
 ---
 
-## 8. API Authentication
+## 9. API Authentication
 
 **Decision: API key authentication for FlumeAPI**
 
@@ -141,7 +154,7 @@ Bot users (Telegram/WhatsApp) are identified by their platform identity — no A
 
 ---
 
-## 9. Sub-product Naming
+## 10. Sub-product Naming
 
 **Decision: FlumeAPI (B2B) + Flume (B2C)**
 
@@ -149,6 +162,9 @@ Earlier names MediaFlow and MediaBot were replaced. Sub-product names should fee
 
 - **FlumeAPI** — the developer-facing REST API
 - **Flume** — the consumer chat interface on Telegram and WhatsApp ("Flume on Telegram", "Flume on WhatsApp")
+
+
+
 
 ---
 

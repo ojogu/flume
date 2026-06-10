@@ -1,13 +1,17 @@
 from fastapi import FastAPI
-import uvicorn
 from contextlib import asynccontextmanager
-# from src.utils.db import init_db, drop_db
-# from src.utils.redis import setup_redis
-from src.utils.config import Settings, config
-# from src.utils.exception import register_error_handlers
+from sqlalchemy import inspect as sa_inspect
+from src.utils.db import engine, init_db
+from src.utils.config import Settings
+from src.utils.redis import setup_redis
+from src.utils.exception import register_error_handlers
 from src.utils.telemetry import setup_telemetry
-from src.utils.log import RequestContextMiddleware, configure_structlog
+from src.utils.log import RequestContextMiddleware, configure_structlog, get_logger
 from fastapi.middleware.cors import CORSMiddleware
+from src.auth.route import auth_route
+
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -29,18 +33,18 @@ async def life_span(app: FastAPI):
     # Run once at import time, to overide uvicorn setup
     configure_structlog()
 
+    #initialize redis 
+    await setup_redis()
+
+
     # Startup: Initialize the database
-    # print(f"server is starting....")
-    # await init_db()
-    # print(f"server has started!!")
+    logger.info("server is starting....")
+    await init_db()
+    async with engine.begin() as conn:
+        tables = await conn.run_sync(lambda c: sa_inspect(c).get_table_names())
+        logger.info(f"Tables created: {tables}")
 
-    # print(f"redis is starting....")
-    # await setup_redis()
-    # print(f"redis has started!!")
-    # yield  # Yield control back to FastAPI
-
-    # # Shutdown: Perform any necessary cleanup
-    # print(f"server is ending.....")
+    yield
 
 
 app = FastAPI(lifespan=life_span)
@@ -60,14 +64,10 @@ app.add_middleware(RequestContextMiddleware)
 setup_telemetry(app)
 
 # register error handlers
-# register_error_handlers(app)
+register_error_handlers(app)
 
 
-# # register routers/blueprint
-# app.include_router(auth_router, prefix=Settings.API_V1_PREFIX)
-# app.include_router(twitter_router, prefix=Settings.API_V1_PREFIX)
-# app.include_router(client_router, prefix=Settings.API_V1_PREFIX)
-# app.include_router(admin_router, prefix="/api/admin")
+app.include_router(auth_route, prefix=Settings.API_V1_PREFIX)
 
 
 @app.get(f"{Settings.API_V1_PREFIX}/root")
@@ -78,4 +78,4 @@ def root():
     Returns:
         str: A simple greeting message.
     """
-    return {"message": "Hello World"}
+    return {"message": "FlumeAPI"}

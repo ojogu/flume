@@ -140,7 +140,7 @@ The collector acts as a middleware that receives, processes, and exports telemet
 
 ## 4. Complete Data Flow
 
-![Observability data flow diagram](image-9.png)
+![Observability data flow diagram](images/image-9.png)
 
 ## 5. Flow Steps Explained
 

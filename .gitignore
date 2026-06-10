@@ -5,6 +5,8 @@ build/
 dist/
 wheels/
 *.egg-info
+backend/logs/
+backend/logs-root-backup/
 
 # Virtual environments
 .venv
@@ -35,3 +37,6 @@ todo.md
 agent.md
 deploy.sh
 migrate.sh
+
+# Dev-only scripts
+backend/dev_drop_db.py
