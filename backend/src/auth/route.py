@@ -74,6 +74,7 @@ async def oauth(request: Request, user_service: UserService = Depends(get_user_s
         "refresh-token": refresh,
         "onboarded": str(user.onboarded).lower(),
     }
+    logger.info(f"access: {access}, refresh: {refresh}")
     return RedirectResponse(
         url=f"{config.frontend_url}/callback?{urlencode(params)}",
         status_code=302,
@@ -106,6 +107,8 @@ async def magic_link_callback(token: str, user_service: UserService = Depends(ge
         "refresh-token": refresh,
         "onboarded": str(user.onboarded).lower(),
     }
+    logger.info(f"Magic link verified for user {user.email}, redirecting with tokens.")
+    logger.info(f"access: {access}, refresh: {refresh}")
     return RedirectResponse(
         url=f"{config.frontend_url}/callback?{urlencode(params)}",
         status_code=302,
