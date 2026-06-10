@@ -1,8 +1,12 @@
 # ADR 002 — API Key Hierarchy: 2-Tier vs Resource Hierarchy
 
-**Status:** Accepted
-**Date:** 2026-05-20
-**Context:** Need an API key model that scales from free to pro tiers while keeping the implementation simple. The key question is whether to use a flat 2-tier pattern (account → keys) or a multi-level resource hierarchy (org → project → key).
+**Status:**
+Accepted
+
+**Date:**
+2026-05-20
+
+**Context:** Need an API key model that scales from free to pro tiers while keeping the implementation simple. The key question is whether to use a flat 2-tier pattern (account → keys) or a multi-level hierarchy.
 
 ---
 
