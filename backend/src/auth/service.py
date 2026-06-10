@@ -3,97 +3,17 @@ import secrets
 from fastapi import Request
 import jwt
 import uuid
-from cryptography.fernet import Fernet
 from src.utils.config import config
+from src.utils.crypto import encrypt_token, decrypt_token
 from src.core.exception_base import TokenExpired
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
-    OAuth2PasswordBearer,
 )
-from src.core.exception_base import InvalidToken
-import bcrypt
 from src.utils.log import get_logger
 
 
 logger = get_logger(__name__)
-
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-
-def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode(), hashed.encode())
-
-
-def verify_password_value(password: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(password.encode(), hashed.encode())
-    except Exception:
-        return False
-
-
-def encryption_key():
-    cipher = Fernet(config.encryption_key)
-    return cipher
-
-
-def encrypt_token(token: str) -> str:
-    """
-    Encrypt a token string using the encryption key from auth service.
-
-    Args:
-        token: The token string to encrypt
-
-    Returns:
-        Encrypted token as a string
-    """
-    cipher = encryption_key()
-
-    # 1. Prepare the data
-    raw_token = token.encode()
-
-    # 2. Encrypt it
-    encrypted_bytes = cipher.encrypt(raw_token)
-
-    # 3. Convert to string for DB storage
-    token_to_store = encrypted_bytes.decode("utf-8")
-
-    return token_to_store
-
-
-def decrypt_token(encrypted_token: str) -> str:
-    """
-    Decrypt an encrypted token string using the encryption key from auth service.
-
-    Args:
-        encrypted_token: The encrypted token string to decrypt
-
-    Returns:
-        Decrypted token as a string
-
-    Raises:
-        Exception: If decryption fails
-    """
-    try:
-        cipher = encryption_key()
-
-        # 1. Prepare the encrypted data
-        encrypted_bytes = encrypted_token.encode()
-
-        # 2. Decrypt it
-        decrypted_bytes = cipher.decrypt(encrypted_bytes)
-
-        # 3. Convert to string
-        decrypted_token = decrypted_bytes.decode("utf-8")
-
-        logger.info("Token decrypted successfully")
-        return decrypted_token
-
-    except Exception as e:
-        logger.error(f"Error decrypting token: {str(e)}", exc_info=True)
-        raise
 
 
 
@@ -152,14 +72,7 @@ class AuthService:
             logger.error(f"error decoding token: {e}", exc_info=True)
             raise TokenExpired("error decoding token")
 
-    @staticmethod
-    def encryption_key():
-        cipher = Fernet(config.encryption_key)
-        return cipher
 
-
-
-    
 
 
 auth_service = AuthService()
