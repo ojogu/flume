@@ -2,7 +2,7 @@ import asyncio
 import concurrent
 import logging
 
-from celery.celery import bg_task
+from celery_app.celery import bg_task
 from src.core.email_service import send_email_notification
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def run_async_in_sync(coro):
         return future.result()
 
 
-@bg_task.task(name="celery.task.send_email_task", max_retries=3, default_retry_delay=60)
+@bg_task.task(name="celery_app.task.send_email_task", max_retries=3, default_retry_delay=60)
 def send_email_task(to_email, subject, html_content):
     """Send an email via the notification service."""
     try:

@@ -1,5 +1,5 @@
 import os
-from celery.schedules import crontab
+# from celery.schedules import crontab
 from src.utils.config import config
 from datetime import timedelta
 from celery import Celery
@@ -10,7 +10,7 @@ from src.utils.telemetry import setup_telemetry
 
 bg_task = Celery(
     "celery",
-    include=["celery.task"]
+    include=["celery_app.task"]
 )
 
 bg_task.conf.update(

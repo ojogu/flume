@@ -54,14 +54,15 @@ def send_magic_link_email(to_email: str, token: str) -> dict | None:
     )
     subject = "Sign in to Flume"
     try:
-        from celery.celery import bg_task
+        from celery_app.celery import bg_task
 
         bg_task.send_task(
-            "celery.task.send_email_task",
+            "celery_app.task.send_email_task",
             args=[to_email, subject, html_content],
         )
         logger.info(f"Magic link email enqueued for {to_email}")
         return None
     except Exception as e:
-        logger.error(f"Failed to enqueue magic link email for {to_email}: {e}")
-        return send_email_notification(to_email, subject, html_content)
+        logger.error(f"Failed to enqueue magic link email for {to_email}: {e}", exc_info=True)
+        #configure dead letter queue in production to catch these failures and alert the team
+        # return send_email_notification(to_email, subject, html_content)

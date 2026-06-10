@@ -8,7 +8,7 @@ class CeleryConfig:
     """
     Centralized Celery configuration using class-based settings.
     Import this into your Celery app with:
-        app.config_from_object('celery.celery_config.CeleryConfig')
+        app.config_from_object('celery_app.celery_config.CeleryConfig')
     """
 
     # --------------------------
@@ -42,7 +42,7 @@ class CeleryConfig:
     # --------------------------
     task_routes = {
         # email
-        "celery.task.send_email_task": {
+        "celery_app.task.send_email_task": {
             "queue": "email"
         },
     }
@@ -94,9 +94,9 @@ docker run -d --name redis -p 6379:6379 redis:alpine
 pip install celery[redis] flower
 
 # Start Celery worker (in one terminal)
-celery -A celery.celery.bg_task worker -l info -Q fetch_user_id,fetch_user_bookmarks,default
+celery -A celery_app.celery.bg_task worker -l info -Q default,email
 
--A celery.celery.bg_task → celery/celery.py file, bg_task is the Celery() instance you defined
+-A celery_app.celery.bg_task → celery_app/celery.py file, bg_task is the Celery() instance you defined
 
 worker → starts a worker
 
@@ -106,12 +106,12 @@ worker → starts a worker
 
 
 # Start Celery Beat scheduler (in another terminal)
-celery -A celery.celery beat --loglevel=info
+celery -A celery_app.celery beat --loglevel=info
 
 
 
 # Optional: Start Flower monitoring UI (in third terminal)
-celery -A celery.celery flower --port=5555
+celery -A celery_app.celery flower --port=5555
 
 # Production startup (single command)
 celery -A src.services.celery_app worker --beat --loglevel=info --detach
