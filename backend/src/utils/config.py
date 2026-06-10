@@ -19,6 +19,7 @@ class Config(BaseSettings):
     redirect_url:str
     resend_key:str
     resend_mail:str
+    api_key_prefix:str
     app_env:str = "dev"
 
     model_config = SettingsConfigDict(

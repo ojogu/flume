@@ -9,6 +9,7 @@ from src.utils.telemetry import setup_telemetry
 from src.utils.log import RequestContextMiddleware, configure_structlog, get_logger
 from fastapi.middleware.cors import CORSMiddleware
 from src.auth.route import auth_route
+from src.route.api import api_key_route
 
 
 logger = get_logger(__name__)
@@ -68,6 +69,7 @@ register_error_handlers(app)
 
 
 app.include_router(auth_route, prefix=Settings.API_V1_PREFIX)
+app.include_router(api_key_route, prefix=Settings.API_V1_PREFIX)
 
 
 @app.get(f"{Settings.API_V1_PREFIX}/root")
