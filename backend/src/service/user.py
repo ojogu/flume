@@ -95,7 +95,7 @@ class UserService:
 
     async def create_magic_link_token(self, email):
         token = self.generate_token()
-        expired_time = datetime.utcnow() + datetime.timedelta(minutes=15)
+        expired_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
         #check if email exist and log
         email_exists = await self.get_user_by_email(email=email)
         if not email_exists:
@@ -124,7 +124,7 @@ class UserService:
                 and_(
                     MagicLinkToken.token == token,
                     MagicLinkToken.used == False,
-                    MagicLinkToken.expires_at > datetime.utcnow()
+                    MagicLinkToken.expires_at > datetime.datetime.now(datetime.timezone.utc)
                 )
             )
         )

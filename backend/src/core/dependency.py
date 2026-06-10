@@ -9,7 +9,7 @@ from src.utils.log import get_logger
 from src.auth.service import AccessTokenBearer
 
 
-logger = get_logger()
+logger = get_logger(__name__)
 google_service = GoogleAuthService()
 
 
