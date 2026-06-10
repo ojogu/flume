@@ -1,4 +1,5 @@
 import { ArrowRight, MessageCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -19,13 +20,13 @@ export function CTASection() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href="#docs"
+            <Link
+              to="/login"
               className={cn(buttonVariants({ variant: 'default', size: 'lg' }), 'px-6 gap-2')}
             >
               Get API Access
               <ArrowRight className="h-4 w-4" />
-            </a>
+            </Link>
 
             <a
               href="https://t.me/getflume_bot"

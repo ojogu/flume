@@ -5,6 +5,7 @@ import { PricingPage } from '@/pages/PricingPage'
 import { CallbackPage } from '@/pages/CallbackPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { DocsPage } from '@/pages/DocsPage'
 
 export const router = createBrowserRouter([
   {
@@ -18,6 +19,10 @@ export const router = createBrowserRouter([
   {
     path: '/pricing',
     element: <PricingPage />,
+  },
+  {
+    path: '/api',
+    element: <DocsPage />,
   },
   {
     path: '/login',

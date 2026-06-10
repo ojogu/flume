@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -11,7 +12,7 @@ const tiers = [
     description: 'Get started and explore the API',
     features: ['100 jobs/month', '500MB storage', 'Community support'],
     cta: 'Get Started',
-    href: '#api-access',
+    href: '/login',
     highlighted: false,
   },
   {
@@ -21,7 +22,7 @@ const tiers = [
     description: 'For teams shipping production apps',
     features: ['5,000 jobs/month', '50GB storage', 'Email support', 'Webhook callbacks'],
     cta: 'Start Building',
-    href: '#api-access',
+    href: '/login',
     highlighted: true,
   },
   {
@@ -100,18 +101,33 @@ export function PricingSection() {
                 ))}
               </ul>
 
-              <a
-                href={tier.href}
-                className={cn(
-                  buttonVariants({
-                    variant: tier.highlighted ? 'default' : 'outline',
-                    size: 'default',
-                  }),
-                  'w-full justify-center px-4'
-                )}
-              >
-                {tier.cta}
-              </a>
+              {tier.href.startsWith('/') ? (
+                <Link
+                  to={tier.href}
+                  className={cn(
+                    buttonVariants({
+                      variant: tier.highlighted ? 'default' : 'outline',
+                      size: 'default',
+                    }),
+                    'w-full justify-center px-4'
+                  )}
+                >
+                  {tier.cta}
+                </Link>
+              ) : (
+                <a
+                  href={tier.href}
+                  className={cn(
+                    buttonVariants({
+                      variant: tier.highlighted ? 'default' : 'outline',
+                      size: 'default',
+                    }),
+                    'w-full justify-center px-4'
+                  )}
+                >
+                  {tier.cta}
+                </a>
+              )}
             </div>
           ))}
         </div>
