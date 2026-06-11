@@ -22,10 +22,10 @@ class ApiKeyService:
     @staticmethod
     def _generate_key() -> tuple[str, str, str]:
         secret = secrets.token_urlsafe(32)
-        prefix_chars = secret[:8]
-        full_key = f"{config.api_key_prefix}_{prefix_chars}_{secret}"
+        full_key = f"{config.api_key_prefix}_{secret}"
+        key_prefix = f"{config.api_key_prefix}_{secret[:8]}"
         key_hash = hash_str(full_key)
-        return full_key, key_hash, prefix_chars
+        return full_key, key_hash, key_prefix
 
     async def create_key(
         self, user_id: uuid.UUID, name: str, expires_at: Optional[datetime.datetime] = None

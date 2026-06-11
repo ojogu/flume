@@ -35,3 +35,8 @@ class ApiKeyResponse(BaseModel):
 
 class ApiKeyCreatedResponse(ApiKeyResponse):
     full_key: str
+
+
+class ApiKeyListResponse(BaseModel):
+    keys: list[ApiKeyResponse]
+    total: int

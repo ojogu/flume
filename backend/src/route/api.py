@@ -8,6 +8,7 @@ from src.model.user import User
 from src.schema.api import (
     ApiKeyResponse,
     ApiKeyCreatedResponse,
+    ApiKeyListResponse,
     CreateApiKeyRequest,
     UpdateApiKeyRequest,
 )
@@ -41,7 +42,10 @@ async def list_api_keys(
 ):
     keys = await api_key_service.get_keys(user_id=user.id)
     return success(
-        data=[ApiKeyResponse(**k.to_dict()).model_dump() for k in keys]
+        data=ApiKeyListResponse(
+            keys=[ApiKeyResponse(**k.to_dict()) for k in keys],
+            total=len(keys),
+        ).model_dump()
     )
 
 
