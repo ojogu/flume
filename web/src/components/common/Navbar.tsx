@@ -73,26 +73,34 @@ export function Navbar() {
           </Button>
 
           {isAuthenticated ? (
-            <div className="hidden md:flex items-center gap-3">
-              {user?.picture ? (
-                <img
-                  src={user.picture}
-                  alt={user.name ?? ''}
-                  className="h-8 w-8 rounded-full"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-full bg-[var(--brand-light)] flex items-center justify-center">
-                  <span className="text-xs font-semibold text-brand">
-                    {user?.name?.charAt(0) ?? '?'}
-                  </span>
-                </div>
-              )}
-              <button
-                onClick={logout}
-                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-[var(--text-secondary)]')}
+            <div className="hidden md:flex items-center gap-6">
+              <Link
+                to="/dashboard"
+                className="text-sm font-medium text-[var(--text-secondary)] hover:text-brand transition-colors"
               >
-                Sign out
-              </button>
+                Dashboard
+              </Link>
+              <div className="flex items-center gap-3">
+                {user?.picture ? (
+                  <img
+                    src={user.picture}
+                    alt={user.name ?? ''}
+                    className="h-8 w-8 rounded-full"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-[var(--brand-light)] flex items-center justify-center">
+                    <span className="text-xs font-semibold text-brand">
+                      {user?.name?.charAt(0) ?? '?'}
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={logout}
+                  className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-[var(--text-secondary)]')}
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           ) : (
             <Link
@@ -149,12 +157,21 @@ export function Navbar() {
                 )}
                 <div className="mt-4 px-1 flex flex-col gap-2">
                   {isAuthenticated ? (
-                    <button
-                      onClick={() => { logout(); setMobileOpen(false) }}
-                      className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-center px-4')}
-                    >
-                      Sign out
-                    </button>
+                    <>
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setMobileOpen(false)}
+                        className="rounded-lg px-3 py-2.5 text-base font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors"
+                      >
+                        Dashboard
+                      </Link>
+                      <button
+                        onClick={() => { logout(); setMobileOpen(false) }}
+                        className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-center px-4 mt-2')}
+                      >
+                        Sign out
+                      </button>
+                    </>
                   ) : (
                     <Link
                       to="/login"
