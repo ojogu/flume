@@ -31,10 +31,10 @@ async def life_span(app: FastAPI):
         None: This function yields control back to the application after startup.
     """
 
-    # Run once at import time, to overide uvicorn setup
+    # Configure structlog before any middleware/routes to override uvicorn's default logging
     configure_structlog()
 
-    #initialize redis 
+    # Initialize Redis for token blacklisting + caching; sync client for Celery is in redis.py
     await setup_redis()
 
 
@@ -43,6 +43,7 @@ async def life_span(app: FastAPI):
         tables = await conn.run_sync(lambda c: sa_inspect(c).get_table_names())
         logger.info(f"Tables created: {tables}")
 
+    # Control returns here on shutdown — app runs between `async with lifespan` boundaries
     yield
 
 
@@ -51,21 +52,22 @@ app = FastAPI(lifespan=life_span)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=True,  # Required for cookies in dev (oauth_state)
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Add request context middleware for structlog
+# Request-scoped structlog context (request_id, method, path) — added before telemetry
 app.add_middleware(RequestContextMiddleware)
 
-# setup telemetry
+# Auto-instruments FastAPI routes + httpx; must run before route registration
 setup_telemetry(app)
 
 # register error handlers
 register_error_handlers(app)
 
 
+# Auth (OAuth, magic link, JWT refresh) and API key management routes
 app.include_router(auth_route, prefix=Settings.API_V1_PREFIX)
 app.include_router(api_key_route, prefix=Settings.API_V1_PREFIX)
 

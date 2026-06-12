@@ -46,12 +46,15 @@ class GoogleAuthService:
                 redirect_uri=self.REDIRECT_URI,
                 autogenerate_code_verifier=False,
             )
+            # access_type=offline + prompt=consent forces Google to return a refresh_token
+            # on every auth (not just the first time), so we always get one
             auth_url, state = flow.authorization_url(
                 access_type="offline",
                 include_granted_scopes="true",
                 prompt="consent",
             ) 
             logger.info(f"Generated Google OAuth authorization URL: {auth_url}")
+            # oauth_state cookie is checked in handle_callback to prevent CSRF
             redirect_response = RedirectResponse(auth_url)
             redirect_response.set_cookie(
                 key="oauth_state",
@@ -67,10 +70,13 @@ class GoogleAuthService:
             )
             raise ServerError()
 
+    # Reconstructs the OAuth flow with the incoming state (CSRF check), exchanges the
+    # authorization code for token set (access, refresh, id), and returns them
     def handle_callback(self, request: Request):
         try:
             logger.info(f"cookies, {request.cookies}")
 
+            # pass the `state` from query params — Google verifies it matches the original
             flow = Flow.from_client_config(
                 self._client_config,
                 scopes=self.SCOPES,
@@ -79,6 +85,7 @@ class GoogleAuthService:
                 autogenerate_code_verifier=False,
             )
 
+            # Exchange the one-time authorization code for access/refresh/id tokens
             authorization_response = str(request.url)
             flow.fetch_token(authorization_response=authorization_response)
             credentials = flow.credentials

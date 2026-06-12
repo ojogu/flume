@@ -22,8 +22,7 @@ class User(BaseModel):
     is_active = sa.Column(sa.Boolean, default=False, nullable=False)
     auth_provider = sa.Column(sa.String, nullable=False)
 
-    #relationship
-    #parent:user, child:api-key
+    # Bidirectional relationship: User.api_keys → ApiKey.user
     api_keys = relationship("ApiKey", back_populates="user")
 
 

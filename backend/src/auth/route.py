@@ -31,7 +31,9 @@ async def oauth_login():
 async def oauth(request: Request, user_service: UserService = Depends(get_user_service)):
     params = dict(request.query_params)
     logger.info(f"query_params; {params}")  
+    # Step 1: Exchange Google auth code for access/refresh/id tokens
     data = google_service.handle_callback(request)
+    # Step 2: Verify the ID token's signature and extract user profile
     user_data = google_service.verify_id(data["id_token"])
     user_info = {
         "google_id": user_data["sub"],
@@ -50,6 +52,7 @@ async def oauth(request: Request, user_service: UserService = Depends(get_user_s
     }
     logger.info(f"user_data: {user_info}")
 
+    # Step 3: Upsert — update existing user or create new one
     existing_user = await user_service.get_user_by_email(email=user_info["email"])
 
     if existing_user and existing_user.email == user_info["email"]:
@@ -64,6 +67,7 @@ async def oauth(request: Request, user_service: UserService = Depends(get_user_s
         logger.warning("Email mismatch for existing user.")
         return RedirectResponse(url=f"{config.frontend_url}/callback?error=email_mismatch", status_code=302)
 
+    # Step 4: Issue JWT pair (access + refresh) and redirect to frontend with tokens in URL
     payload = {"user_id": str(user.id), "email": user.email}
     access = auth_service.create_access_token(user_data=payload)
     refresh = auth_service.create_access_token(
@@ -132,9 +136,11 @@ async def logout(token_details: dict = Depends(RefreshTokenBearer())):
     """
     try:
         jti = token_details["jti"]
+        # Prevent double-revocation: if token is already blacklisted, reject
         if await key_exist(key=str(jti)):
             raise InvalidToken("Refresh token has been revoked")
 
+        # Store jti in Redis with the token's remaining TTL — makes it unusable
         await set_cache(key=str(jti), data="", ttl=config.refresh_token_expiry)
         logger.info(f"User logged out, token {jti} has been revoked")
 
@@ -148,12 +154,11 @@ async def logout(token_details: dict = Depends(RefreshTokenBearer())):
 
 @auth_route.get("/refresh-token", tags=["auth"])
 async def get_new_tokens_token(token_details: dict = Depends(RefreshTokenBearer())):
-    # Check if refresh token is not blacklisted (additional check)
+    # Token rotation: validate old token → issue new pair → blacklist old token
     jti = token_details["jti"]
     if await key_exist(key=str(jti)):
         raise InvalidToken("Refresh token has been revoked")
 
-    # Make sure it's not expired
     expiry_timestamp = token_details["exp"]
     if datetime.fromtimestamp(expiry_timestamp) > datetime.now():
         access_token = auth_service.create_access_token(user_data=token_details["user"])
@@ -161,7 +166,7 @@ async def get_new_tokens_token(token_details: dict = Depends(RefreshTokenBearer(
             user_data=token_details["user"], refresh=True
         )
 
-        # Blacklist the old refresh token
+        # Blacklist the old refresh token so it can't be reused if leaked
         await set_cache(key=str(jti), data="", ttl=config.refresh_token_expiry)
         logger.info(f"{jti} has been revoked")
         tokens = {"access_token": access_token, "refresh_token": refresh_token}

@@ -36,7 +36,9 @@ class AuthService:
                 else timedelta(seconds=config.access_token_expiry)
             )
             payload["exp"] = datetime.now() + to_expire
+            # jti (JWT ID) uniquely identifies this token — used for blacklisting in Redis on logout
             payload["jti"] = str(uuid.uuid4())
+            # Refresh flag avoids needing a DB lookup to distinguish access vs refresh tokens
             payload["refresh"] = refresh
 
             token = jwt.encode(
@@ -106,11 +108,12 @@ class TokenService(HTTPBearer):
         InvalidToken: If the token is missing, invalid, expired, or is a refresh token.
     """
 
+    # auto_error=False means we handle missing credentials ourselves (clearer error message)
     def __init__(self, auto_error: bool = False):
         super().__init__(auto_error=auto_error)
 
     async def __call__(self, request: Request):
-        # Step 1: Extract token from Authorization header
+        # Extract → validate → decode → verify flow
         credentials: HTTPAuthorizationCredentials = await super().__call__(request)
 
         if credentials is None:
@@ -121,20 +124,17 @@ class TokenService(HTTPBearer):
 
         token = credentials.credentials
 
-        # Step 2: Validate token
         if not self.token_valid(token):
             raise InvalidToken("Invalid or expired token")
 
-        # Step 3: Decode token
         token_data = auth_service.decode_token(token)
 
+        # Template Method: subclasses (AccessTokenBearer, RefreshTokenBearer) define
+        # what token type they accept by overriding verify_token_data
         self.verify_token_data(token_data)
 
         if token_data is None:
             raise InvalidToken("No data found in access token")
-
-        # if token_data.get("refresh", False):
-        #     raise InvalidToken("Please provide a valid access token, not a refresh token")
 
         return token_data
 
@@ -160,6 +160,7 @@ class AccessTokenBearer(TokenService):
         Raises:
             InvalidToken: If the token is a refresh token.
         """
+        # Rejects refresh tokens hitting access-token-protected endpoints
         if token_data and token_data.get("refresh", False):
             raise InvalidToken(
                 "Please provide a valid access token, not a refresh token"
@@ -177,5 +178,6 @@ class RefreshTokenBearer(TokenService):
         Raises:
             InvalidToken: If the token is an access token.
         """
+        # Rejects access tokens hitting refresh-token-protected endpoints
         if token_data and not token_data.get("refresh", False):
             raise InvalidToken("Please provide a valid refresh token")

@@ -43,6 +43,7 @@ async def get_redis() -> redis.Redis:
     return _redis
 
 
+# Separate sync client for Celery (which runs synchronously), reused via singleton pattern
 def get_redis_sync() -> redis_sync.Redis:
     """
     Get a synchronous Redis client for use in Celery tasks.
@@ -56,6 +57,7 @@ def get_redis_sync() -> redis_sync.Redis:
     return _redis_sync
 
 
+# Cache-aside pattern: check cache → miss → fetch from callback → store → verify write
 async def get_or_fetch_cache(key: str, fetch_callback, ttl: int = CACHE_TTL):
     try:
         redis = await get_redis()
@@ -73,7 +75,7 @@ async def get_or_fetch_cache(key: str, fetch_callback, ttl: int = CACHE_TTL):
         # set cache
         await redis.set(key, json.dumps(fresh), ex=ttl)
 
-        # verify immediately
+        # verify immediately so stale-cache bugs surface at write time, not read time
         verify = await redis.get(key)
         if not verify:
             logger.error(f"Key {key} failed to write to cache!")

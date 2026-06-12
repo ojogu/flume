@@ -112,11 +112,10 @@ def setup_telemetry(app=None, service_name: str = "flume-api"):
     HTTPXClientInstrumentor().instrument()
 
 
-# This is your OpenTelemetry (OTel) bootstrap for the Flume API. It sets up the three pillars of observability — traces, metrics, and logs — and ships them all to a central OTel Collector over gRPC (port 4317). It also auto-instruments FastAPI and httpx so you get spans without manual instrumentation.
-# Flow:
-
-# Creates a Resource that tags all telemetry with the service name (flume-api)
-# Wires up a TracerProvider → batches spans → exports to collector
-# Wires up a MeterProvider → periodically reads metrics → exports to collector
-# Wires up a LoggerProvider → batches log records → exports to collector
-# Patches FastAPI and httpx automatically so incoming requests and outgoing HTTP calls produce spans
+# Telemetry flow:
+# Creates a Resource tagged with the service name (flume-api)
+# Wires up TracerProvider → batches spans → exports to OTel Collector via gRPC
+# Wires up MeterProvider → periodically reads metrics → exports to Collector
+# Wires up LoggerProvider → batches log records → exports to Collector
+# Auto-instruments FastAPI (incoming requests) and httpx (outgoing calls) so spans
+# appear without manual instrumentation

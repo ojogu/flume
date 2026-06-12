@@ -96,11 +96,11 @@ class UserService:
     async def create_magic_link_token(self, email):
         token = self.generate_token()
         expired_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
-        #check if email exist and log
+        # Log but don't reveal whether email exists (prevents user enumeration)
         email_exists = await self.get_user_by_email(email=email)
         if not email_exists:
             logger.warning(f"Magic link requested for non-existent email: {email}")
-        #store tokens and metadata
+        # Store token + email + expiry so verify knows which user to log in
         new_token = MagicLinkToken(
             email=email, 
             token=token,
@@ -119,6 +119,7 @@ class UserService:
 
 
     async def verify_magic_link_token(self, token: str) -> Optional[str]:
+        # Composite check: token must match, not be used yet, and not be expired
         result = await self.db.execute(
             select(MagicLinkToken).where(
                 and_(
@@ -133,7 +134,7 @@ class UserService:
             logger.warning(f"Invalid or expired magic link token: {token}")
             return None
 
-        # Mark the token as used
+        # One-time use: once consumed, token cannot be replayed
         token_record.used = True
         try:
             await self.db.flush()
@@ -146,6 +147,7 @@ class UserService:
             logger.error(f"Error verifying magic link token: {e}")
             raise ServerError()
 
+    # Orchestrates: verify token → find-or-create user → flag as verified
     async def verify_magic_link_and_login(self, token: str) -> Optional[User]:
         email = await self.verify_magic_link_token(token)
         if not email:
@@ -153,12 +155,14 @@ class UserService:
 
         user = await self.get_user_by_email(email)
         if user:
+            # Existing user: activate + verify on first magic link login
             user = await self.update_user(
                 email=email,
                 update_data={"email_verified": True, "is_active": True},
             )
             logger.info(f"Existing user logged in via magic link: {email}")
         else:
+            # New user: create account automatically (self-service model)
             user = await self.create_user(
                 email=email,
                 auth_provider="magic_link",

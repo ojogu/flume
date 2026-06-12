@@ -30,6 +30,8 @@ from src.utils.log import get_logger
 exception_logger = get_logger(__name__)
 
 
+# Factory that captures per-exception status_code + initial_detail in a closure,
+# avoiding N nearly-identical handler definitions
 def create_exception_handler(
     status_code: int, initial_detail: Dict
 ) -> Callable[[Request, Exception], JSONResponse]:
@@ -56,7 +58,7 @@ def create_exception_handler(
 def register_error_handlers(app: FastAPI):
     """Register all exception handlers for the FastAPI app"""
 
-    # Custom exception handlers
+    # ── Custom exception handlers (one per custom exception type) ──
     app.add_exception_handler(
         Environment_Variable_Exception,
         create_exception_handler(
@@ -269,7 +271,7 @@ def register_error_handlers(app: FastAPI):
         ),
     )
 
-    # Built-in exception handlers
+    # ── Built-in exception handlers (HTTPException + validation + SQLAlchemy + 500) ──
     app.add_exception_handler(
         HTTPException,
         create_exception_handler(
@@ -284,9 +286,7 @@ def register_error_handlers(app: FastAPI):
         ),
     )
 
-    """
-    general exception handlers
-    """
+    # ── General exception handlers (inline defs for non-custom exceptions) ──
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):

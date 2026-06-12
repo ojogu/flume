@@ -4,6 +4,7 @@ from fastapi import status
 from src.schema.response import SuccessResponse
 
 
+# Thin helper wrapping SuccessResponse into a JSONResponse with consistent envelope
 def success(
     data: Any = None,
     message: str = "Success",

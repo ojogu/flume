@@ -30,6 +30,7 @@ class Config(BaseSettings):
 
 config = Config()
 
+# Static route/version constants separate from env-sensitive Config
 class Settings:
     PROJECT_NAME: str = "Flume"
     PROJECT_VERSION: str = "0.0.1"

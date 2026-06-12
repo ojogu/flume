@@ -20,13 +20,11 @@ bg_task.conf.broker_connection_retry_on_startup = True
 
 bg_task.config_from_object(CeleryConfig)
 
-# ── OpenTelemetry ─────────────────────────────────────────────────
-# Only initialize when this process IS the worker.
-# Prevents polluting the FastAPI process when celery module is imported.
+# OTel init guarded by env var: celery.py is imported at FastAPI startup too,
+# but we only want the worker process to have its own tracer (service_name="flume-worker")
 if os.getenv("CELERY_WORKER") == "true":
-    setup_telemetry(service_name="flume-worker") #distinct name from your API
+    setup_telemetry(service_name="flume-worker")
     CeleryInstrumentor().instrument()
-# ─────────────────────────────────────────────────────────────────
 
 # interval = config.celery_beat_interval
 bg_task.conf.beat_schedule = {

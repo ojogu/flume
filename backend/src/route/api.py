@@ -14,6 +14,7 @@ from src.schema.api import (
 )
 from src.utils.response import success
 
+# Thin controller: routes delegate all logic to ApiKeyService, wrap results in response schemas
 api_key_route = APIRouter(prefix="/keys")
 
 
@@ -68,6 +69,7 @@ async def update_api_key(
     user: User = Depends(get_current_user),
     api_key_service: ApiKeyService = Depends(get_api_key_service),
 ):
+    # exclude_unset=True so we only update fields the client explicitly sent
     api_key = await api_key_service.update_key(
         key_id=uuid.UUID(key_id),
         user_id=user.id,

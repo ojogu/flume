@@ -22,8 +22,11 @@ class ApiKeyService:
     @staticmethod
     def _generate_key() -> tuple[str, str, str]:
         secret = secrets.token_urlsafe(32)
+        # flm_ prefix enables secret scanning tools to detect leaked keys
         full_key = f"{config.api_key_prefix}_{secret}"
+        # First 8 chars shown in UI so users can identify keys without exposing the full key
         key_prefix = f"{config.api_key_prefix}_{secret[:8]}"
+        # One-way SHA-256 hash: we can verify keys but can never recover the raw value
         key_hash = hash_str(full_key)
         return full_key, key_hash, key_prefix
 
@@ -103,6 +106,7 @@ class ApiKeyService:
             logger.error(f"Error revoking API key: {e}")
             raise DatabaseError() from e
 
+    # Hash the raw key, look up by hash (constant-ish time), check expiry, touch last_used_at
     async def verify_key(self, raw_key: str) -> Optional[ApiKey]:
         computed_hash = hash_str(raw_key)
         result = await self.db.execute(
@@ -118,6 +122,7 @@ class ApiKeyService:
         if api_key.expires_at and api_key.expires_at < datetime.datetime.now(datetime.timezone.utc):
             return None
 
+        # Side-effect update: tracks last usage for audit/expiry; not critical if it fails
         api_key.last_used_at = datetime.datetime.now(datetime.timezone.utc)
         try:
             await self.db.flush()

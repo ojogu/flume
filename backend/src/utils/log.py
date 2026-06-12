@@ -41,8 +41,8 @@ def configure_structlog() -> None:
     """
     is_dev = config.app_env
 
-    # structlog is configured to stop just before rendering.
-    # ProcessorFormatter (attached to each handler) does the final render.
+    # structlog defers rendering via wrap_for_formatter — each handler's
+    # ProcessorFormatter does the final render (console gets colors, file gets JSON)
     structlog.configure(
         processors=[
             *SHARED_PROCESSORS,
@@ -54,9 +54,15 @@ def configure_structlog() -> None:
         cache_logger_on_first_use=True,
     )
 
+    # ── Three output pipelines ──────────────────────────────────────
+    # Console: colorful in dev, plain in prod
+    # File: always JSON (for log aggregation tools)
+    # OTel: bridges to OpenTelemetry → Loki/Tempo for trace correlation
+
     # --- Console handler ---
     console_formatter = structlog.stdlib.ProcessorFormatter(
-        # foreign_pre_chain handles log records from stdlib loggers (uvicorn, etc.)
+        # foreign_pre_chain applies SHARED_PROCESSORS to logs from stdlib loggers
+        # (uvicorn, httpx, etc.) that don't go through structlog natively
         foreign_pre_chain=SHARED_PROCESSORS,
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
@@ -101,10 +107,13 @@ def configure_structlog() -> None:
 # ---------------------------------------------------------------------------
 # Middleware
 # ---------------------------------------------------------------------------
+# Binds request-scoped fields (request_id, method, path) to every log line in this request,
+# enabling trace correlation across services without passing context explicitly
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Binds request-scoped context to structlog for the lifetime of each request."""
 
     async def dispatch(self, request: Request, call_next):
+        # Use incoming X-Request-ID if provided (e.g., from a reverse proxy), else generate
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())[:8]
 
         bind_contextvars(
@@ -116,6 +125,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
         finally:
+            # Clear context so the next request doesn't inherit stale values
             clear_contextvars()
 
 

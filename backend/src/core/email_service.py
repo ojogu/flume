@@ -45,6 +45,7 @@ def render_email_template(template_name: str, **kwargs) -> str:
     return template.render(**kwargs)
 
 
+# Enqueues email via Celery to avoid blocking the HTTP response with SMTP latency
 def send_magic_link_email(to_email: str, token: str) -> dict | None:
     magic_link_url = f"{config.frontend_url}/api/v1/auth/magic-link/verify?token={token}" 
     html_content = render_email_template(
@@ -64,5 +65,5 @@ def send_magic_link_email(to_email: str, token: str) -> dict | None:
         return None
     except Exception as e:
         logger.error(f"Failed to enqueue magic link email for {to_email}: {e}", exc_info=True)
-        #configure dead letter queue in production to catch these failures and alert the team
-        # return send_email_notification(to_email, subject, html_content)
+        # TODO: route to dead letter queue in production to alert the team on enqueue failures
+        # fallback: send_email_notification(to_email, subject, html_content)

@@ -22,6 +22,7 @@ def get_user_service(db: AsyncSession = Depends(get_session)):
 def get_api_key_service(db: AsyncSession = Depends(get_session)):
     return ApiKeyService(db=db)
 
+# Chains three dependencies: JWT extraction → DB session → user lookup by user_id from token
 async def get_current_user(
     user_details: dict = Depends(AccessTokenBearer()),
     user_service: UserService = Depends(get_user_service),
@@ -32,6 +33,7 @@ async def get_current_user(
     return user
 
 
+# Alternative auth path for programmatic API access (no JWT, uses X-API-Key header)
 async def get_api_key_from_header(
     request: Request,
     api_key_service: ApiKeyService = Depends(get_api_key_service),

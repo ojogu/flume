@@ -11,11 +11,11 @@ from src.model import *
 
 logger = get_logger(__name__)
 
-# Create async engine
+# NullPool: each operation gets a fresh connection.
+# Avoids event-loop issues when internal bg tasks share a pooled session across threads
 engine = create_async_engine(
     url=config.database_url,
-    # echo=settings.debug,
-    poolclass=NullPool,  # Use NullPool for async operations
+    poolclass=NullPool,
     future=True, 
 )
 
@@ -52,6 +52,7 @@ async def get_async_db_session():
 # )
 
 
+# Session-per-request pattern: commit on success, rollback on error, close always
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency function to get database session.

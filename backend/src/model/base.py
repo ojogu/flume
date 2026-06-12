@@ -11,8 +11,8 @@ from sqlalchemy.orm import DeclarativeBase, declared_attr
 
 
 
-# Define naming conventions for database constraints
-# This helps keep index and constraint names consistent and predictable.
+# Naming conventions for auto-generated constraint names.
+# Alembic migrations use these names — without them, every migration would be a rename.
 # See: https://alembic.sqlalchemy.org/en/latest/naming.html
 convention = {
     "ix": "ix_%(column_0_label)s",
@@ -30,23 +30,23 @@ class BaseModel(Base):
     """Base class for all SQLAlchemy models."""
     
     __abstract__ = True
-    # Optional: Define common columns or methods for all models
+    # Common columns every table inherits: UUID PK, timestamps, soft-delete support
     id = sa.Column(sa.UUID, primary_key=True, default=uuid.uuid4)
     created_at = sa.Column(sa.DateTime(timezone=True), default=sa.func.now())
     updated_at = sa.Column(sa.DateTime(timezone=True), default=sa.func.now(), onupdate=sa.func.now())
     deleted_at = sa.Column(sa.DateTime, nullable=True)
 
 
-    # Example: Automatically generate table names
+    # Auto-generates snake_case plural table names from CamelCase class names
+    # e.g., MagicLinkToken → magic_link_tokens
     @declared_attr.directive
     def __tablename__(cls) -> str:
-        # Converts CamelCase class name to snake_case table name
         import re
 
         name = cls.__name__
         name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
         name = re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
-        return name + "s"  # Pluralize table names
+        return name + "s"
 
 
     def to_dict(self) -> Dict[str, Any]:

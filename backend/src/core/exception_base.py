@@ -1,4 +1,4 @@
-# Custom Exception Classes
+# Base exception storing .message for the error handler factory to read at runtime
 
 
 class BaseExceptionClass(Exception):
@@ -63,6 +63,7 @@ class NotActive(BaseExceptionClass):
     pass
 
 
+# Includes status_code introspection for upstream error handling (rate limits, server errors)
 class ExternalAPIError(Exception):
     """Raised when external API returns an error status"""
 

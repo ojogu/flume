@@ -10,6 +10,7 @@ class ErrorResponse(BaseModel):
     data: Optional[Any] = None
     role: Optional[str] = None
 
+# Standard envelope: every response (success or error) follows {status, message, data, role}
 class SuccessResponse(BaseModel):
     status:str = "success"
     message:str

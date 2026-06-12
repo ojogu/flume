@@ -33,6 +33,7 @@ class ApiKeyResponse(BaseModel):
     created_at: Optional[datetime] = None
 
 
+# Extends ApiKeyResponse with full_key because the raw key is only shown once at creation
 class ApiKeyCreatedResponse(ApiKeyResponse):
     full_key: str
 

@@ -23,6 +23,6 @@ class ApiKey(BaseModel):
     expires_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
     last_used_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
 
-    #relationship
+    # Bidirectional: ApiKey.user → User.api_keys
     user = relationship("User", back_populates="api_keys")
 
