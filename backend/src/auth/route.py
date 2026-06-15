@@ -18,7 +18,7 @@ from .service import auth_service
 
 logger = get_logger(__name__)
 
-auth_route = APIRouter(prefix="/auth")
+auth_route = APIRouter(prefix="/auth", tags=["auth"])
 
 #google oauth
 @auth_route.get("/login")

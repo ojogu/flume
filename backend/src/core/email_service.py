@@ -47,7 +47,7 @@ def render_email_template(template_name: str, **kwargs) -> str:
 
 # Enqueues email via Celery to avoid blocking the HTTP response with SMTP latency
 def send_magic_link_email(to_email: str, token: str) -> dict | None:
-    magic_link_url = f"{config.frontend_url}/api/v1/auth/magic-link/verify?token={token}" 
+    magic_link_url = f"{config.frontend_url}/internal/auth/magic-link/verify?token={token}" 
     html_content = render_email_template(
         "magic_link.html",
         magic_link_url=magic_link_url,

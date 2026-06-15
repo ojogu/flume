@@ -35,4 +35,5 @@ dependencies = [
     "jinja2>=3.1.0",
     "flower>=2.0.1",
     "alembic>=1.18.4",
+    "scalar-fastapi>=1.1.0",
 ]

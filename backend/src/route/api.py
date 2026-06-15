@@ -15,7 +15,7 @@ from src.schema.api import (
 from src.utils.response import success
 
 # Thin controller: routes delegate all logic to ApiKeyService, wrap results in response schemas
-api_key_route = APIRouter(prefix="/keys")
+api_key_route = APIRouter(prefix="/keys", tags=["api-keys"])
 
 
 @api_key_route.post("")

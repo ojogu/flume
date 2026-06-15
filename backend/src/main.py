@@ -1,83 +1,113 @@
-from fastapi import FastAPI
+import json
 from contextlib import asynccontextmanager
-from sqlalchemy import inspect as sa_inspect
-from src.utils.db import engine
-from src.utils.config import Settings
-from src.utils.redis import setup_redis
-from src.utils.exception import register_error_handlers
-from src.utils.telemetry import setup_telemetry
-from src.utils.log import RequestContextMiddleware, configure_structlog, get_logger
+from pathlib import Path
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from scalar_fastapi import get_scalar_api_reference
+from sqlalchemy import inspect as sa_inspect
+
 from src.auth.route import auth_route
+from src.public.route import public_route
 from src.route.api import api_key_route
+from src.utils.config import Settings
+from src.utils.db import engine
+from src.utils.exception import register_error_handlers
+from src.utils.log import RequestContextMiddleware, configure_structlog, get_logger
+from src.utils.redis import setup_redis
+from src.utils.telemetry import instrument_fastapi_app, setup_telemetry
 
 
 logger = get_logger(__name__)
 
 
+# ── Sub-apps ──────────────────────────────────────────────────────────────────
+
+public_api = FastAPI(title="Public API", version=Settings.PROJECT_VERSION)
+
+internal_api = FastAPI(
+    title="Internal API",
+    version=Settings.PROJECT_VERSION,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+
+internal_api.include_router(auth_route)
+internal_api.include_router(api_key_route)
+
+public_api.include_router(public_route)
+
+
+@public_api.get("/root", tags=["health"])
+def root():
+    return {"message": "FlumeAPI"}
+
+
+# ── Scalar docs (public only) ────────────────────────────────────────────────
+
+@public_api.get("/scalar", include_in_schema=False)
+def scalar_docs():
+    return get_scalar_api_reference(
+        openapi_url="/v1/openapi.json",
+        title="Public API",
+    )
+
+
+# ── Error handlers per sub-app ───────────────────────────────────────────────
+
+register_error_handlers(public_api)
+register_error_handlers(internal_api)
+
+# ── Telemetry per sub-app ────────────────────────────────────────────────────
+
+instrument_fastapi_app(public_api)
+instrument_fastapi_app(internal_api)
+
+
+# ── OpenAPI export ────────────────────────────────────────────────────────────
+
+def export_openapi_spec() -> None:
+    spec = public_api.openapi()
+    path = Path(__file__).resolve().parent.parent.parent / "openapi.json"
+    path.write_text(json.dumps(spec, indent=2))
+    logger.info("OpenAPI spec written to %s", str(path))
+
+
+# ── Lifespan ──────────────────────────────────────────────────────────────────
+
 @asynccontextmanager
 async def life_span(app: FastAPI):
-    """
-    Lifecycle event handler for the FastAPI application.
-
-    This asynchronous function is called when the FastAPI application starts up
-    and shuts down. It initializes the database on startup and performs cleanup
-    on shutdown.
-
-    Args:
-        app (FastAPI): The FastAPI application instance.
-
-    Yields:
-        None: This function yields control back to the application after startup.
-    """
-
-    # Configure structlog before any middleware/routes to override uvicorn's default logging
     configure_structlog()
-
-    # Initialize Redis for token blacklisting + caching; sync client for Celery is in redis.py
     await setup_redis()
 
-
-    logger.info("server is starting....")
+    logger.info("server is starting...")
     async with engine.begin() as conn:
         tables = await conn.run_sync(lambda c: sa_inspect(c).get_table_names())
-        logger.info(f"Tables created: {tables}")
+        logger.info("Tables created: %s", tables)
 
-    # Control returns here on shutdown — app runs between `async with lifespan` boundaries
+    export_openapi_spec()
     yield
 
+
+# ── Root app ──────────────────────────────────────────────────────────────────
 
 app = FastAPI(lifespan=life_span)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,  # Required for cookies in dev (oauth_state)
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Request-scoped structlog context (request_id, method, path) — added before telemetry
 app.add_middleware(RequestContextMiddleware)
 
-# Auto-instruments FastAPI routes + httpx; must run before route registration
-setup_telemetry(app)
+setup_telemetry()
 
-# register error handlers
-register_error_handlers(app)
-
-
-# Auth (OAuth, magic link, JWT refresh) and API key management routes
-app.include_router(auth_route, prefix=Settings.API_V1_PREFIX)
-app.include_router(api_key_route, prefix=Settings.API_V1_PREFIX)
-
-
-@app.get(f"{Settings.API_V1_PREFIX}/root")
-def root():
-    """
-    Root endpoint for the FastAPI application.
-
-    Returns:
-        str: A simple greeting message.
-    """
-    return {"message": "FlumeAPI"}
+app.mount("/v1", public_api)
+app.mount("/internal", internal_api)

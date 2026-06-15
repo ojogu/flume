@@ -5,7 +5,7 @@ import jwt
 import uuid
 from src.utils.config import config
 from src.utils.crypto import encrypt_token, decrypt_token
-from src.core.exception_base import TokenExpired
+from src.core.exception_base import InvalidToken, TokenExpired
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,

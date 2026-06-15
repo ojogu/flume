@@ -21,6 +21,8 @@ class Config(BaseSettings):
     resend_mail:str
     api_key_prefix:str
     app_env:str = "dev"
+    cloudflare_key: str | None = None
+    cloudfare_api_token: str | None = None
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
@@ -35,4 +37,3 @@ class Settings:
     PROJECT_NAME: str = "Flume"
     PROJECT_VERSION: str = "0.0.1"
     PROJECT_DESCRIPTION: str = "API for Flume; a media processor"
-    API_V1_PREFIX: str = "/api/v1"
