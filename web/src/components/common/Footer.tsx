@@ -8,7 +8,7 @@ const productLinks = [
 ]
 
 const resourceLinks = [
-  { href: '#docs', label: 'Docs', internal: false },
+  { href: '/docs', label: 'Docs', internal: false },
   { href: '#github', label: 'GitHub', internal: false },
 ]
 

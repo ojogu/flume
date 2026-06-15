@@ -9,7 +9,7 @@ const surfaces = [
     title: 'FlumeAPI',
     description: 'For developers. Full programmatic access, async jobs, webhook callbacks, and storage built in.',
     cta: 'View API Docs',
-    href: '#docs',
+    href: '/docs',
     variant: 'default' as const,
   },
   {

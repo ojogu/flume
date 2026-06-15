@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Activity, Key, LogOut, Menu, User as UserIcon } from 'lucide-react'
+import { Activity, BookOpen, Key, LogOut, Menu, User as UserIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Wordmark } from '@/components/common/Wordmark'
@@ -8,8 +8,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
 
 const DASHBOARD_NAV = [
-  { href: '/dashboard/jobs', label: 'Jobs', icon: Activity },
-  { href: '/dashboard/keys', label: 'API Keys', icon: Key },
+  { href: '/dashboard/jobs', label: 'Jobs', icon: Activity, internal: true },
+  { href: '/dashboard/keys', label: 'API Keys', icon: Key, internal: true },
+  { href: '/docs', label: 'Docs', icon: BookOpen, internal: false },
 ]
 
 export function DashboardShell() {
@@ -31,21 +32,32 @@ export function DashboardShell() {
       {DASHBOARD_NAV.map((item) => {
         const Icon = item.icon
         const isActive = location.pathname.startsWith(item.href)
-        return (
+        const linkClass = cn(
+          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+          isActive 
+            ? "bg-brand/10 text-brand" 
+            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]"
+        )
+        return item.internal ? (
           <Link
             key={item.href}
             to={item.href}
             onClick={onItemClick}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-              isActive 
-                ? "bg-brand/10 text-brand" 
-                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]"
-            )}
+            className={linkClass}
           >
             <Icon className="h-4 w-4" />
             {item.label}
           </Link>
+        ) : (
+          <a
+            key={item.href}
+            href={item.href}
+            onClick={onItemClick}
+            className={linkClass}
+          >
+            <Icon className="h-4 w-4" />
+            {item.label}
+          </a>
         )
       })}
     </nav>

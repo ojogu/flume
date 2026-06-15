@@ -29,7 +29,7 @@ export function HeroSection() {
             </a>
 
             <a
-              href="#docs"
+              href="/docs"
               className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'px-6 gap-2')}
             >
               <BookOpen className="h-4 w-4" />
