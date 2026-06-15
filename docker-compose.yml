@@ -35,7 +35,23 @@ services:
           memory: 128M
         reservations:
           memory: 64M
-          
+
+  docs:
+    build:
+      context: .
+      dockerfile: docs-site/Dockerfile
+    ports:
+      - "127.0.0.1:5175:3001"
+    restart: unless-stopped
+    networks:
+      - app
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
   backend:
     build:
       context: ./backend
