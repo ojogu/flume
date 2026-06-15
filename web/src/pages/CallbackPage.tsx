@@ -24,7 +24,7 @@ export function CallbackPage() {
 
     setTokens(accessToken, refreshToken)
 
-    fetch('/api/v1/auth/me', {
+    fetch('/internal/auth/me', {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then((res) => res.json())

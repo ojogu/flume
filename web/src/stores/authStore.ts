@@ -37,7 +37,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     const { refreshToken } = get()
     if (refreshToken) {
-      fetch('/api/v1/auth/logout', {
+      fetch('/internal/auth/logout', {
         method: 'POST',
         headers: { Authorization: `Bearer ${refreshToken}` },
       }).catch(() => {})
@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (accessToken && !user) {
       try {
-        const res = await fetch('/api/v1/auth/me', {
+        const res = await fetch('/internal/auth/me', {
           headers: { Authorization: `Bearer ${accessToken}` },
         })
         const body = await res.json()

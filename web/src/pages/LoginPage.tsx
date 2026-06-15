@@ -44,7 +44,7 @@ export function LoginPage() {
     setError(null)
 
     try {
-      const response = await fetch('/api/v1/auth/login')
+      const response = await fetch('/internal/auth/login')
       const body = await response.json()
       if (body.data?.url) {
         window.location.href = body.data.url
@@ -65,7 +65,7 @@ export function LoginPage() {
     setSent(false)
 
     try {
-      const response = await fetch(`/api/v1/auth/magic-link?email=${encodeURIComponent(email)}`)
+      const response = await fetch(`/internal/auth/magic-link?email=${encodeURIComponent(email)}`)
       
       if (response.ok) {
         setSent(true)

@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/stores/authStore'
 
-const BASE_URL = '/api/v1'
+const BASE_URL = '/internal'
 
 interface ApiError {
   status: string

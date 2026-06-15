@@ -26,7 +26,7 @@ export interface CreateApiKeyRequest {
   expires_at?: string | null  // ISO timestamp
 }
 
-// All endpoints are under /api/v1/keys (JWT-protected on backend)
+// All endpoints are under /internal/keys (JWT-protected on backend)
 export async function listApiKeys(): Promise<ApiKeyListResponse> {
   const res = await apiClient<{ status: string; data: ApiKeyListResponse }>('/keys')
   return res.data
