@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "fumadocs-ui/style.css";
-@import "fumadocs-openapi/ui.css";
+/* @import "fumadocs-openapi/ui.css"; */
 @import "./tokens.css";
 
 @theme inline {

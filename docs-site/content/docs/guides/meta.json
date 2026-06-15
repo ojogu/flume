@@ -1,8 +1,0 @@
-{
-  "title": "Guides",
-  "pages": [
-    "authentication",
-    "api-keys",
-    "rate-limiting"
-  ]
-}
