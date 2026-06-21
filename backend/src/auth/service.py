@@ -1,4 +1,4 @@
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 import secrets
 from fastapi import Request
 import jwt
@@ -35,7 +35,7 @@ class AuthService:
                 if expiry is not None
                 else timedelta(seconds=config.access_token_expiry)
             )
-            payload["exp"] = datetime.now() + to_expire
+            payload["exp"] = datetime.now(timezone.utc) + to_expire
             # jti (JWT ID) uniquely identifies this token — used for blacklisting in Redis on logout
             payload["jti"] = str(uuid.uuid4())
             # Refresh flag avoids needing a DB lookup to distinguish access vs refresh tokens

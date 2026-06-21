@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
@@ -160,7 +160,7 @@ async def get_new_tokens_token(token_details: dict = Depends(RefreshTokenBearer(
         raise InvalidToken("Refresh token has been revoked")
 
     expiry_timestamp = token_details["exp"]
-    if datetime.fromtimestamp(expiry_timestamp) > datetime.now():
+    if datetime.fromtimestamp(expiry_timestamp, tz=timezone.utc) > datetime.now(timezone.utc):
         access_token = auth_service.create_access_token(user_data=token_details["user"])
         refresh_token = auth_service.create_access_token(
             user_data=token_details["user"], refresh=True
