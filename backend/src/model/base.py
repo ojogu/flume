@@ -34,7 +34,7 @@ class BaseModel(Base):
     id = sa.Column(sa.UUID, primary_key=True, default=uuid.uuid4)
     created_at = sa.Column(sa.DateTime(timezone=True), default=sa.func.now())
     updated_at = sa.Column(sa.DateTime(timezone=True), default=sa.func.now(), onupdate=sa.func.now())
-    deleted_at = sa.Column(sa.DateTime, nullable=True)
+    deleted_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
 
 
     # Auto-generates snake_case plural table names from CamelCase class names
