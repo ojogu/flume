@@ -16,10 +16,13 @@ const DASHBOARD_NAV = [
 export function DashboardShell() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout, accessToken } = useAuthStore()
+  const { user, logout, accessToken, hydrate } = useAuthStore()
 
   useEffect(() => {
-    // Auth Guard
+    hydrate()
+  }, [hydrate])
+
+  useEffect(() => {
     if (!accessToken) {
       navigate('/login', { replace: true })
     }
