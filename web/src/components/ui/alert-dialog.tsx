@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./dialog"
 import { buttonVariants } from "./button"
 import { cn } from "@/lib/utils"
@@ -53,7 +54,7 @@ const AlertDialogCancel = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, ...props }, ref) => (
-  <button
+  <DialogPrimitive.Close
     ref={ref}
     className={cn(buttonVariants({ variant: "outline" }), className)}
     {...props}
