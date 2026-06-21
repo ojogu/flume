@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Copy, Check, Trash2, AlertTriangle, LoaderCircle, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { 
   Table, 
   TableBody, 
@@ -77,11 +78,12 @@ export function ApiKeysPage() {
 
   const handleRevokeKey = async () => {
     if (!revokingId) return
+    const id = revokingId
     try {
-      await revokeApiKey(revokingId)
-      fetchKeys()
+      await revokeApiKey(id)
+      setKeys((prev) => prev.filter((k) => k.id !== id))
     } catch (err) {
-      console.error('Failed to revoke key', err)
+      toast.error('An error occurred')
     } finally {
       setRevokingId(null)
     }
