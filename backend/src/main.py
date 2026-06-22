@@ -10,6 +10,7 @@ from sqlalchemy import inspect as sa_inspect
 from src.auth.route import auth_route
 from src.public.route import public_route
 from src.route.api import api_key_route
+from src.route.job import job_route
 from src.utils.config import Settings
 from src.utils.db import engine
 from src.utils.exception import register_error_handlers
@@ -40,6 +41,7 @@ internal_api.include_router(auth_route)
 internal_api.include_router(api_key_route)
 
 public_api.include_router(public_route)
+public_api.include_router(job_route)
 
 
 @public_api.get("/root", tags=["health"])

@@ -25,4 +25,5 @@ class ApiKey(BaseModel):
 
     # Bidirectional: ApiKey.user → User.api_keys
     user = relationship("User", back_populates="api_keys")
+    jobs = relationship("Job", back_populates="api_key")
 
