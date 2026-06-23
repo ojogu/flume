@@ -1,6 +1,8 @@
 from typing import Any, Optional
 from pydantic import BaseModel
 
+# Standard response envelope — every endpoint returns {status, message, data, role}
+# Success and error responses share this same shape for consistent client-side handling.
 
 class ErrorResponse(BaseModel):
     status: str = "error"

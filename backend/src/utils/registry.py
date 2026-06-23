@@ -1,3 +1,7 @@
+# Hardcoded catalog of all 13 operations with param schemas, categories, and input/output types.
+# Source of truth for validation gates (registry lookup, param validation, type compatibility).
+# Not stored in the DB — changes require a deploy.
+
 from enum import Enum
 from typing import Optional, Union
 from dataclasses import dataclass, field

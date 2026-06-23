@@ -20,6 +20,7 @@ class JobService:
         source_type: str,
         pipeline_spec: list[dict] | None = None,
     ) -> Job:
+        """Create a job in pending state with the validated pipeline spec."""
         job = Job(
             api_key_id=api_key_id,
             source_uri=source_uri,

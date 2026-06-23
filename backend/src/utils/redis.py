@@ -1,4 +1,7 @@
-# redis_client.py
+# ── Redis client ───────────────────────────────────────────────────────────────
+# Async client for FastAPI request paths, sync client for Celery workers.
+# Supports cache-aside pattern, token blacklisting, and general key-value storage.
+
 import json
 import redis.asyncio as redis
 import redis as redis_sync

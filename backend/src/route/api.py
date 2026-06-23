@@ -14,7 +14,10 @@ from src.schema.api import (
 )
 from src.utils.response import success
 
-# Thin controller: routes delegate all logic to ApiKeyService, wrap results in response schemas
+# ── API key CRUD ──────────────────────────────────────────────────────────────
+# Authenticated endpoints for managing programmatic keys.
+# Thin controller: routes delegate all logic to ApiKeyService, wrap results in response schemas.
+
 api_key_route = APIRouter(prefix="/keys", tags=["api-keys"])
 
 

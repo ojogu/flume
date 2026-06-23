@@ -1,3 +1,7 @@
+# ── Exception-to-response mapper ──────────────────────────────────────────────
+# Maps every custom exception (BadRequest, NotFoundError, etc.) to a consistent
+# JSON error envelope. Also handles built-in FastAPI/Pydantic/SQLAlchemy errors.
+
 from typing import Any, Callable, Dict
 from fastapi import FastAPI, Request, HTTPException, status
 from src.schema import ErrorResponse

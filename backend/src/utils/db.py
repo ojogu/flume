@@ -1,3 +1,8 @@
+# ── Async SQLAlchemy engine ───────────────────────────────────────────────────
+# NullPool avoids event-loop conflicts when background tasks share sessions.
+# get_session() = session-per-request pattern for FastAPI endpoints.
+# get_async_db_session() = standalone session for Celery/background tasks.
+
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from .config import config

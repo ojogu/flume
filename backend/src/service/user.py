@@ -19,6 +19,7 @@ from src.utils.log import get_logger
 logger = get_logger(__name__)
 
 
+# User lifecycle — create, update, magic link auth, OAuth upsert
 class UserService:
     """Service layer for user-related operations."""
 

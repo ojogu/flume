@@ -27,6 +27,7 @@ class StepStatus(str, enum.Enum):
 
 
 class Job(BaseModel):
+    """Persisted job record — created on POST /job, tracks lifecycle from pending through complete/failed."""
     api_key_id = sa.Column(
         sa.UUID,
         sa.ForeignKey("api_keys.id", ondelete="CASCADE"),
@@ -47,6 +48,7 @@ class Job(BaseModel):
 
 
 class JobStep(BaseModel):
+    """Per-step execution record — tracks input/output artifacts and error detail for each pipeline step."""
     job_id = sa.Column(
         sa.UUID,
         sa.ForeignKey("jobs.id", ondelete="CASCADE"),

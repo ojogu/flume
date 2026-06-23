@@ -1,3 +1,7 @@
+# ── Celery task definitions ────────────────────────────────────────────────────
+# Email dispatch task with retry. Async-to-sync bridge for calling async
+# service methods from Celery's synchronous execution context.
+
 import asyncio
 import concurrent
 import logging

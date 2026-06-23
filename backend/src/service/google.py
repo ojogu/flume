@@ -16,6 +16,7 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 
 class GoogleAuthService:
+    """Google OAuth 2.0 — authorization URL generation, callback handling, ID token verification."""
     SCOPES = [
         "openid",
         "https://www.googleapis.com/auth/userinfo.email",

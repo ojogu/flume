@@ -1,1 +1,1 @@
-# Processor module - FFmpeg operations
+# Processor module — FFmpeg operation execution (placeholder for worker implementation)

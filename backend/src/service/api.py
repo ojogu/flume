@@ -15,6 +15,7 @@ from src.utils.log import get_logger
 logger = get_logger(__name__)
 
 
+# API key lifecycle — generate (flm_ prefix + SHA-256 hash), verify, revoke
 class ApiKeyService:
     def __init__(self, db: AsyncSession):
         self.db = db

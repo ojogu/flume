@@ -3,6 +3,8 @@ import sqlalchemy as sa
 from sqlalchemy.orm import relationship
 
 
+# User model — profile, OAuth tokens, auth provider; MagicLinkToken for passwordless login
+
 class Project(BaseModel):
     pass
 
