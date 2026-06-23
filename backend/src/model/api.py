@@ -10,6 +10,8 @@ class ApiKeyStatus(str, enum.Enum):
     REVOKED = "revoked"
 
 
+# ApiKey model — SHA-256 hashed keys with status lifecycle (active → revoked)
+
 class ApiKey(BaseModel):
     user_id = sa.Column(
         sa.UUID,
@@ -25,4 +27,6 @@ class ApiKey(BaseModel):
 
     # Bidirectional: ApiKey.user → User.api_keys
     user = relationship("User", back_populates="api_keys")
+    jobs = relationship("Job", back_populates="api_key")
+    uploads = relationship("Upload", back_populates="api_key")
 

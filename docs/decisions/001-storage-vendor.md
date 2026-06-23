@@ -2,7 +2,7 @@
 
 **Status:** Accepted  
 **Date:** 2026-05-07  
-**Context:** Storage is a key component of Flume, considering we are a video processing platform, and choosing the best storage vendor is critical for our system.
+**Context:** Storage is a key component of Flume, considering we are a media processing platform, and choosing the best storage vendor is critical for our system.
 
 ---
 

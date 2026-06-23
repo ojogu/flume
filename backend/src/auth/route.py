@@ -1,3 +1,7 @@
+# ── Authentication routes ─────────────────────────────────────────────────────
+# Google OAuth (/login → /callback), magic link passwordless login,
+# token refresh, logout (token blacklisting), and /me profile endpoint.
+
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 

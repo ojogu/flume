@@ -1,3 +1,5 @@
+# Email dispatch via Resend — renders Jinja2 templates, enqueues via Celery to avoid blocking HTTP responses
+
 from pathlib import Path
 
 import resend

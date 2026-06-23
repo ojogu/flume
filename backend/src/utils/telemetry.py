@@ -16,6 +16,9 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
+# ── OpenTelemetry bootstrap ────────────────────────────────────────────────────
+# Wires up traces (Tempo), metrics (Prometheus), and logs (Loki) via OTLP to the
+# collector. Each sub-app is instrumented separately via instrument_fastapi_app().
 # The gRPC endpoint of your OpenTelemetry Collector.
 # In Docker Compose, "otel-collector" resolves to the collector container.
 # For local dev outside Docker, swap this to "http://localhost:4317".

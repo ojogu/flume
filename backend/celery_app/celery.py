@@ -1,3 +1,8 @@
+# ── Celery app factory ────────────────────────────────────────────────────────
+# Configures the Celery instance with broker, result backend, queue routing,
+# and beat schedule. OTel instrumentation is guarded by CELERY_WORKER env var
+# so only the worker process (not the FastAPI server) registers its own tracer.
+
 import os
 # from celery.schedules import crontab
 from src.utils.config import config

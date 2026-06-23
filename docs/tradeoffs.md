@@ -168,6 +168,49 @@ Earlier names MediaFlow and MediaBot were replaced. Sub-product names should fee
 
 ---
 
+Schema Tension #TODO: revisit
+**The case for being free**
+
+You accept whatever order the client sends, then internally reorder operations into the correct sequence before building the pipeline spec. Client doesn't need to think about order — Flume figures it out.
+
+Simpler developer experience. Less friction at submission time.
+
+**Why this breaks down**
+
+Intent becomes ambiguous. Consider:
+
+```
+trim → watermark → trim
+```
+
+Did the client want to trim twice deliberately — different segments? Or was this a mistake? If you reorder internally, you've silently changed what the client asked for. You're now making decisions on their behalf without their knowledge.
+
+Another example:
+
+```
+convert_to_audio → trim → compress
+```
+
+vs
+
+```
+trim → convert_to_audio → compress
+```
+
+These produce different results. The first trims audio. The second trims video then converts. Reordering silently changes the output.
+
+**The deeper principle**
+
+Flume is a declarative API. The client expresses intent through the pipeline spec. If you silently reorder, you're overriding their intent — and they have no visibility into what actually ran. That's a debugging nightmare and a trust problem.
+
+**The right mental model**
+
+Strict validation is not about being rigid with clients. It's about being honest. A clear rejection with a descriptive error message is better than silently producing something different from what was requested.
+
+Your docs define the contract. Validation enforces it. Errors explain violations. That's the full loop.
+
+Human gaps in understanding are solved by good docs and clear errors, not by silent internal rearrangement.
+
 ## Open Questions
 
 - Permanent storage vs. expiring outputs — should paid tiers get permanent storage or longer expiry?

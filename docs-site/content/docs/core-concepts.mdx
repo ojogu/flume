@@ -1,8 +1,164 @@
 ---
 title: Core Concepts
-description: Core objects & data model
+description: Jobs, pipelines, operations, and artifacts
 ---
 
-# Core Concepts
+## Job
 
-Placeholder — core objects & data model.
+A **job** is the top-level unit of work in Flume. It represents a complete
+processing request — from a source URL through a pipeline of operations to a
+final artifact. Every job has:
+
+| Field | Description |
+|-------|-------------|
+| `id` | UUID, assigned at creation |
+| `status` | One of `pending`, `running`, `complete`, `failed` |
+| `source` | Source object — type and URI of the input media |
+| `pipeline` | Ordered list of operations to execute |
+
+Jobs are created via `POST /job` and authenticated with an API key passed
+in the `X-API-Key` header.
+
+## Source
+
+The **source** is the input media for a job. Flume's job endpoint is
+source-agnostic — it always receives a URI:
+
+- **External URL** — you provide a publicly accessible `https://` URL.
+  Flume fetches it at runtime.
+- **Upload** — you upload the file via `POST /uploads`. Flume stores it
+  and returns a storage URI, which you then pass in `POST /job`.
+
+```json
+{ "type": "video", "uri": "https://storage.example.com/video.mp4" }
+```
+
+Both paths converge at a URI. The pipeline doesn't care where the file
+came from. The source type (`video` or `audio`) determines which operations
+are valid in step 0. Actual fetching happens at runtime when the worker
+begins execution.
+
+## Pipeline
+
+A **pipeline** is a linear, ordered sequence of operations applied to the
+source. Pipelines are defined at submission time and are immutable once the
+job starts — no runtime branching.
+
+### Request Schema
+
+The job request body has two top-level fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `source` | object | Yes | Source media — `type` (`video` or `audio`) and `uri` (URL or upload URI) |
+| `pipeline` | array | Yes | Ordered list of operations (minimum 1, maximum 10) |
+
+Each entry in the `pipeline` array:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `operation` | string | Yes | Operation name from the [operations reference](/docs/operations-reference) |
+| `params` | object | No | Configuration for this operation |
+
+```json
+{
+  "source": {
+    "type": "video",
+    "uri": "https://storage.example.com/video.mp4"
+  },
+  "pipeline": [
+    { "operation": "trim", "params": { "start": 0, "end": 30 } },
+    { "operation": "compress", "params": { "quality": "high" } },
+    { "operation": "thumbnail", "params": { "timestamp": 15 } }
+  ]
+}
+```
+
+### Pipeline Rules
+
+1. **Steps execute in order, top to bottom.**
+   Step 0 runs first, then step 1, then step 2, sequentially.
+
+2. **Output of step N is the implicit input to step N+1.**
+   You do not wire steps together manually — Flume handles the artifact
+   flow between adjacent steps automatically.
+
+3. **The source type must match the first step's input types.**
+   If the source type is `audio`, step 0 must accept `audio`. If `video`,
+   step 0 must accept `video`.
+
+4. **Terminal operations must be last.**
+   `extract_audio`, `thumbnail`, and `gif` end the pipeline. A terminal
+   operation at any position other than the last step is rejected.
+
+5. **Each step's output type must match the next step's input types.**
+   This is checked pair by pair. For example: `convert_to_audio` produces
+   `audio`, so the following step must accept `audio`.
+
+### Limits
+
+| Limit | Value |
+|-------|-------|
+| Max pipeline steps | 10 |
+| Min pipeline steps | 1 |
+| Max clips for `join` | 10 |
+| Min clips for `join` | 2 |
+| Max segments for `cut` | 50 |
+
+## Operation
+
+An **operation** is a single processing step drawn from Flume's operation
+registry. There are 13 operations across 3 categories:
+
+### Categories
+
+| Category | Behavior | Operations |
+|----------|----------|------------|
+| **Transformative** | One input, one output. Pipeline continues. | `trim`, `cut`, `compress`, `transcode`, `resize`, `watermark`, `subtitle`, `mute`, `convert_to_audio` |
+| **Combinatory** | Multiple inputs merged into one. Pipeline continues. | `join` |
+| **Terminal** | Produces a final artifact. Pipeline must end here. | `extract_audio`, `thumbnail`, `gif` |
+
+Each operation declares:
+- **Input types** — what artifact types it can consume (`video`, `audio`, or both)
+- **Output type** — what artifact type it produces
+- **Params** — what configuration it accepts, their types, defaults, and bounds
+
+### Operation-Level Validation
+
+Pipeline order is validated by **type compatibility** between adjacent
+steps, not by rigid phases. The only constraint is that one step's output
+type must match the next step's input type:
+
+- `trim (video → video) → resize (video → video)` ✓
+- `trim (video → video) → extract_audio (video → audio)` ✓
+- `extract_audio → trim` ✗ (terminal, nothing can follow)
+- `extract_audio → mute` ✗ (audio output, mute accepts video only)
+
+## Artifact
+
+An **artifact** is a typed file produced by a pipeline step. Every artifact
+has one of four types:
+
+| Type | Produced By |
+|------|-------------|
+| `video` | Most transformative operations |
+| `audio` | `extract_audio`, `convert_to_audio` |
+| `image` | `thumbnail` |
+| `gif` | `gif` |
+
+The final artifact is delivered to the client. Intermediate artifacts live
+in ephemeral durable storage and are cleaned up after the job completes.
+
+## Submission-Time Validation
+
+All validation runs at submission time — before any worker touches the job.
+Errors caught here are cheap. Flume runs six validation gates in sequence:
+
+| Gate | What it checks |
+|------|----------------|
+| **1 — Schema** | Request body well-formed, source URL is valid, pipeline is non-empty |
+| **2 — Registry** | Every operation name exists in the registry |
+| **3 — Params** | Required params present, types match, values within bounds |
+| **4 — Type compatibility** | Source type matches step 0; output types match next step's inputs |
+| **5 — Terminal position** | Terminal operations only at the last position |
+| **6 — Pipeline spec** | Enriched spec is built and stored |

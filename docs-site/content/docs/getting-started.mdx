@@ -1,0 +1,162 @@
+---
+title: Getting Started
+description: Submit your first job in 10 minutes
+---
+
+## 1. What is FlumeAPI
+
+FlumeAPI is a media processing API that turns raw video and audio files
+into finished output through a pipeline of operations — trim, compress,
+transcode, extract audio, generate thumbnails and GIFs, and more. Built for
+developers who need reliable media processing without managing FFmpeg
+infrastructure.
+
+---
+
+## 2. Base URL
+
+All API requests are made to the following base URL:
+
+```
+https://api.flume.ojogulabs.xyz
+```
+
+The API is versioned under `/v1`. Every endpoint below is relative to
+`https://api.flume.ojogulabs.xyz/v1/`.
+
+---
+
+## 3. Authentication
+
+Create an API key from the [dashboard](/docs/authentication/api-keys). Pass
+it in every request via the `X-API-Key` header:
+
+```bash
+X-API-Key: flm_abc123...
+```
+
+Keep your key secret — it's the only credential you need to submit jobs.
+
+---
+
+## 4. Your First Job
+
+Here's a complete request that trims a video to the first 30 seconds:
+
+```bash
+curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
+  -H "X-API-Key: flm_abc123..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": {
+      "type": "video",
+      "uri": "https://storage.example.com/demo.mp4"
+    },
+    "pipeline": [
+      { "operation": "trim", "params": { "start": 0, "end": 30 } }
+    ]
+  }'
+```
+
+Flume validates the request, creates the job with status `pending`, and
+returns immediately:
+
+```json
+{
+  "status": "success",
+  "message": "Job created",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "pending",
+    "source_uri": "https://storage.example.com/demo.mp4",
+    "source_type": "video",
+    "pipeline_steps": [
+      {
+        "operation": "trim",
+        "category": "transformative",
+        "input_types": ["video", "audio"],
+        "output_type": ["video", "audio"],
+        "params": { "start": 0, "end": 30 }
+      }
+    ],
+    "created_at": "2026-06-22T12:00:00Z",
+    "updated_at": "2026-06-22T12:00:00Z"
+  }
+}
+```
+
+Your job is now queued. Processing happens asynchronously — the response
+returns as soon as the job is created. Poll the status endpoint to know
+when it's done.
+
+---
+
+## 5. Check Job Status
+
+Poll the job's status with its ID:
+
+```bash
+curl https://api.flume.ojogulabs.xyz/v1/job/550e8400-e29b-41d4-a716-446655440000 \
+  -H "X-API-Key: flm_abc123..."
+```
+
+Response:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "complete",
+    "source_uri": "https://storage.example.com/demo.mp4",
+    "source_type": "video",
+    "pipeline_steps": [...],
+    "created_at": "2026-06-22T12:00:00Z",
+    "updated_at": "2026-06-22T12:00:00Z"
+  }
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Queued, waiting for a worker |
+| `running` | Processing started |
+| `complete` | All steps finished successfully |
+| `failed` | A step encountered an error |
+
+Poll every 5–10 seconds. The job is done when `status` is `complete` or
+`failed`.
+
+---
+
+## 6. Get Your Output
+
+When the job completes, the final artifact is available via a presigned URL:
+
+```json
+{
+  "status": "complete",
+  "data": {
+    "id": "...",
+    "status": "complete",
+    "output": {
+      "uri": "https://r2.dev/jobs/.../output.mp4?signature=...",
+      "type": "video",
+      "expires_in": "3600s"
+    }
+  }
+}
+```
+
+The download URL is valid for 1 hour. Download the file and serve it to
+your users. Intermediate artifacts are cleaned up automatically after the
+job completes.
+
+---
+
+## 7. Next Steps
+
+- **[Operations Reference](/docs/operations-reference)** — all 13 operations
+- **[Core Concepts](/docs/core-concepts)** — pipelines, artifacts, type system
+- **[Errors](/docs/errors)** — validation error catalog
+- **[Authentication](/docs/authentication/api-keys)** — manage your API keys

@@ -1,3 +1,7 @@
+# ── JWT token lifecycle ───────────────────────────────────────────────────────
+# Creates and decodes access/refresh JWT tokens. AccessTokenBearer and
+# RefreshTokenBearer are FastAPI dependencies that enforce token type per route.
+
 from datetime import timedelta, datetime, timezone
 import secrets
 from fastapi import Request

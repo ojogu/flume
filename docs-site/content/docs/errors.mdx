@@ -1,8 +1,105 @@
 ---
 title: Errors
-description: Error format & codes
+description: Error format, codes, and the full validation error catalog
 ---
 
-# Errors
+Flume returns errors in a consistent JSON envelope. Every error response
+has a `400`–`500` status code and the following body:
 
-Placeholder — error format & codes.
+```json
+{
+  "status": "error",
+  "message": "Human-readable description of what went wrong",
+  "error_code": "machine_readable_code"
+}
+```
+
+## Validation Error Catalog
+
+All job submission errors are caught at intake time by the
+[six validation gates](/docs/core-concepts#submission-time-validation).
+Each gate produces specific error messages.
+
+### Gate 1 — Schema Validation (422)
+
+Pydantic rejects malformed request bodies before any custom validation runs.
+
+| Cause | Example Message |
+|-------|----------------|
+| Missing required field | `Field required` |
+| Wrong type | `Input should be a valid list` |
+| Empty pipeline | `List should have at least 1 item after validation` |
+| Invalid source type | `Input should be 'video' or 'audio'` |
+
+**Fix:** Ensure `source.type` is `video` or `audio`, `source.uri` is a
+valid URI string, and `pipeline` has at least one entry.
+
+### Gate 2 — Registry Lookup (400)
+
+| Cause | Example Message |
+|-------|----------------|
+| Unknown operation name | `Unknown operation 'compresss' at position 0. Valid operations: compress, cut, ...` |
+
+**Fix:** Check the operation name against the
+[operations reference](/docs/operations-reference). Operation names are
+lowercase and use underscores.
+
+### Gate 3 — Param Validation (400)
+
+| Cause | Example Message |
+|-------|----------------|
+| Missing required param | `Missing required param 'start' for 'trim' at position 0` |
+| Wrong param type | `Param 'width' for 'resize' at position 1 must be an integer` |
+| Enum value not allowed | `Param 'quality' for 'compress' at position 0 got 'super'. Allowed values: low, medium, high` |
+| Value below minimum | `Param 'start' for 'gif' at position 2 must be >= 0.0, got -1` |
+| Value above maximum | `Param 'width' for 'resize' at position 0 must be <= 7680, got 99999` |
+| Unknown param | `Unknown param 'color' for 'trim' at position 0` |
+| Array too short | `Param 'clips' for 'join' at position 0 must have at least 2 items, got 1` |
+| Array too long | `Param 'segments' for 'cut' at position 0 must have at most 50 items, got 100` |
+
+**Fix:** Check the operation's param definitions in the
+[operations reference](/docs/operations-reference). Ensure all required
+params are present, enum values are spelt correctly, and numeric values
+are within bounds.
+
+### Gate 4 — Type Compatibility (400)
+
+| Cause | Example Message |
+|-------|----------------|
+| Source type does not match step 0 | `Type mismatch at position 0: 'resize' accepts [video] but previous step produces [audio]` |
+| Step output does not match next step input | `Type mismatch at position 1: 'mute' accepts [video] but previous step produces [audio]` |
+
+**Fix:** Ensure the source type is compatible with the first operation's
+input types, and that each step's output type can feed the next step's
+inputs. See the [type system](/docs/core-concepts#artifact) and each
+operation's declared input/output types.
+
+### Gate 5 — Terminal Position (400)
+
+| Cause | Example Message |
+|-------|----------------|
+| Terminal operation in non-final position | `Terminal operation 'thumbnail' at position 0 must be the last step in the pipeline` |
+
+**Fix:** Move terminal operations (`extract_audio`, `thumbnail`, `gif`)
+to the last position in the pipeline array.
+
+## HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| `201` | Job created successfully |
+| `400` | Validation error — check the message for details |
+| `403` | Missing or invalid API key |
+| `422` | Malformed request body — schema validation failed |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+
+## Upload Errors
+
+| Cause | Example Message |
+|-------|----------------|
+| Upload not found | `Upload not found` |
+| Upload already attached | `Upload is already attached to a job` |
+
+**Fix:** Ensure the upload UUID is correct and has not been used by another
+job. Each upload can only be attached to one job.

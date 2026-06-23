@@ -12,16 +12,19 @@ class ApiKeyStatus(str, enum.Enum):
 
 
 class CreateApiKeyRequest(BaseModel):
+    """Request to create a new API key — name, optional expiry."""
     name: str
     expires_at: Optional[datetime] = None
 
 
 class UpdateApiKeyRequest(BaseModel):
+    """Request to update an API key — name and/or expiry."""
     name: Optional[str] = None
     expires_at: Optional[datetime] = None
 
 
 class ApiKeyResponse(BaseModel):
+    """API key response (full_key excluded — only returned once at creation)."""
     model_config = {"from_attributes": True}
 
     id: uuid.UUID

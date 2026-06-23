@@ -23,6 +23,7 @@ class Config(BaseSettings):
     app_env:str = "dev"
     cloudflare_key: str | None = None
     cloudfare_api_token: str | None = None
+    upload_dir: str = "/tmp/flume/uploads"
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

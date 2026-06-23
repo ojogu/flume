@@ -10,6 +10,8 @@ from sqlalchemy import inspect as sa_inspect
 from src.auth.route import auth_route
 from src.public.route import public_route
 from src.route.api import api_key_route
+from src.route.job import job_route
+from src.route.upload import upload_route
 from src.utils.config import Settings
 from src.utils.db import engine
 from src.utils.exception import register_error_handlers
@@ -21,7 +23,10 @@ from src.utils.telemetry import instrument_fastapi_app, setup_telemetry
 logger = get_logger(__name__)
 
 
-# ── Sub-apps ──────────────────────────────────────────────────────────────────
+# ── Root FastAPI app ───────────────────────────────────────────────────────────
+# Mounts two sub-apps: /v1 (public APIs) and /internal (auth/admin).
+# Public API serves job submissions, uploads, and docs.
+# Internal API serves authentication and API key management.
 
 public_api = FastAPI(title="Public API", version=Settings.PROJECT_VERSION)
 
@@ -34,12 +39,16 @@ internal_api = FastAPI(
 )
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ── Routes per sub-app ────────────────────────────────────────────────────────
+# Internal: auth (Google OAuth, magic link) + API key CRUD.
+# Public: job submission + file uploads.
 
 internal_api.include_router(auth_route)
 internal_api.include_router(api_key_route)
 
-public_api.include_router(public_route)
+
+public_api.include_router(job_route)
+public_api.include_router(upload_route)
 
 
 @public_api.get("/root", tags=["health"])

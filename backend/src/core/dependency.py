@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.service.google import GoogleAuthService
 from src.service.user import UserService
 from src.service.api import ApiKeyService
+from src.service.jobs import JobService
+from src.service.upload import UploadService
 from src.model.api import ApiKey
 from src.core.exception_base import Unauthorized
 from src.utils.config import config
@@ -21,6 +23,14 @@ def get_user_service(db: AsyncSession = Depends(get_session)):
 
 def get_api_key_service(db: AsyncSession = Depends(get_session)):
     return ApiKeyService(db=db)
+
+# Wires JobService per request — one DB session, one service instance
+def get_job_service(db: AsyncSession = Depends(get_session)):
+    return JobService(db=db)
+
+# Wires UploadService per request — same pattern as get_job_service
+def get_upload_service(db: AsyncSession = Depends(get_session)):
+    return UploadService(db=db)
 
 # Chains three dependencies: JWT extraction → DB session → user lookup by user_id from token
 async def get_current_user(

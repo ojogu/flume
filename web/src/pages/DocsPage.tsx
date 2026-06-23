@@ -22,7 +22,7 @@ export function DocsPage() {
               </h1>
 
               <p className="mt-6 text-lg text-[var(--text-secondary)] leading-relaxed">
-                Everything you need to integrate Flume's video processing API into your application.
+                Everything you need to integrate Flume's media processing API into your application.
               </p>
 
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">

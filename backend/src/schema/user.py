@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 
 class UserResponse(BaseModel):
+    """User profile returned by /auth/me and other user-facing endpoints."""
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
@@ -27,6 +28,7 @@ class UserResponse(BaseModel):
 
 
 class CreateUser(BaseModel):
+    """New user creation payload — used internally after OAuth or magic link."""
     google_id: Optional[str] = None
     refresh_token: Optional[str] = None
     access_token: Optional[str] = None
@@ -43,6 +45,7 @@ class CreateUser(BaseModel):
 
 
 class UpdateUser(BaseModel):
+    """Partial user update — all fields optional."""
     google_id: Optional[str] = None
     refresh_token: Optional[str] = None
     access_token: Optional[str] = None
@@ -58,10 +61,12 @@ class UpdateUser(BaseModel):
 
 
 class MagicLinkTokenCreate(BaseModel):
+    """Request to generate a magic link — just the email address."""
     email: str
 
 
 class MagicLinkTokenResponse(BaseModel):
+    """Magic link token record — returned for admin/debug purposes."""
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
