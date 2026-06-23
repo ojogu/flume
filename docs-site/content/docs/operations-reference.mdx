@@ -1,0 +1,303 @@
+---
+title: Operations Reference
+description: All 13 operations with params, types, and examples
+---
+
+Every operation in Flume is defined in the [operation registry](/docs/design/operation-registry).
+Below is the complete reference for all 13 operations, grouped by category.
+
+---
+
+## Transformative Operations
+
+Transformative operations take one input artifact and produce one output
+artifact of the same or compatible type. The pipeline continues after them.
+
+---
+
+### trim
+
+Trim a media file to a specified time range.
+
+**Input:** `video`, `audio`
+**Output:** Same as input type
+
+| Param | Type | Required | Default | Min | Max |
+|-------|------|----------|---------|-----|-----|
+| `start` | float | Yes | — | 0.0 | — |
+| `end` | float | Yes | — | 0.0 | — |
+
+```json
+{ "operation": "trim", "params": { "start": 10.5, "end": 45.0 } }
+```
+
+---
+
+### cut
+
+Remove segments from a media file. Each segment is a `{ start, end }` object.
+
+**Input:** `video`, `audio`
+**Output:** Same as input type
+
+| Param | Type | Required | Min Items | Max Items |
+|-------|------|----------|-----------|-----------|
+| `segments` | array of objects | Yes | 1 | 50 |
+
+```json
+{
+  "operation": "cut",
+  "params": {
+    "segments": [
+      { "start": 0, "end": 10 },
+      { "start": 20, "end": 30 }
+    ]
+  }
+}
+```
+
+---
+
+### compress
+
+Reduce the bitrate of a media file.
+
+**Input:** `video`, `audio`
+**Output:** Same as input type
+
+| Param | Type | Required | Default | Values |
+|-------|------|----------|---------|--------|
+| `quality` | enum | No | `medium` | `low`, `medium`, `high` |
+
+```json
+{ "operation": "compress", "params": { "quality": "high" } }
+```
+
+---
+
+### transcode
+
+Convert a video to a different container format.
+
+**Input:** `video`
+**Output:** `video`
+
+| Param | Type | Required | Values |
+|-------|------|----------|--------|
+| `format` | enum | Yes | `mp4`, `webm`, `mov` |
+
+```json
+{ "operation": "transcode", "params": { "format": "webm" } }
+```
+
+---
+
+### resize
+
+Change the resolution of a video. You can specify exact dimensions or use a
+named preset.
+
+**Input:** `video`
+**Output:** `video`
+
+| Param | Type | Required | Default | Min | Max | Values |
+|-------|------|----------|---------|-----|-----|--------|
+| `width` | integer | No | — | 1 | 7680 | |
+| `height` | integer | No | — | 1 | 4320 | |
+| `preset` | enum | No | — | | | `360p`, `480p`, `720p`, `1080p`, `4k` |
+
+At least one of `width`, `height`, or `preset` is required. If both
+`width` and `height` are omitted, the preset dimensions are used.
+
+```json
+{ "operation": "resize", "params": { "width": 1920, "height": 1080 } }
+```
+
+```json
+{ "operation": "resize", "params": { "preset": "720p" } }
+```
+
+---
+
+### watermark
+
+Overlay an image onto a video at a specified position.
+
+**Input:** `video`
+**Output:** `video`
+
+| Param | Type | Required | Default | Values |
+|-------|------|----------|---------|--------|
+| `image_url` | URL | Yes | — | |
+| `position` | enum | No | `bottom_right` | `top_left`, `top_right`, `bottom_left`, `bottom_right`, `center` |
+
+```json
+{
+  "operation": "watermark",
+  "params": {
+    "image_url": "https://storage.example.com/logo.png",
+    "position": "top_right"
+  }
+}
+```
+
+---
+
+### subtitle
+
+Burn subtitles into a video. Provide an external subtitle file or enable
+auto-generated captions.
+
+**Input:** `video`
+**Output:** `video`
+
+| Param | Type | Required | Default |
+|-------|------|----------|---------|
+| `file_url` | URL | No | — |
+| `auto` | boolean | No | `false` |
+
+If `auto` is `true`, Flume generates captions using speech-to-text. If
+`file_url` is provided, the subtitle file is burned in. At least one is
+recommended.
+
+```json
+{ "operation": "subtitle", "params": { "auto": true } }
+```
+
+```json
+{
+  "operation": "subtitle",
+  "params": { "file_url": "https://storage.example.com/subtitles.srt" }
+}
+```
+
+---
+
+### mute
+
+Remove all audio tracks from a video.
+
+**Input:** `video`
+**Output:** `video`
+
+This operation has no parameters.
+
+```json
+{ "operation": "mute" }
+```
+
+---
+
+### convert_to_audio
+
+Extract the audio track from a video and save it as a standalone audio file.
+Unlike `extract_audio`, this is a non-terminal transformative step — the
+pipeline can continue with audio operations after it.
+
+**Input:** `video`
+**Output:** `audio`
+
+| Param | Type | Required | Default | Values |
+|-------|------|----------|---------|--------|
+| `format` | enum | No | `mp3` | `mp3`, `aac` |
+
+```json
+{ "operation": "convert_to_audio", "params": { "format": "aac" } }
+```
+
+---
+
+## Combinatory Operations
+
+Combinatory operations take multiple input artifacts and merge them into one.
+The pipeline continues after them.
+
+---
+
+### join
+
+Concatenate multiple video or audio clips into a single file. The first clip
+is always the source file from the job's `source` field. Additional clips
+are provided via the `clips` param.
+
+**Input:** `video`, `audio`
+**Output:** Same as input type
+
+| Param | Type | Required | Min Items | Max Items | Item Type |
+|-------|------|----------|-----------|-----------|-----------|
+| `clips` | array | Yes | 2 | 10 | URL |
+
+```json
+{
+  "operation": "join",
+  "params": {
+    "clips": [
+      "https://storage.example.com/clip2.mp4",
+      "https://storage.example.com/clip3.mp4"
+    ]
+  }
+}
+```
+
+---
+
+## Terminal Operations
+
+Terminal operations produce a final artifact type. They must be the last
+step in a pipeline — nothing can follow them.
+
+---
+
+### extract_audio
+
+Extract the audio track from a video as a standalone audio file. Terminal.
+
+**Input:** `video`
+**Output:** `audio`
+
+| Param | Type | Required | Default | Values |
+|-------|------|----------|---------|--------|
+| `format` | enum | No | `mp3` | `mp3`, `aac` |
+
+```json
+{ "operation": "extract_audio", "params": { "format": "mp3" } }
+```
+
+---
+
+### thumbnail
+
+Generate a single image frame from a video at a specified timestamp. Terminal.
+
+**Input:** `video`
+**Output:** `image`
+
+| Param | Type | Required | Min |
+|-------|------|----------|-----|
+| `timestamp` | float | Yes | 0.0 |
+
+```json
+{ "operation": "thumbnail", "params": { "timestamp": 15.0 } }
+```
+
+---
+
+### gif
+
+Generate an animated GIF from a section of a video. Terminal.
+
+**Input:** `video`
+**Output:** `gif`
+
+| Param | Type | Required | Default | Min | Max |
+|-------|------|----------|---------|-----|-----|
+| `start` | float | Yes | — | 0.0 | — |
+| `end` | float | Yes | — | 0.0 | — |
+| `fps` | integer | No | 15 | 1 | 30 |
+
+```json
+{
+  "operation": "gif",
+  "params": { "start": 0, "end": 3, "fps": 10 }
+}
+```

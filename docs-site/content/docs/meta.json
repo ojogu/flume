@@ -2,8 +2,10 @@
   "title": "Documentation",
   "pages": [
     "index",
+    "getting-started",
     "authentication/meta",
     "core-concepts",
+    "operations-reference",
     "api-reference/meta",
     "webhooks/meta",
     "errors",
