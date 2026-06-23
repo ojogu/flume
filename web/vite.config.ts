@@ -12,10 +12,6 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/internal': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-      },
       '/v1': {
         target: 'http://localhost:5000',
         changeOrigin: true,

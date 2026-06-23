@@ -3,6 +3,7 @@ import { LoaderCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Wordmark } from '@/components/common/Wordmark'
+import { API_BASE } from '@/lib/config'
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -44,7 +45,7 @@ export function LoginPage() {
     setError(null)
 
     try {
-      const response = await fetch('/internal/auth/login')
+      const response = await fetch(`${API_BASE}/auth/login`)
       const body = await response.json()
       if (body.data?.url) {
         window.location.href = body.data.url
@@ -65,7 +66,7 @@ export function LoginPage() {
     setSent(false)
 
     try {
-      const response = await fetch(`/internal/auth/magic-link?email=${encodeURIComponent(email)}`)
+      const response = await fetch(`${API_BASE}/auth/magic-link?email=${encodeURIComponent(email)}`)
       
       if (response.ok) {
         setSent(true)

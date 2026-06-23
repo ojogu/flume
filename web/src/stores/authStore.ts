@@ -1,6 +1,5 @@
 import { create } from 'zustand'
-
-const BASE_URL = '/internal'
+import { API_BASE } from '@/lib/config'
 
 export interface User {
   id: string
@@ -45,7 +44,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     const { refreshToken } = get()
     if (refreshToken) {
-      fetch(`${BASE_URL}/auth/logout`, {
+      fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${refreshToken}` },
       }).catch(() => {})
@@ -63,7 +62,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!accessToken) return
 
     const tryFetchUser = async (token: string) => {
-      const res = await fetch(`${BASE_URL}/auth/me`, {
+      const res = await fetch(`${API_BASE}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) return null
@@ -75,7 +74,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     let userData = await tryFetchUser(accessToken)
 
     if (!userData && refreshToken) {
-      const refreshRes = await fetch(`${BASE_URL}/auth/refresh-token`, {
+      const refreshRes = await fetch(`${API_BASE}/auth/refresh-token`, {
         headers: { Authorization: `Bearer ${refreshToken}` },
       })
       if (refreshRes.ok) {

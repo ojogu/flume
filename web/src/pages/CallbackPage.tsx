@@ -4,6 +4,7 @@ import { LoaderCircle } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { API_BASE } from '@/lib/config'
 
 export function CallbackPage() {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ export function CallbackPage() {
 
     setTokens(accessToken, refreshToken)
 
-    fetch('/internal/auth/me', {
+    fetch(`${API_BASE}/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then((res) => res.json())
