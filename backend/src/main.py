@@ -8,7 +8,6 @@ from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy import inspect as sa_inspect
 
 from src.auth.route import auth_route
-from src.public.route import public_route
 from src.route.api import api_key_route
 from src.route.job import job_route
 from src.route.upload import upload_route
@@ -38,6 +37,14 @@ internal_api = FastAPI(
     openapi_url=None,
 )
 
+internal_api.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # ── Routes per sub-app ────────────────────────────────────────────────────────
 # Internal: auth (Google OAuth, magic link) + API key CRUD.
@@ -61,7 +68,7 @@ def root():
 @public_api.get("/scalar", include_in_schema=False)
 def scalar_docs():
     return get_scalar_api_reference(
-        openapi_url="/v1/openapi.json",
+        openapi_url="openapi.json",
         title="Public API",
     )
 
@@ -104,7 +111,12 @@ async def life_span(app: FastAPI):
 
 # ── Root app ──────────────────────────────────────────────────────────────────
 
-app = FastAPI(lifespan=life_span)
+app = FastAPI(
+    lifespan=life_span,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+    )
 
 app.add_middleware(
     CORSMiddleware,
