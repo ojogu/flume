@@ -101,6 +101,17 @@ All validation runs at submission time in `src/service/validation.py`. Six seque
 
 **Error model:** Every gate raises `BadRequest` with a positional message identifying exactly what failed and where. Errors at submission time are cheap — no compute spent.
 
+#### Source Pre-Resolution
+
+Before intake validation runs, the route resolves the source URI. If the
+URI corresponds to an unattached upload (from `POST /uploads`), the route
+marks it as attached. This prevents the cleanup job from deleting the file
+mid-pipeline.
+
+After this step the source is a plain URI — external URLs and uploads
+follow the exact same path through validation. Intake never touches upload
+logic.
+
 ### 2. Dispatch
 
 Publish the job ID to RabbitMQ, return the response to the client. Intake hands off to dispatch. This is the boundary between the API and the orchestrator.
