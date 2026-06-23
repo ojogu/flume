@@ -31,7 +31,7 @@ export function FeaturesSection() {
         <div className="text-center mb-14">
           <p className="text-label text-brand mb-3">What we offer</p>
           <h2 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)]">
-            Everything you need to process video at scale
+            Everything you need to process media at scale
           </h2>
         </div>
 

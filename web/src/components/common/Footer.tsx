@@ -46,7 +46,7 @@ export function Footer() {
               <Wordmark />
             </Link>
             <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-[180px]">
-              Video processing for developers and everyone else.
+              Media processing for developers and everyone else.
             </p>
           </div>
 
