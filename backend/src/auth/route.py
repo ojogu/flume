@@ -5,7 +5,9 @@
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Request
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
 from src.service.user import UserService
 from src.core.dependency import get_current_user, get_user_service, google_service
@@ -32,7 +34,15 @@ async def oauth_login():
 
 
 @auth_route.get("/callback")
-async def oauth(request: Request, user_service: UserService = Depends(get_user_service)):
+async def oauth(
+    request: Request,
+    test: Optional[bool] = Query(None),
+    user_service: UserService = Depends(get_user_service),
+):
+    if test:
+        logger.info("webhook is ready")
+        return {"status": "ready"}
+
     params = dict(request.query_params)
     logger.info(f"query_params; {params}")  
     # Step 1: Exchange Google auth code for access/refresh/id tokens

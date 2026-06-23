@@ -9,10 +9,10 @@ export function HeroSection() {
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-label text-brand mb-4">Video Processing API</p>
+          <p className="text-label text-brand mb-4">Media Processing Infrastructure</p>
 
           <h1 className="text-display text-4xl sm:text-5xl lg:text-[3.75rem] text-[var(--text-primary)]">
-            Video processing infrastructure for developers.
+            Built for developers who need media processing without the infrastructure overhead.
           </h1>
 
           <p className="mt-6 text-lg text-[var(--text-secondary)] leading-relaxed">

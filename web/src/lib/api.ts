@@ -1,6 +1,5 @@
 import { useAuthStore } from '@/stores/authStore'
-
-const BASE_URL = '/internal'
+import { API_BASE } from '@/lib/config'
 
 interface ApiError {
   status: string
@@ -25,7 +24,7 @@ async function refreshTokens(): Promise<{ access_token: string; refresh_token: s
   const refreshToken = store.refreshToken
   if (!refreshToken) return null
 
-  const res = await fetch(`${BASE_URL}/auth/refresh-token`, {
+  const res = await fetch(`${API_BASE}/auth/refresh-token`, {
     headers: { Authorization: `Bearer ${refreshToken}` },
   })
 
@@ -53,13 +52,13 @@ export async function apiClient<T>(
     headers.set('Content-Type', 'application/json')
   }
 
-  let res = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers })
+  let res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers })
 
   if (res.status === 401 && store.refreshToken) {
     const tokens = await refreshTokens()
     if (tokens) {
       headers.set('Authorization', `Bearer ${tokens.access_token}`)
-      res = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers })
+      res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers })
     } else {
       store.logout()
       window.location.href = '/'

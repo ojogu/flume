@@ -9,6 +9,7 @@ class Config(BaseSettings):
     access_token_expiry:int
     refresh_token_expiry:int
     frontend_url:str
+    api_url:str
     celery_beat_interval:int
     encryption_key:str
     celery_broker_url:str
