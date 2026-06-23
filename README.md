@@ -1,8 +1,8 @@
 # Flume
 
-> A dual-surface video processing platform — a REST API for developers and a chat-based bot for everyone else.
+> A dual-surface media processing platform — a REST API for developers and a chat-based bot for everyone else.
 
-Flume abstracts the complexity of video processing behind two interfaces: a programmable **REST API** (FlumeAPI) and a natural-language **Telegram bot**. Both share a unified backend powered by FastAPI, Celery, FFmpeg, and a full OpenTelemetry observability stack.
+Flume abstracts the complexity of media processing behind two interfaces: a programmable **REST API** (FlumeAPI) and a natural-language **Telegram bot**. Both share a unified backend powered by FastAPI, Celery, FFmpeg, and a full OpenTelemetry observability stack.
 
 ---
 
@@ -27,7 +27,7 @@ The project's knowledge base lives in [`docs/`](./docs). It is a first-class par
 - **Dual Authentication** — Google OAuth 2.0 and email magic links for the dashboard; API key auth (`X-API-Key`) for programmatic access
 - **JWT with Refresh Rotation** — Short-lived access tokens, refresh token blacklisting via Redis, automatic client-side refresh
 - **Async Job Queue** — Celery workers with dedicated `default` and `email` queues, RabbitMQ broker, retry logic, and Flower monitoring
-- **Video Processing Pipeline** — 13 operations across three categories: transformative (trim, cut, compress, transcode, resize, watermark, subtitle, mute, convert-to-audio), combinatory (join), and terminal (extract-audio, thumbnail, gif)
+- **Media Processing Pipeline** — 13 operations across three categories: transformative (trim, cut, compress, transcode, resize, watermark, subtitle, mute, convert-to-audio), combinatory (join), and terminal (extract-audio, thumbnail, gif)
 - **Download Engine** — yt-dlp integration for downloading from social media links
 - **FFmpeg Processor** — Subprocess-based FFmpeg operations with pipeline validation
 - **Cloud Storage** — Cloudflare R2 (S3-compatible) with presigned URLs for private-by-default access

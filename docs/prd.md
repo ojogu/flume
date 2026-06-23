@@ -9,18 +9,18 @@
 
 ## 1. Overview
 
-Flume is a dual-surface video processing platform built on a single shared backend. It exposes the same core infrastructure through two distinct interfaces:
+Flume is a dual-surface media processing platform built on a single shared backend. It exposes the same core infrastructure through two distinct interfaces:
 
-- **FlumeAPI** — a developer-facing REST API for programmatic video processing
+- **FlumeAPI** — a developer-facing REST API for programmatic media processing
 - **Flume** — a consumer-facing chat assistant for natural language video editing, running on Telegram and WhatsApp
 
-The core insight driving both products: video processing is technically complex but the demand for it is simple. Developers don't want to manage FFmpeg pipelines. Users don't want to install editing software. Flume abstracts the complexity for both audiences.
+The core insight driving both products: media processing is technically complex but the demand for it is simple. Developers don't want to manage FFmpeg pipelines. Users don't want to install editing software. Flume abstracts the complexity for both audiences.
 
 ---
 
 ## 2. Goals
 
-- Build a production-grade asynchronous video processing pipeline
+- Build a production-grade asynchronous media processing pipeline
 - Expose that pipeline as a clean, well-documented REST API (FlumeAPI)
 - Layer a natural language interface on top for consumer use (Flume)
 - Deliver processed output in-chat for small files; via web URL for large files
@@ -31,7 +31,7 @@ The core insight driving both products: video processing is technically complex 
 ## 3. Non-Goals (Current Version)
 
 - Desktop or mobile native apps
-- Real-time (synchronous) video processing
+- Real-time (synchronous) media processing
 - Video hosting or streaming (output is stored temporarily, not hosted permanently)
 - Social media publishing integrations
 - Multi-language support (English only at launch)
@@ -42,7 +42,7 @@ The core insight driving both products: video processing is technically complex 
 
 ### FlumeAPI Users
 - Backend developers building media features into their products
-- Startups that need video processing without managing infrastructure
+- Startups that need media processing without managing infrastructure
 - Automation tools and content pipelines
 - Platforms that serve user-generated content
 
