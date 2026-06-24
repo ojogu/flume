@@ -1,8 +1,8 @@
 # Flume
 
-> A dual-surface media processing platform — a REST API for developers and a chat-based bot for everyone else.
+> Managed media processing infrastructure — a REST API for developers and a chat-based bot for everyone else.
 
-Flume abstracts the complexity of media processing behind two interfaces: a programmable **REST API** (FlumeAPI) and a natural-language **Telegram bot**. Both share a unified backend powered by FastAPI, Celery, FFmpeg, and a full OpenTelemetry observability stack.
+Flume provides managed media processing infrastructure through two interfaces: a programmable **REST API** (FlumeAPI) and a natural-language **Telegram bot**. Don't build pipelines, workers, or storage — just call an API. Both share a unified backend powered by FastAPI, Celery, FFmpeg, and a full OpenTelemetry observability stack.
 
 ---
 

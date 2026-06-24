@@ -164,52 +164,50 @@ Earlier names MediaFlow and MediaBot were replaced. Sub-product names should fee
 - **Flume** — the consumer chat interface on Telegram and WhatsApp ("Flume on Telegram", "Flume on WhatsApp")
 
 
-
-
 ---
 
-Schema Tension #TODO: revisit
-**The case for being free**
+## 11. Pipeline Schema: Free-Form vs. Strict Order
 
-You accept whatever order the client sends, then internally reorder operations into the correct sequence before building the pipeline spec. Client doesn't need to think about order — Flume figures it out.
+**Decision: Strict order — the client specifies the sequence, validation enforces compatibility**
 
-Simpler developer experience. Less friction at submission time.
+**Considered:**
+- **Free-form (rejected):** Accept operations in any order, internally reorder into the correct sequence before building the pipeline spec. Client never thinks about order.
 
-**Why this breaks down**
+  Simpler on the surface, but intent becomes ambiguous:
 
-Intent becomes ambiguous. Consider:
+  ```
+  trim → watermark → trim       # Deliberate or mistake?
+  convert_to_audio → trim → compress  vs  trim → convert_to_audio → compress  # Different results
+  ```
 
-```
-trim → watermark → trim
-```
+  Reordering silently changes output. The client has no visibility into what actually ran.
 
-Did the client want to trim twice deliberately — different segments? Or was this a mistake? If you reorder internally, you've silently changed what the client asked for. You're now making decisions on their behalf without their knowledge.
+- **Strict order (chosen):** The client specifies the exact sequence. Validation checks type compatibility between adjacent steps — no reordering. A clear rejection with a descriptive error is better than silently producing something different.
 
-Another example:
+**Tradeoffs:**
+- Free-form is more forgiving for new developers but introduces silent correctness bugs
+- Strict order adds submission-time friction but guarantees the output matches the spec
 
-```
-convert_to_audio → trim → compress
-```
+**Why strict:** Flume is a declarative API — the client expresses intent through the pipeline spec. Silently reordering overrides their intent. Human gaps in understanding are solved by good docs and clear errors, not by silent internal rearrangement.
 
-vs
 
-```
-trim → convert_to_audio → compress
-```
 
-These produce different results. The first trims audio. The second trims video then converts. Reordering silently changes the output.
 
-**The deeper principle**
 
-Flume is a declarative API. The client expresses intent through the pipeline spec. If you silently reorder, you're overriding their intent — and they have no visibility into what actually ran. That's a debugging nightmare and a trust problem.
+## 12. Upload Flow: One-Route vs. Two-Phase
 
-**The right mental model**
+**Decision: Two-phase upload (presign → complete)**
 
-Strict validation is not about being rigid with clients. It's about being honest. A clear rejection with a descriptive error message is better than silently producing something different from what was requested.
+**Considered:**
+- **One-route (simplified):** Single `POST /uploads/presign` creates the Upload record immediately (status=unattached) and returns the presigned URL. Client uploads to R2, then references the upload in `/job`. No verification step — server trusts the upload happened.
+- **Two-phase (chosen):** `POST /uploads/presign` creates a PENDING record and returns the presigned URL. After the client PUTs the file to R2, they call `POST /uploads/{id}/complete` which runs head_object to verify the object exists, records the real file_size and etag from R2, and flips status to UNATTACHED.
 
-Your docs define the contract. Validation enforces it. Errors explain violations. That's the full loop.
+**Tradeoffs:**
+- One-route is simpler on the client side — fewer API calls, less state to manage. But the server has no ground truth: it records whatever file_size the client declared, and a job can be created referencing an upload that never finished. The cleanup sweep can't distinguish "abandoned presigned URL" from "upload in progress" because both are UNATTACHED.
+- Two-phase adds one more round trip and requires the client to track upload_id through the complete step. In exchange, the server verifies the file actually landed in R2 before accepting it, records authoritative metadata from R2 (not client-declared), and can safely sweep PENDING records that never completed.
 
-Human gaps in understanding are solved by good docs and clear errors, not by silent internal rearrangement.
+**Why two-phase:** The ADR already accepts "two endpoints instead of one" as the price of direct upload. Skipping the verification step would save one API call but reintroduce the trust problem that direct upload was supposed to solve. The complete endpoint is the server's only opportunity to confirm the file arrived — without it, you're back to trusting the client reported a successful upload.
+
 
 ## Open Questions
 

@@ -9,9 +9,9 @@
 
 ## 1. Overview
 
-Flume is a dual-surface media processing platform built on a single shared backend. It exposes the same core infrastructure through two distinct interfaces:
+Flume provides managed media processing infrastructure built on a single shared backend. It exposes the same core infrastructure through two distinct interfaces:
 
-- **FlumeAPI** — a developer-facing REST API for programmatic media processing
+- **FlumeAPI** — a developer-facing REST API that eliminates media infrastructure overhead
 - **Flume** — a consumer-facing chat assistant for natural language video editing, running on Telegram and WhatsApp
 
 The core insight driving both products: media processing is technically complex but the demand for it is simple. Developers don't want to manage FFmpeg pipelines. Users don't want to install editing software. Flume abstracts the complexity for both audiences.

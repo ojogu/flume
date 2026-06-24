@@ -4,9 +4,9 @@
 
 ## Overview
 
-Flume is a media processing platform with two surfaces built on one shared backend:
+Flume is managed media processing infrastructure surfaced through two interfaces:
 
-- **FlumeAPI** — a REST API for programmatic media processing
+- **FlumeAPI** — a REST API for programmatic media processing without infrastructure overhead
 - **Flume** — a chat-based video editor on Telegram and WhatsApp
 
 The core insight: media processing is technically complex, but the demand for it is simple. Flume abstracts that complexity for both audiences.

@@ -2,9 +2,9 @@
 
 ## What I'm Building
 
-Flume is a media processing platform with two surfaces built on one shared backend:
+Flume is managed media processing infrastructure with two surfaces built on one shared backend:
 
-- **FlumeAPI** — a REST API that lets developers submit media processing jobs programmatically
+- **FlumeAPI** — a REST API that lets developers add media processing to their products without building infrastructure
 - **Flume** — a chat-based video editor running on Telegram and WhatsApp, powered by LLM's
 
 Users send a video link or file, describe what they want done, and get back a processed video — trimmed, compressed, joined, converted, or subtitled. Heavy work runs asynchronously in the background. Output is delivered in-chat for small files, via a web URL for large ones.
