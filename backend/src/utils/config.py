@@ -23,8 +23,12 @@ class Config(BaseSettings):
     api_key_prefix:str
     app_env:str = "dev"
     cloudflare_key: str | None = None
-    cloudfare_api_token: str | None = None
-    upload_dir: str = "/tmp/flume/uploads"
+    cloudflare_api_token: str | None = None
+    cloudflare_token_value: str | None = None
+    access_key_id: str | None = None
+    secret_access_key: str | None = None
+    s3_url: str | None = None
+    r2_bucket_name: str = "flume-uploads"
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

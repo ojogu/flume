@@ -20,6 +20,9 @@ from src.utils.registry import (
     OperationDefinition,
 )
 from src.core.exception_base import BadRequest
+from src.utils.log import get_logger
+
+logger = get_logger(__name__)
 
 
 # ── Gate 1: Schema validation ──────────────────────────────────────────
@@ -40,14 +43,19 @@ def validate_registry(pipeline: list[dict]) -> None:
     for i, step in enumerate(pipeline):
         name = step["operation"]
         if not operation_exists(name):
+            # Build the valid-ops string separately so the f-string expression
+            # doesn't span multiple lines — Python 3.10's tokenizer chokes on
+            # newlines inside a single f"...".
+            valid_ops = ', '.join(sorted([
+                'trim', 'cut', 'compress', 'transcode', 'resize',
+                'watermark', 'subtitle', 'mute', 'convert_to_audio',
+                'join', 'extract_audio', 'thumbnail', 'gif',
+            ]))
             raise BadRequest(
                 f"Unknown operation '{name}' at position {i}. "
-                f"Valid operations: {', '.join(sorted([
-                    'trim', 'cut', 'compress', 'transcode', 'resize',
-                    'watermark', 'subtitle', 'mute', 'convert_to_audio',
-                    'join', 'extract_audio', 'thumbnail', 'gif',
-                ]))}"
+                f"Valid operations: {valid_ops}"
             )
+    logger.debug(f"Gate 2 passed — {len(pipeline)} operation names valid")
 
 
 # ── Gate 3: Param validation ───────────────────────────────────────────
@@ -162,6 +170,7 @@ def validate_params(pipeline: list[dict]) -> None:
                 _validate_param_value(
                     name, submitted[name], param_def, i, op_name
                 )
+    logger.debug(f"Gate 3 passed — params valid for {len(pipeline)} operations")
 
 
 # ── Gate 4: Type compatibility validation ────────────────────────────────
@@ -194,6 +203,8 @@ def validate_type_compatibility(source_type: str, pipeline: list[dict]) -> None:
 
         current_types = set(op_def.output_type)
 
+    logger.debug(f"Gate 4 passed — type compatibility OK")
+
 
 # ── Gate 5: Terminal validation ──────────────────────────────────────────
 def validate_terminal_position(pipeline: list[dict]) -> None:
@@ -204,6 +215,7 @@ def validate_terminal_position(pipeline: list[dict]) -> None:
     final position the pipeline would dead-end prematurely.
     """
     if len(pipeline) <= 1:
+        logger.debug("Gate 5 passed — terminal position valid (single step)")
         return
 
     for i, step in enumerate(pipeline[:-1]):
@@ -212,6 +224,7 @@ def validate_terminal_position(pipeline: list[dict]) -> None:
                 f"Terminal operation '{step['operation']}' at position {i} "
                 f"must be the last step in the pipeline"
             )
+    logger.debug("Gate 5 passed — terminal positions valid")
 
 
 # ── Gate 6: Pipeline spec construction ───────────────────────────────────
@@ -232,6 +245,7 @@ def build_pipeline_spec(pipeline: list[dict]) -> list[dict]:
             "output_type": [t.value for t in op_def.output_type],
             "params": step.get("params", {}),
         })
+    logger.info(f"Gate 6 — built enriched spec with {len(spec)} steps: {[s['operation'] for s in spec]}")
     return spec
 
 
