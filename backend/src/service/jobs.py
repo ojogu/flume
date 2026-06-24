@@ -33,9 +33,17 @@ class JobService:
             await self.db.flush()
             await self.db.refresh(job)
             await self.db.commit()
-            logger.info(f"Job {job.id} created for API key {api_key_id}")
+            logger.info(
+                f"Job {job.id} created for API key {api_key_id} — "
+                f"source={source_uri}, "
+                f"type={source_type}, "
+                f"steps={len(pipeline_spec) if pipeline_spec else 0}"
+            )
             return job
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Error creating job: {e}")
+            logger.error(
+                f"Error creating job for API key {api_key_id} — "
+                f"source={source_uri}: {e}"
+            )
             raise DatabaseError()

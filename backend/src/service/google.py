@@ -100,7 +100,7 @@ class GoogleAuthService:
             logger.info("cred generated")
             return cred
         except Exception as e:
-            logger.exception("Error handling OAuth callback: %s", e)
+            logger.exception(f"Error handling OAuth callback: {e}")
             raise ServerError()
 
     def verify_id(self, id_code):

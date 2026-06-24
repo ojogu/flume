@@ -90,7 +90,7 @@ def export_openapi_spec() -> None:
     spec = public_api.openapi()
     path = Path(__file__).resolve().parent.parent.parent / "openapi.json"
     path.write_text(json.dumps(spec, indent=2))
-    logger.info("OpenAPI spec written to %s", str(path))
+    logger.info(f"OpenAPI spec written to {path}")
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ async def life_span(app: FastAPI):
     logger.info("server is starting...")
     async with engine.begin() as conn:
         tables = await conn.run_sync(lambda c: sa_inspect(c).get_table_names())
-        logger.info("Tables created: %s", tables)
+        logger.info(f"Tables created: {tables}")
 
     export_openapi_spec()
     yield
