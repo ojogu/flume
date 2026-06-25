@@ -40,3 +40,6 @@ migrate.sh
 
 # Dev-only scripts
 backend/dev_drop_db.py
+
+# Generated posts
+posts/
