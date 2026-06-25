@@ -1,9 +1,9 @@
 # ── R2 storage layer (boto3 S3-compatible client for Cloudflare R2) 
 # This module handles:
-#   • Presigned upload URL generation (Phase 1 — client uploads directly)
-#   • head_object verification(Phase 2 — confirm upload landed)
-#   • Presigned download URLs (for internal pipeline workers)
-#   • Object deletion       (for the cleanup sweep)
+# • Presigned upload URL generation (Phase 1 — client uploads directly)
+# • head_object verification(Phase 2 — confirm upload landed)
+# • Presigned download URLs (for internal pipeline workers)
+#  • Object deletion       (for the cleanup sweep)
 #
 # boto3 is synchronous, so all public methods run the R2 call inside asyncio.to_thread() to avoid blocking the event loop.
 
@@ -37,9 +37,7 @@ def build_object_key(api_key_id: uuid.UUID, upload_id: uuid.UUID, filename: str)
 class R2Storage:
     """Thin wrapper around a boto3 S3 client configured for Cloudflare R2.
 
-    Uses the S3-compatible endpoint at config.s3_url with the R2 API
-    credentials from config.access_key_id / config.secret_access_key.
-    The client is created once and reused (lazy singleton per process).
+    Uses the S3-compatible endpoint at config.s3_url with the R2 API credentials from config.access_key_id / config.secret_access_key. The client is created once and reused (lazy singleton per process).
     """
 
     _client = None
@@ -50,8 +48,7 @@ class R2Storage:
         """Lazy-init the boto3 S3 client for R2.
 
         Created once per worker process — boto3 handles its own connection
-        pooling under the hood. The endpoint_url points to the R2 S3-compatible
-        API, not the standard AWS S3 endpoint.
+        pooling under the hood. The endpoint_url points to the R2 S3-compatible API, not the standard AWS S3 endpoint.
         """
         if self._client is not None:
             return self._client
@@ -75,8 +72,7 @@ class R2Storage:
         """Run a synchronous boto3 call in a thread pool.
 
         All boto3 methods are synchronous (they make HTTP requests via urllib3).
-        Running them in asyncio.to_thread() prevents blocking the FastAPI event
-        loop when multiple upload requests arrive concurrently.
+        Running them in asyncio.to_thread() prevents blocking the FastAPI event loop when multiple upload requests arrive concurrently.
         """
         client = self._get_client()
         fn = getattr(client, method)
@@ -106,16 +102,14 @@ class R2Storage:
             },
             ExpiresIn=expires_in,
         )
-        # Build expiry timestamp so clients can show a countdown or pre-emptively
-        # request a new URL before the old one expires.
+        # Build expiry timestamp so clients can show a countdown or pre-emptively request a new URL before the old one expires.
         return url
 
     async def head_object(self, object_key: str) -> dict | None:
         """Check whether an object exists in R2 and return its metadata.
 
         Returns a dict with content_length, content_type, etag, last_modified
-        if the object exists, or None if it doesn't (404). Used in Phase 2
-        (complete endpoint) to confirm the upload actually landed.
+        if the object exists, or None if it doesn't (404). Used in Phase 2 (complete endpoint) to confirm the upload actually landed.
         """
         try:
             response = await self._run(
@@ -143,8 +137,7 @@ class R2Storage:
     ) -> str:
         """Issue a presigned GET URL for the processing pipeline.
 
-        Pipeline workers use this URL to download the source file for
-        FFmpeg processing. The URL is time-limited so access is scoped
+        Pipeline workers use this URL to download the source file for FFmpeg processing. The URL is time-limited so access is scoped
         to the processing window.
         """
         url = await self._run(

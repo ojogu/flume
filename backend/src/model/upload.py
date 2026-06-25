@@ -33,8 +33,7 @@ class Upload(BaseModel):
     )
     original_filename = sa.Column(sa.Text, nullable=True)
     file_size = sa.Column(sa.BigInteger, nullable=True)
-    # Populated by head_object in Phase 2 (complete_upload) — the real
-    # content-type and etag from R2, not the client's declared values.
+    # Populated by head_object in Phase 2 (complete_upload) — the real content-type and etag from R2, not the client's declared values.
     content_type = sa.Column(sa.Text, nullable=True)
     etag = sa.Column(sa.Text, nullable=True)
 

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "generate:og": "node scripts/generate-og-image.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -30,6 +31,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.2.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
