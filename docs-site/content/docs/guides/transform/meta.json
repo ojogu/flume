@@ -1,0 +1,12 @@
+{
+  "title": "Transform Media",
+  "pages": [
+    "compress",
+    "resize",
+    "crop",
+    "trim",
+    "rotate",
+    "watermark",
+    "convert"
+  ]
+}

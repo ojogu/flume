@@ -1,4 +1,4 @@
-# Hardcoded catalog of all 13 operations with param schemas, categories, and input/output types.
+# Hardcoded catalog of all 12 operations with param schemas, categories, capabilities, and input/output types.
 # Source of truth for validation gates (registry lookup, param validation, type compatibility).
 # Not stored in the DB — changes require a deploy.
 
@@ -17,7 +17,15 @@ class ArtifactType(str, Enum):
 class OperationCategory(str, Enum):
     TRANSFORMATIVE = "transformative"
     COMBINATORY = "combinatory"
-    TERMINAL = "terminal"
+    CONVERSION = "conversion"
+
+
+class OperationCapability(str, Enum):
+    TRANSFORM = "transform"
+    EXTRACT = "extract"
+    COMBINE = "combine"
+    ANALYZE = "analyze"
+    GENERATE = "generate"
 
 
 class ParamType(str, Enum):
@@ -48,6 +56,7 @@ class ParamDefinition:
 class OperationDefinition:
     name: str
     category: OperationCategory
+    capability: OperationCapability
     input_types: list[ArtifactType]
     output_type: list[ArtifactType]  # list because polymorphic ops produce matching type
     params: dict[str, ParamDefinition] = field(default_factory=dict)
@@ -56,13 +65,14 @@ class OperationDefinition:
 REGISTRY: dict[str, OperationDefinition] = {
 
     # -------------------------------------------------------------------------
-    # TRANSFORMATIVE
+    # TRANSFORMATIVE  |  Capability: TRANSFORM
     # Take one input artifact, produce one output artifact. Pipeline continues.
     # -------------------------------------------------------------------------
 
     "trim": OperationDefinition(
         name="trim",
         category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
         input_types=[ArtifactType.VIDEO, ArtifactType.AUDIO],
         output_type=[ArtifactType.VIDEO, ArtifactType.AUDIO],  # mirrors input type
         params={
@@ -82,6 +92,7 @@ REGISTRY: dict[str, OperationDefinition] = {
     "cut": OperationDefinition(
         name="cut",
         category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
         input_types=[ArtifactType.VIDEO, ArtifactType.AUDIO],
         output_type=[ArtifactType.VIDEO, ArtifactType.AUDIO],
         params={
@@ -98,6 +109,7 @@ REGISTRY: dict[str, OperationDefinition] = {
     "compress": OperationDefinition(
         name="compress",
         category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
         input_types=[ArtifactType.VIDEO, ArtifactType.AUDIO],
         output_type=[ArtifactType.VIDEO, ArtifactType.AUDIO],
         params={
@@ -113,6 +125,7 @@ REGISTRY: dict[str, OperationDefinition] = {
     "transcode": OperationDefinition(
         name="transcode",
         category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
         input_types=[ArtifactType.VIDEO],
         output_type=[ArtifactType.VIDEO],
         params={
@@ -127,6 +140,7 @@ REGISTRY: dict[str, OperationDefinition] = {
     "resize": OperationDefinition(
         name="resize",
         category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
         input_types=[ArtifactType.VIDEO],
         output_type=[ArtifactType.VIDEO],
         params={
@@ -153,6 +167,7 @@ REGISTRY: dict[str, OperationDefinition] = {
     "watermark": OperationDefinition(
         name="watermark",
         category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
         input_types=[ArtifactType.VIDEO],
         output_type=[ArtifactType.VIDEO],
         params={
@@ -176,6 +191,7 @@ REGISTRY: dict[str, OperationDefinition] = {
     "subtitle": OperationDefinition(
         name="subtitle",
         category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
         input_types=[ArtifactType.VIDEO],
         output_type=[ArtifactType.VIDEO],
         params={
@@ -194,34 +210,21 @@ REGISTRY: dict[str, OperationDefinition] = {
     "mute": OperationDefinition(
         name="mute",
         category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
         input_types=[ArtifactType.VIDEO],
         output_type=[ArtifactType.VIDEO],
         params={},
     ),
 
-    "convert_to_audio": OperationDefinition(
-        name="convert_to_audio",
-        category=OperationCategory.TRANSFORMATIVE,
-        input_types=[ArtifactType.VIDEO],
-        output_type=[ArtifactType.AUDIO],  # type changes, pipeline continues
-        params={
-            "format": ParamDefinition(
-                type=ParamType.ENUM,
-                required=False,
-                default="mp3",
-                values=["mp3", "aac"],
-            ),
-        },
-    ),
-
     # -------------------------------------------------------------------------
-    # COMBINATORY
+    # COMBINATORY  |  Capability: COMBINE
     # Takes multiple input artifacts, produces one output. Pipeline continues.
     # -------------------------------------------------------------------------
 
     "join": OperationDefinition(
         name="join",
         category=OperationCategory.COMBINATORY,
+        capability=OperationCapability.COMBINE,
         input_types=[ArtifactType.VIDEO, ArtifactType.AUDIO],
         output_type=[ArtifactType.VIDEO, ArtifactType.AUDIO],
         params={
@@ -236,13 +239,14 @@ REGISTRY: dict[str, OperationDefinition] = {
     ),
 
     # -------------------------------------------------------------------------
-    # TERMINAL
-    # Derives a new artifact type. Pipeline must end here.
+    # CONVERSION  |  Capability: EXTRACT / GENERATE
+    # Changes the asset's media type (e.g. video → audio). Pipeline continues.
     # -------------------------------------------------------------------------
 
     "extract_audio": OperationDefinition(
         name="extract_audio",
-        category=OperationCategory.TERMINAL,
+        category=OperationCategory.CONVERSION,
+        capability=OperationCapability.EXTRACT,
         input_types=[ArtifactType.VIDEO],
         output_type=[ArtifactType.AUDIO],
         params={
@@ -257,7 +261,8 @@ REGISTRY: dict[str, OperationDefinition] = {
 
     "thumbnail": OperationDefinition(
         name="thumbnail",
-        category=OperationCategory.TERMINAL,
+        category=OperationCategory.CONVERSION,
+        capability=OperationCapability.EXTRACT,
         input_types=[ArtifactType.VIDEO],
         output_type=[ArtifactType.IMAGE],
         params={
@@ -271,7 +276,8 @@ REGISTRY: dict[str, OperationDefinition] = {
 
     "gif": OperationDefinition(
         name="gif",
-        category=OperationCategory.TERMINAL,
+        category=OperationCategory.CONVERSION,
+        capability=OperationCapability.GENERATE,
         input_types=[ArtifactType.VIDEO],
         output_type=[ArtifactType.GIF],
         params={
@@ -302,12 +308,18 @@ def get_operation(name: str) -> Optional[OperationDefinition]:
     return REGISTRY.get(name)
 
 
-def is_terminal(name: str) -> bool:
-    """Check if an operation is terminal."""
+def is_conversion(name: str) -> bool:
+    """Check if an operation changes the asset's media type."""
     op = get_operation(name)
-    return op is not None and op.category == OperationCategory.TERMINAL
+    return op is not None and op.category == OperationCategory.CONVERSION
 
 
 def operation_exists(name: str) -> bool:
     """Check if an operation exists in the registry."""
     return name in REGISTRY
+
+
+def get_capability(name: str) -> Optional[OperationCapability]:
+    """Retrieve the product capability for an operation."""
+    op = get_operation(name)
+    return op.capability if op else None

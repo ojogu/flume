@@ -1,17 +1,15 @@
 {
-  "title": "Documentation",
   "pages": [
     "index",
-    "getting-started",
-    "authentication/meta",
-    "core-concepts",
-    "operations-reference",
-    "api-reference/meta",
-    "webhooks/meta",
-    "errors",
-    "rate-limits",
-    "pagination",
-    "versioning",
+    "get-started",
+    "guides",
+    "recipes",
+    "operations",
+    "api-reference",
+    "sdks",
+    "architecture",
+    "deployment",
+    "examples",
     "changelog"
   ]
 }

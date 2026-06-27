@@ -1,14 +1,13 @@
 # ── Pipeline validation gates ──────────────────────────────────────────
 #
-# Six sequential gates. If any fails, the request is rejected immediately
+# Five sequential gates. If any fails, the request is rejected immediately
 # with a clear BadRequest. Nothing proceeds until the current gate passes.
 #
 #   Gate 1: Schema validation   (Pydantic — CreateJobRequest)
 #   Gate 2: Registry lookup     (operation names exist)
 #   Gate 3: Param validation    (required, types, enums, bounds)
 #   Gate 4: Type compatibility  (source → step 0, step N → step N+1)
-#   Gate 5: Terminal validation (terminal ops only at last position)
-#   Gate 6: Pipeline spec       (build enriched spec for DB storage)
+#   Gate 5: Pipeline spec       (build enriched spec for DB storage)
 # ──────────────────────────────────────────────────────────────────────────
 
 from src.utils.registry import (
@@ -16,7 +15,6 @@ from src.utils.registry import (
     ParamType,
     get_operation,
     operation_exists,
-    is_terminal,
     OperationDefinition,
 )
 from src.core.exception_base import BadRequest
@@ -48,7 +46,7 @@ def validate_registry(pipeline: list[dict]) -> None:
             # newlines inside a single f"...".
             valid_ops = ', '.join(sorted([
                 'trim', 'cut', 'compress', 'transcode', 'resize',
-                'watermark', 'subtitle', 'mute', 'convert_to_audio',
+                'watermark', 'subtitle', 'mute',
                 'join', 'extract_audio', 'thumbnail', 'gif',
             ]))
             raise BadRequest(
@@ -206,34 +204,13 @@ def validate_type_compatibility(source_type: str, pipeline: list[dict]) -> None:
     logger.debug(f"Gate 4 passed — type compatibility OK")
 
 
-# ── Gate 5: Terminal validation ──────────────────────────────────────────
-def validate_terminal_position(pipeline: list[dict]) -> None:
-    """Terminal operations are only allowed as the last step in the pipeline.
-
-    Terminal operations (extract_audio, thumbnail, gif) produce artifact
-    types that nothing downstream can consume. If one appears before the
-    final position the pipeline would dead-end prematurely.
-    """
-    if len(pipeline) <= 1:
-        logger.debug("Gate 5 passed — terminal position valid (single step)")
-        return
-
-    for i, step in enumerate(pipeline[:-1]):
-        if is_terminal(step["operation"]):
-            raise BadRequest(
-                f"Terminal operation '{step['operation']}' at position {i} "
-                f"must be the last step in the pipeline"
-            )
-    logger.debug("Gate 5 passed — terminal positions valid")
-
-
-# ── Gate 6: Pipeline spec construction ───────────────────────────────────
+# ── Gate 5: Pipeline spec construction ───────────────────────────────────
 def build_pipeline_spec(pipeline: list[dict]) -> list[dict]:
     """All gates passed — build the enriched pipeline spec for DB storage.
 
-    Each step is annotated with category, input_types, and output_type from
-    the registry so downstream consumers (dispatch, workers) can operate
-    without re-querying the registry.
+    Each step is annotated with category, capability, input_types, and
+    output_type from the registry so downstream consumers (dispatch, workers)
+    can operate without re-querying the registry.
     """
     spec = []
     for step in pipeline:
@@ -241,11 +218,12 @@ def build_pipeline_spec(pipeline: list[dict]) -> list[dict]:
         spec.append({
             "operation": step["operation"],
             "category": op_def.category.value,
+            "capability": op_def.capability.value,
             "input_types": [t.value for t in op_def.input_types],
             "output_type": [t.value for t in op_def.output_type],
             "params": step.get("params", {}),
         })
-    logger.info(f"Gate 6 — built enriched spec with {len(spec)} steps: {[s['operation'] for s in spec]}")
+    logger.info(f"Gate 5 — built enriched spec with {len(spec)} steps: {[s['operation'] for s in spec]}")
     return spec
 
 
@@ -255,7 +233,7 @@ def validate_and_build_pipeline(
     source_type: str,
     pipeline: list[dict],
 ) -> list[dict]:
-    """Run all six gates in sequence.
+    """Run all five gates in sequence.
 
     Args:
         source:       Source URL string (already validated as HttpUrl by Pydantic).
@@ -281,10 +259,7 @@ def validate_and_build_pipeline(
         # Gate 4: Type compatibility
         validate_type_compatibility(source_type, pipeline)
 
-        # Gate 5: Terminal position
-        validate_terminal_position(pipeline)
-
-        # Gate 6: Build spec
+        # Gate 5: Build spec
         return build_pipeline_spec(pipeline)
 
     except BadRequest:

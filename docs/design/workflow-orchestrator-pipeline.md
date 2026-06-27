@@ -13,7 +13,7 @@ The orchestrator is the control plane of the architecture. It receives validated
 | **Step artifact** | The artifact a specific step produced. Lives in `job_steps.output_artifact`. |
 | **Typed artifact** | An artifact with a type — `video`, `audio`, `image`, `gif` |
 | **Intermediate artifact** | An artifact produced mid-pipeline, consumed by the next step, not the final output |
-| **Final artifact** | The artifact the last step produces. Delivered to the client. |
+| **Final artifact** | The artifact the last pipeline step produces. Processed by the job's outputs (delivery targets). |
 
 ## Tables
 
@@ -32,11 +32,13 @@ Analogy: `jobs` is the recipe, `job_steps` is the cooking log. The recipe says "
 
 Four types: `video`, `audio`, `image`, `gif`. Every artifact has one of these types. Every operation declares what it accepts and what it produces. The type system is what catches invalid pipelines at submission time — if step N produces `audio` and step N+1 only accepts `video`, the mismatch is caught before any processing runs.
 
-Terminal operations produce a type that nothing downstream can consume. Nothing can follow a terminal step.
+Conversion operations (e.g. `extract_audio`, `thumbnail`) change the artifact's media type. The new type flows to the next step, which must accept it. The pipeline ends only when the last operation finishes, not because any operation is intrinsically terminal.
 
 ## Pipeline Spec
 
 Flume uses a **linear pipeline model** — a predefined, sequential flow (A → B → C). The alternative (DAG/graph model) supports conditional branching, but the linear model is simpler and sufficient for V1. The trade-off: all operation flow must be predefined; there's no runtime branching.
+
+The job request has two top-level fields: `pipeline` (the operations) and `outputs` (delivery targets). The pipeline produces the final artifact; the outputs specify what to do with it — generate a download link, upload to a URL, etc.
 
 The pipeline spec is the intermediary representation (IR):
 
@@ -60,9 +62,11 @@ The [operation registry](operation-registry.md) is an internal config defining h
 
 | Category | Behavior |
 |----------|----------|
-| **Transformative** | Pipeline continues. One input, one output. |
-| **Combinatory** | Pipeline continues. Needs multiple inputs in params. |
-| **Terminal** | Pipeline must end here. Nothing can follow. |
+| **Transformative** | One input, one output. Media type stays the same. |
+| **Combinatory** | Needs multiple inputs in params. Merges into one output. |
+| **Conversion** | Changes the artifact's media type (e.g. video → audio). Pipeline continues. |
+
+The categories exist solely for **operation-level type validation** — they check whether an operation's `input_types` match the previous step's `output_type`. They do not constrain where in the pipeline an operation can appear. The pipeline ends when the executor reaches the last operation; outputs are then processed.
 
 Error messages are registry-aware: unknown operation — says exactly that; bad params — names the offending param and why.
 
@@ -80,37 +84,32 @@ Problem: too rigid. No technical reason you can't watermark before resizing.
 **Operation-Level (chosen):** No phases. The registry enforces order strictly by checking type compatibility between adjacent steps. At each boundary, one question: *does the output type of step N match the input type of step N+1?*
 
 - `trim (video → video) → resize (video → video)` ✓
-- `trim (video → video) → extract_audio (video → audio [terminal])` ✓
-- `extract_audio → trim` ✗ Nothing follows a terminal
+- `trim (video → video) → extract_audio (video → audio)` ✓
+- `extract_audio (video → audio) → trim (audio → audio)` ✓ (trim accepts both)
+- `thumbnail (video → image) → resize (image → image)` ✓
 - `trim → watermark → resize` ✓ All types match, order irrelevant
 
 Operation-level focuses on the only constraint that matters: **data compatibility**. If one tool's output can safely feed the next tool's input, the pipeline is valid. This maximizes flexibility while guaranteeing correctness.
 
 #### Intake Validation Gates
 
-All validation runs at submission time in `src/service/validation.py`. Six sequential gates — if any fails, the request is rejected with a clear `BadRequest`. Nothing proceeds to the next gate until the current one passes.
+All validation runs at submission time in `src/service/validation.py`. Five sequential gates — if any fails, the request is rejected with a clear `BadRequest`. Nothing proceeds to the next gate until the current one passes.
 
 | Gate | What it checks | Implementation |
 |------|----------------|----------------|
-| **1 — Schema** | Request body well-formed, `source` is a valid URL via Pydantic `HttpUrl`, `pipeline` is non-empty | Pydantic `CreateJobRequest` |
+| **1 — Schema** | Request body well-formed, `source` is a valid URL, `pipeline` is non-empty | Pydantic `CreateJobRequest` |
 | **2 — Registry** | Every operation name in `pipeline` exists in the operation registry | `validate_registry()` |
 | **3 — Params** | Required params present, types match registry, enum values within allowed set, int/float within min/max bounds, no unknown params | `validate_params()` |
 | **4 — Type compatibility** | Source type matches step 0's input types; each step's output type matches the next step's input types (operation-level type matching) | `validate_type_compatibility()` |
-| **5 — Terminal position** | Terminal operations (`extract_audio`, `thumbnail`, `gif`) only at the last pipeline position | `validate_terminal_position()` |
-| **6 — Pipeline spec** | All gates passed — build enriched spec annotated with category, input_types, output_type for downstream consumers | `build_pipeline_spec()` |
+| **5 — Pipeline spec** | All gates passed — build enriched spec annotated with category, input_types, output_type for downstream consumers | `build_pipeline_spec()` |
 
 **Error model:** Every gate raises `BadRequest` with a positional message identifying exactly what failed and where. Errors at submission time are cheap — no compute spent.
 
 #### Source Pre-Resolution
 
-Before intake validation runs, the route resolves the source URI. If the
-URI corresponds to an unattached upload (from `POST /uploads`), the route
-marks it as attached. This prevents the cleanup job from deleting the file
-mid-pipeline.
+Before intake validation runs, the route resolves the source URI. If the URI corresponds to an unattached upload (from `POST /up loads`), the routemarks it as attached. This prevents the cleanup job from deleting the file mid-pipeline.
 
-After this step the source is a plain URI — external URLs and uploads
-follow the exact same path through validation. Intake never touches upload
-logic.
+After this step the source is a plain URI — external URLs and uploads follow the exact same path through validation. Intake never touches upload logic.
 
 ### 2. Dispatch
 
@@ -130,7 +129,11 @@ Writing to R2, reading from R2, structuring artifact metadata. The execution loo
 
 ### 6. Completion
 
-All steps done — mark job complete, trigger client notification via webhook or make the result available for polling.
+All pipeline steps done — process the job's **outputs** (delivery targets). For each output:
+- `generate_download_link`: generate a presigned GET URL for the final artifact
+- `upload`: upload the final artifact to the client-specified URL
+
+Once outputs are fulfilled, mark the job complete and trigger client notification via webhook (if configured) or make the result available for polling.
 
 ### 7. Failure Handling
 

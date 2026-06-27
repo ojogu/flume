@@ -41,5 +41,8 @@ migrate.sh
 # Dev-only scripts
 backend/dev_drop_db.py
 
+# Test media files
+backend/vids/
+
 # Generated posts
 posts/

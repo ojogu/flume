@@ -1,0 +1,30 @@
+---
+title: Pipeline Execution
+description: How pipelines are planned and executed.
+---
+
+# Pipeline Execution
+
+Flume uses a **linear pipeline model** where operations are executed in a predefined, sequential flow (A → B → C).
+
+## The Orchestrator
+
+The orchestrator is the control plane. It receives validated job requests, walks them through operations, and produces final artifacts.
+
+| Table | Role |
+|-------|------|
+| `jobs` | The plan and execution owner. |
+| `job_steps` | The execution record for each step. |
+
+### Execution Loop
+The worker reads the enriched pipeline spec and walks steps by index:
+1. **Fetch Input:** Retrieves the artifact from R2 storage.
+2. **Dispatch:** Triggers FFmpeg processing with specific parameters.
+3. **Write Artifact:** Saves the output file to R2.
+4. **Advance:** Updates step state and moves to the next index.
+
+## Type System
+Every artifact has a type: `video`, `audio`, `image`, or `gif`. The type system ensures data compatibility between steps. If step N produces `audio` and step N+1 requires `video`, the pipeline is rejected during the intake phase.
+
+## Artifact Management
+Artifacts are stored in Cloudflare R2. Metadata is attached to each artifact describing its codecs, bitrate, resolution, and duration. Downstream operations read this metadata to avoid expensive re-inspection.

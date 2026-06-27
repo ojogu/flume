@@ -64,6 +64,7 @@ class R2Storage:
                 connect_timeout=10,
                 read_timeout=30,
                 retries={"max_attempts": 3, "mode": "adaptive"},
+                signature_version="s3v4",
             ),
         )
         return self._client

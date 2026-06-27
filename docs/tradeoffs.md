@@ -177,7 +177,7 @@ Earlier names MediaFlow and MediaBot were replaced. Sub-product names should fee
 
   ```
   trim → watermark → trim       # Deliberate or mistake?
-  convert_to_audio → trim → compress  vs  trim → convert_to_audio → compress  # Different results
+  extract_audio → trim → compress  vs  trim → extract_audio → compress  # Different results
   ```
 
   Reordering silently changes output. The client has no visibility into what actually ran.

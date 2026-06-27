@@ -1,0 +1,27 @@
+---
+title: Operation Registry
+description: The authoritative list of supported media operations.
+---
+
+# Operation Registry
+
+The registry defines every operation Flume supports — what it accepts, what it produces, and its valid parameters.
+
+## Operation Entry
+Each operation in the registry includes:
+- **Name:** e.g., `trim`, `compress`, `extract_audio`.
+- **Input Type:** `video`, `audio`, or both.
+- **Output Type:** The resulting media type.
+- **Allowed Params:** Configuration rules (type, range, enums).
+
+## Categories
+Operations are grouped into execution categories used for engine validation:
+- **Transformative:** One input, one output (e.g., `trim`).
+- **Combinatory:** Multiple inputs, one output (e.g., `join`).
+- **Conversion:** Changes media type (e.g., video → audio).
+
+## Validation Logic
+The registry is consulted at intake time to ensure the pipeline is semantically correct. It checks:
+1. **Existence:** Are all operation names valid?
+2. **Parameters:** Do parameter types and values match definitions?
+3. **Compatibility:** Does the output of one step safely feed the next?
