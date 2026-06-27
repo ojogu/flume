@@ -38,7 +38,7 @@ async def create_job(
         await upload_service.attach_upload(upload.id, api_key.id)
         logger.info(f"Prior upload {upload.id} attached to job")
 
-    # Run 6 validation gates (registry → params → types → terminal → build spec)
+    # Run 5 validation gates (registry → params → types → build spec)
     logger.debug(f"Starting pipeline validation — {len(body.pipeline)} operations")
     spec = validate_and_build_pipeline(
         source=source.uri,
@@ -50,12 +50,14 @@ async def create_job(
         f"{len(spec)} steps: {[s['operation'] for s in spec]}"
     )
 
-    # Persist the job in pending state with the enriched pipeline spec
+    # Persist the job in pending state with the enriched pipeline spec and outputs
+    outputs = [o.model_dump() for o in body.outputs]
     job = await job_service.create_job(
         api_key_id=api_key.id,
         source_uri=source.uri,
         source_type=source.type.value,
         pipeline_spec=spec,
+        outputs=outputs,
     )
 
     logger.info(f"Job {job.id} created — status={job.status}, source={job.source_uri}")

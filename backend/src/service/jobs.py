@@ -19,6 +19,7 @@ class JobService:
         source_uri: str,
         source_type: str,
         pipeline_spec: list[dict] | None = None,
+        outputs: list[dict] | None = None,
     ) -> Job:
         """Create a job in pending state with the validated pipeline spec."""
         job = Job(
@@ -27,6 +28,7 @@ class JobService:
             source_type=source_type,
             status=JobStatus.PENDING.value,
             pipeline_steps=pipeline_spec,
+            outputs=outputs,
         )
         self.db.add(job)
         try:
@@ -37,7 +39,8 @@ class JobService:
                 f"Job {job.id} created for API key {api_key_id} — "
                 f"source={source_uri}, "
                 f"type={source_type}, "
-                f"steps={len(pipeline_spec) if pipeline_spec else 0}"
+                f"steps={len(pipeline_spec) if pipeline_spec else 0}, "
+                f"outputs={len(outputs) if outputs else 0}"
             )
             return job
         except Exception as e:

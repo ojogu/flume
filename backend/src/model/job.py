@@ -41,6 +41,7 @@ class Job(BaseModel):
     source_uri = sa.Column(sa.Text, nullable=False)
     source_type = sa.Column(sa.String, nullable=False)
     pipeline_steps = sa.Column(JSONB, nullable=True)
+    outputs = sa.Column(JSONB, nullable=True)
     completed_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
 
     api_key = relationship("ApiKey", back_populates="jobs")
