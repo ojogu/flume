@@ -107,29 +107,29 @@ Flume / External API Clients
 
 ### 6.2 Video Ingestion
 
-**Endpoint:** `POST /v1/jobs`
+**Endpoint:** `POST /v1/job`
 
-Accepts two input types:
+Accepts two source types:
 
 **Remote URL (link-based)**
 ```json
 {
-  "input": {
-    "type": "url",
-    "url": "https://www.instagram.com/reel/..."
+  "source": {
+    "type": "video",
+    "uri": "https://www.instagram.com/reel/..."
   },
-  "operations": [...]
+  "pipeline": [...]
 }
 ```
 
-**Direct File Upload**
+**Direct File Upload (via presign + complete flow)**
 ```json
 {
-  "input": {
-    "type": "upload",
-    "file_key": "uploads/uuid.mp4"
+  "source": {
+    "type": "video",
+    "uri": "uploads/uuid.mp4"
   },
-  "operations": [...]
+  "pipeline": [...]
 }
 ```
 
@@ -162,16 +162,18 @@ All operations are expressed as a list in the job request. They execute in order
 **Example job request:**
 ```json
 {
-  "input": {
-    "type": "url",
-    "url": "https://www.youtube.com/watch?v=..."
+  "source": {
+    "type": "video",
+    "uri": "https://www.youtube.com/watch?v=..."
   },
-  "operations": [
-    { "type": "trim", "start": "00:01:00", "end": "00:02:30" },
-    { "type": "compress", "quality": "medium" },
-    { "type": "watermark", "image_url": "https://...", "position": "bottom-right" }
+  "pipeline": [
+    { "operation": "trim", "params": { "start": 60.0, "end": 150.0 } },
+    { "operation": "compress", "params": { "quality": "medium" } },
+    { "operation": "watermark", "params": { "image_url": "https://...", "position": "bottom_right" } }
   ],
-  "webhook_url": "https://yourapp.com/webhooks/flume"
+  "outputs": [
+    { "type": "generate_download_link" }
+  ]
 }
 ```
 
@@ -189,22 +191,30 @@ queued → processing → completed
 **Job Response (on creation):**
 ```json
 {
-  "job_id": "job_abc123",
-  "status": "queued",
-  "created_at": "2026-05-04T10:00:00Z"
+  "id": "uuid",
+  "api_key_id": "uuid",
+  "status": "pending",
+  "source_uri": "https://...",
+  "source_type": "video",
+  "pipeline_steps": [...],
+  "outputs": [...],
+  "created_at": "2026-06-27T12:00:00Z",
+  "updated_at": "2026-06-27T12:00:00Z"
 }
 ```
 
-**Polling endpoint:** `GET /v1/jobs/{job_id}`
+**Polling endpoint:** `GET /v1/job/{job_id}`
 
 ```json
 {
-  "job_id": "job_abc123",
-  "status": "completed",
-  "output": {
-    "url": "https://flume.ojogulabs.xyz/output/job_abc123.mp4",
-    "size_bytes": 4200000,
-    "expires_at": "2026-05-11T10:00:00Z"
+  "status": "success",
+  "message": "Job retrieved",
+  "data": {
+    "id": "uuid",
+    "status": "complete",
+    "pipeline_steps": [...],
+    "outputs": [...],
+    "completed_at": "2026-06-27T12:05:00Z"
   }
 }
 ```
@@ -217,9 +227,9 @@ queued → processing → completed
 ### 6.5 Output Handling
 
 - Processed files stored on Cloudflare R2
-- Output URLs are public but non-guessable (UUID-based paths)
-- Files expire after 7 days (configurable per tier)
-- Large files (>50MB) are not delivered inline — URL only
+- Output delivery is defined per-job via the `outputs` field — clients can request a presigned download link, upload to a URL, or both
+- Default output is `generate_download_link` (returns a presigned GET URL for the final artifact)
+- Presigned URLs expire after 1 hour; the underlying file persists per storage policy
 
 ### 6.6 Developer Infrastructure
 
