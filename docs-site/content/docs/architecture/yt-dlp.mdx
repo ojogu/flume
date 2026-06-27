@@ -1,0 +1,27 @@
+---
+title: yt-dlp Layer
+description: Core download layer for social media and video platforms.
+---
+
+# yt-dlp Layer
+
+Flume wraps `yt-dlp` to handle media extraction across supported platforms, producing structured artifacts for the processing pipeline.
+
+## Supported Platforms
+- YouTube (videos, playlists, VODs)
+- Instagram, TikTok, Twitter/X
+- Facebook, Vimeo, Reddit
+
+## Pipeline Phases
+1. **URL Validation:** Platforms are detected and validated early.
+2. **Detection:** Differentiates between single videos and playlists.
+3. **Metadata Extraction:** Fetches full media info before downloading.
+4. **Job Creation:** 
+   - **Single video:** Creates one processing job.
+   - **Playlist:** Spawns child jobs for each entry.
+
+## Artifact Schema
+The download layer produces a standard artifact schema containing:
+- **Source info:** Platform and original URL.
+- **File info:** R2 path and container type.
+- **Media info:** Duration, codecs, and resolution.

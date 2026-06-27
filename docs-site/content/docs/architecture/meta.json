@@ -1,0 +1,11 @@
+{
+  "title": "Architecture",
+  "pages": [
+    "lifecycle",
+    "pipeline-execution",
+    "operation-registry",
+    "storage",
+    "jobs",
+    "webhooks"
+  ]
+}

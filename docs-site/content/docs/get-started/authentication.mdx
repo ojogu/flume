@@ -1,0 +1,20 @@
+---
+title: Authentication
+description: Secure your requests to the Flume API.
+---
+
+# Authentication
+
+All requests to the Flume API must be authenticated using an API Key.
+
+## API Keys
+You can generate API keys in your dashboard.
+- `fl_test_...`: Sandbox key for testing without costs.
+- `fl_live_...`: Production key for live processing.
+
+## Header Usage
+Include your key in the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: YOUR_API_KEY" https://api.flume.ojogulabs.xyz/v1/job
+```

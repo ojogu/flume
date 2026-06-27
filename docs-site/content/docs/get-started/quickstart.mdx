@@ -1,0 +1,135 @@
+---
+title: Quickstart
+description: Learn how to send your first processing job with Flume in under 5 minutes.
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Quickstart
+
+Complete a media processing workflow in under five minutes using our canonical HTTP API.
+
+<Steps>
+<Step>
+### Create an API Key
+Sign up at [flume.ojogulabs.xyz/signup](https://flume.ojogulabs.xyz/signup) and generate a sandbox API key (`fl_test_...`). This key allows you to simulate the entire pipeline without incurring costs.
+</Step>
+
+<Step>
+### Upload Media
+If your media isn't already hosted at a public URL, upload it to Flume's temporary storage.
+
+<Tabs items={['HTTP (cURL)', 'Python', 'Node.js']}>
+<Tab value="HTTP (cURL)">
+```bash
+# 1. Request a presigned URL
+curl -X POST https://api.flume.ojogulabs.xyz/v1/uploads/presign \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"filename": "video.mp4", "content_type": "video/mp4"}'
+
+# 2. Upload the file bytes to the returned URL
+curl -X PUT "URL_FROM_STEP_1" \
+  -H "Content-Type: video/mp4" \
+  --data-binary @video.mp4
+
+# 3. Complete the upload
+curl -X POST https://api.flume.ojogulabs.xyz/v1/uploads/UPLOAD_ID/complete \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+</Tab>
+<Tab value="Python">
+```python
+from flume import Flume
+client = Flume("YOUR_API_KEY")
+
+upload = client.uploads.upload_file("video.mp4")
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+import { Flume } from '@flume/node';
+const flume = new Flume('YOUR_API_KEY');
+
+const upload = await flume.uploads.uploadFile('video.mp4');
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Create a Processing Pipeline
+Define a pipeline to transform your media. For this example, we'll trim a video and extract its audio.
+
+<Tabs items={['HTTP (cURL)', 'Python', 'Node.js']}>
+<Tab value="HTTP (cURL)">
+```bash
+curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "art_UPLOAD_ID",
+    "pipeline": [
+      { "operation": "trim", "params": { "start": 0, "end": 10 } },
+      { "operation": "extract_audio" }
+    ]
+  }'
+```
+</Tab>
+<Tab value="Python">
+```python
+job = client.jobs.create(
+    source="art_UPLOAD_ID",
+    pipeline=[
+        {"operation": "trim", "params": {"start": 0, "end": 10}},
+        {"operation": "extract_audio"}
+    ]
+)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const job = await flume.jobs.create({
+  source: 'art_UPLOAD_ID',
+  pipeline: [
+    { operation: 'trim', params: { start: 0, end: 10 } },
+    { operation: 'extract_audio' }
+  ]
+});
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Monitor the Job
+Jobs run asynchronously. Poll the status endpoint to track progress.
+
+<Tabs items={['HTTP (cURL)', 'Python', 'Node.js']}>
+<Tab value="HTTP (cURL)">
+```bash
+curl https://api.flume.ojogulabs.xyz/v1/job/JOB_ID \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+</Tab>
+<Tab value="Python">
+```python
+job = client.jobs.get("JOB_ID")
+print(job.status) # "pending", "running", "completed"
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const job = await flume.jobs.get('JOB_ID');
+console.log(job.status);
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Download the Output
+Once the job status is `completed`, the response will contain download links for your final artifacts.
+</Step>
+</Steps>

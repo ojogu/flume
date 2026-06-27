@@ -1,0 +1,15 @@
+---
+title: Uploads
+description: Managing media uploads to Flume.
+---
+
+# Uploads
+
+Before processing files that aren't available via public URL, you must upload them to Flume.
+
+## Upload Flow
+1. **Presign:** Request a presigned URL.
+2. **PUT:** Upload the file bytes.
+3. **Complete:** Notify Flume that the upload is finished.
+
+Supported formats include MP4, MOV, MKV for video, and MP3, WAV for audio.

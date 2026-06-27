@@ -1,0 +1,25 @@
+---
+title: Storage
+description: How uploads and outputs are stored.
+---
+
+# Storage
+
+Flume utilizes a high-performance object storage model to handle media at scale.
+
+## Infrastructure
+- **Primary:** Cloudflare R2 (Global, S3-compatible).
+- **Fallback:** Amazon S3.
+
+## Data Lifecycle
+
+### Uploads
+1. **Presign:** Client requests a PUT URL.
+2. **PUT:** Client uploads bytes directly to R2.
+3. **Complete:** Client confirms the upload; Flume verifies the object.
+
+### Intermediate Artifacts
+Files produced between pipeline steps are stored in ephemeral durable storage. They are available for subsequent steps or delivery as final output.
+
+### Result Delivery
+Final artifacts are served via presigned GET URLs or uploaded directly to client-specified storage buckets.

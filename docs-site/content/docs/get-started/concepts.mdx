@@ -1,0 +1,52 @@
+---
+title: Concepts
+description: Understand Flume's public mental model.
+---
+
+# Concepts
+
+Flume's media processing infrastructure is built on a clear three-layer mental model. Understanding these layers is key to building efficient media workflows.
+
+## The Mental Model
+
+The relationship between your data and Flume's processing engine follows this flow:
+
+**Source** $\downarrow$ **Pipeline** $\downarrow$ **Job** $\downarrow$ **Result**
+
+### Source
+The raw media file you want to process. This can be a public URL or a file uploaded directly to Flume.
+
+### Pipeline
+A sequence of **Operations** that you want to apply to the source. Pipelines are declarative; you describe *what* you want to achieve, not *how* to execute it.
+
+### Job
+An end-to-end execution of a pipeline on a source. Jobs are asynchronous and can be monitored in real-time.
+
+### Result
+The final processed artifact, delivered to your specified destination (e.g., a download link or your own storage).
+
+---
+
+## The Three-Layer Architecture
+
+Flume classifies media operations along two independent axes:
+
+| Layer | Audience | Purpose |
+|-------|----------|---------|
+| **Capability** | Developers | Product taxonomy — what Flume offers (Transform, Extract, Combine, etc.) |
+| **Operation** | Developers + Consumers | Concrete executable operations (trim, resize, thumbnail, etc.) |
+| **Execution** | Pipeline Engine | Validation semantics — how the engine processes artifacts |
+
+### Capabilities (Developer-facing)
+Capabilities are high-level groupings of media tasks. They help you discover what Flume can do.
+- **Transform Media:** Modify, reshape, or enrich media (trim, compress, watermark).
+- **Extract Media:** Pull data or sub-artifacts (extract audio, generate thumbnails).
+- **Combine Media:** Merge multiple sources into one (join).
+- **Analyze Media:** Extract insights (transcribe, detect scenes).
+- **Generate Media:** Create new assets (generate GIFs, contact sheets).
+
+### Operations (Building Blocks)
+Operations are the concrete tools you use in your pipeline. Every operation has specific parameters and validation rules.
+
+### Execution Layer (Engine Internal)
+The internal engine uses categories like *Transformative*, *Combinatory*, and *Conversion* to validate and execute your pipeline efficiently. These internals are handled automatically by Flume.
