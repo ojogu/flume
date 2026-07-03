@@ -1,72 +1,91 @@
 ---
 title: Quickstart
-description: Learn how to send your first processing job with Flume in under 5 minutes.
+description: Complete a media processing workflow in under five minutes using our canonical HTTP API or official SDKs.
 ---
 
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Book, Code, CircleHelp, CircleCheck } from 'lucide-react';
 
-# Quickstart
+# Quickstart <span className="text-display text-brand font-normal ml-1">Journey</span>
 
-Complete a media processing workflow in under five minutes using our canonical HTTP API.
+Complete a media processing workflow in under five minutes using our canonical HTTP API or official SDKs.
 
 <Steps>
 <Step>
-### Create an API Key
-Sign up at [flume.ojogulabs.xyz/signup](https://flume.ojogulabs.xyz/signup) and generate a sandbox API key (`fl_test_...`). This key allows you to simulate the entire pipeline without incurring costs.
-</Step>
+### Install the SDK
+Install the official Flume SDK or use direct API calls. Sandbox keys are ready for use.
 
-<Step>
-### Upload Media
-If your media isn't already hosted at a public URL, upload it to Flume's temporary storage.
-
-<Tabs items={['HTTP (cURL)', 'Python', 'Node.js']}>
+<Tabs items={['HTTP (cURL)', 'Node.js', 'Python', 'Go']}>
 <Tab value="HTTP (cURL)">
 ```bash
-# 1. Request a presigned URL
-curl -X POST https://api.flume.ojogulabs.xyz/v1/uploads/presign \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"filename": "video.mp4", "content_type": "video/mp4"}'
-
-# 2. Upload the file bytes to the returned URL
-curl -X PUT "URL_FROM_STEP_1" \
-  -H "Content-Type: video/mp4" \
-  --data-binary @video.mp4
-
-# 3. Complete the upload
-curl -X POST https://api.flume.ojogulabs.xyz/v1/uploads/UPLOAD_ID/complete \
-  -H "X-API-Key: YOUR_API_KEY"
-```
-</Tab>
-<Tab value="Python">
-```python
-from flume import Flume
-client = Flume("YOUR_API_KEY")
-
-upload = client.uploads.upload_file("video.mp4")
+# No installation required for HTTP API.
+curl --version
 ```
 </Tab>
 <Tab value="Node.js">
-```javascript
-import { Flume } from '@flume/node';
-const flume = new Flume('YOUR_API_KEY');
-
-const upload = await flume.uploads.uploadFile('video.mp4');
+```bash
+npm install @flume/node
+```
+</Tab>
+<Tab value="Python">
+```bash
+pip install flume-python
+```
+</Tab>
+<Tab value="Go">
+```bash
+go get github.com/flume-media/flume-go
 ```
 </Tab>
 </Tabs>
 </Step>
 
 <Step>
-### Create a Processing Pipeline
-Define a pipeline to transform your media. For this example, we'll trim a video and extract its audio.
+### Initialize & Authenticate
+Authenticate your requests using the `X-API-Key` header. Use your sandbox key (`fl_test_...`) to initialize the client without incurring any costs.
 
-<Tabs items={['HTTP (cURL)', 'Python', 'Node.js']}>
+<Tabs items={['HTTP (cURL)', 'Node.js', 'Python', 'Go']}>
+<Tab value="HTTP (cURL)">
+```bash
+curl -H "X-API-Key: fl_test_..." \
+  https://api.flume.ojogulabs.xyz/v1/auth/verify
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+import { Flume } from '@flume/node';
+
+const flume = new Flume('fl_test_...');
+```
+</Tab>
+<Tab value="Python">
+```python
+from flume import Flume
+
+flume = Flume('fl_test_...')
+```
+</Tab>
+<Tab value="Go">
+```go
+import "github.com/flume-media/flume-go"
+
+client := flume.NewClient("fl_test_...")
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Send Your First Job
+Define a pipeline of operations to transform your source media. We'll trim the first 10 seconds and extract the audio.
+
+<Tabs items={['HTTP (cURL)', 'Node.js', 'Python', 'Go']}>
 <Tab value="HTTP (cURL)">
 ```bash
 curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
-  -H "X-API-Key: YOUR_API_KEY" \
+  -H "X-API-Key: fl_test_..." \
   -H "Content-Type: application/json" \
   -d '{
     "source": "art_UPLOAD_ID",
@@ -75,17 +94,6 @@ curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
       { "operation": "extract_audio" }
     ]
   }'
-```
-</Tab>
-<Tab value="Python">
-```python
-job = client.jobs.create(
-    source="art_UPLOAD_ID",
-    pipeline=[
-        {"operation": "trim", "params": {"start": 0, "end": 10}},
-        {"operation": "extract_audio"}
-    ]
-)
 ```
 </Tab>
 <Tab value="Node.js">
@@ -99,30 +107,58 @@ const job = await flume.jobs.create({
 });
 ```
 </Tab>
+<Tab value="Python">
+```python
+job = flume.jobs.create(
+    source="art_UPLOAD_ID",
+    pipeline=[
+        {"operation": "trim", "params": {"start": 0, "end": 10}},
+        {"operation": "extract_audio"}
+    ]
+)
+```
+</Tab>
+<Tab value="Go">
+```go
+job, _ := client.Jobs.Create(context.Background(), flume.JobCreateRequest{
+    Source: "art_UPLOAD_ID",
+    Pipeline: []flume.Operation{
+        {Name: "trim", Params: map[string]interface{}{"start": 0, "end": 10}},
+        {Name: "extract_audio"},
+    },
+})
+```
+</Tab>
 </Tabs>
 </Step>
 
 <Step>
-### Monitor the Job
-Jobs run asynchronously. Poll the status endpoint to track progress.
+### Monitor Progress
+Processing is asynchronous. Poll the job status to know when your results are ready.
 
-<Tabs items={['HTTP (cURL)', 'Python', 'Node.js']}>
+<Tabs items={['HTTP (cURL)', 'Node.js', 'Python', 'Go']}>
 <Tab value="HTTP (cURL)">
 ```bash
-curl https://api.flume.ojogulabs.xyz/v1/job/JOB_ID \
-  -H "X-API-Key: YOUR_API_KEY"
-```
-</Tab>
-<Tab value="Python">
-```python
-job = client.jobs.get("JOB_ID")
-print(job.status) # "pending", "running", "completed"
+curl -H "X-API-Key: fl_test_..." \
+  https://api.flume.ojogulabs.xyz/v1/job/JOB_ID
 ```
 </Tab>
 <Tab value="Node.js">
 ```javascript
-const job = await flume.jobs.get('JOB_ID');
-console.log(job.status);
+const status = await flume.jobs.get(job.id);
+console.log(status.status); // 'completed'
+```
+</Tab>
+<Tab value="Python">
+```python
+status = flume.jobs.get(job.id)
+print(status.status) # 'completed'
+```
+</Tab>
+<Tab value="Go">
+```go
+status, _ := client.Jobs.Get(context.Background(), job.ID)
+fmt.Println(status.Status)
 ```
 </Tab>
 </Tabs>
@@ -130,6 +166,40 @@ console.log(job.status);
 
 <Step>
 ### Download the Output
-Once the job status is `completed`, the response will contain download links for your final artifacts.
+
+<div className="bg-brand/10 border border-brand/20 rounded-xl p-6 flex items-start gap-4">
+  <div className="p-2 bg-brand rounded-lg shrink-0">
+    <CircleCheck className="text-white h-6 w-6" />
+  </div>
+  <div>
+    <p className="text-foreground font-medium mb-1">Success! Your media is ready.</p>
+    <p className="text-text-secondary text-sm leading-relaxed">
+      Once the job status is `completed`, the response will contain high-performance presigned download links for your final artifacts.
+    </p>
+  </div>
+</div>
 </Step>
 </Steps>
+
+## What's Next?
+
+<Cards>
+  <Card
+    title="Browse Guides"
+    description="Learn how to solve real problems with task-oriented tutorials."
+    href="/docs/guides"
+    icon={<Book className="h-4 w-4" />}
+  />
+  <Card
+    title="API Reference"
+    description="Explore every endpoint, request parameter, and response shape."
+    href="/docs/api-reference"
+    icon={<Code className="h-4 w-4" />}
+  />
+  <Card
+    title="Support"
+    description="Need help? Our engineers are just an email away."
+    href="mailto:hello@ojogulabs.xyz"
+    icon={<CircleHelp className="h-4 w-4" />}
+  />
+</Cards>
