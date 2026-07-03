@@ -3,9 +3,10 @@ from enum import Enum
 from typing import Any, Optional
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from src.model.job import SourceType, JobStatus
+from src.schema.download import FormatPreference, PlaylistSelection, AUDIO_SAFE_FORMATS
 
 
 class OutputType(str, Enum):
@@ -14,9 +15,25 @@ class OutputType(str, Enum):
 
 
 class SourceObject(BaseModel):
-    """Source media — type (video/audio) and URI (external URL or upload storage URI)."""
+    """Source media — type, URI, optional playlist selection, and quality format preference."""
     type: SourceType
     uri: str
+    # optional playlist entry filter — surface-level validation only (entries are positive ints);
+    # actual playlist detection and index-bounds checking happen in the async worker
+    selection: PlaylistSelection | None = None
+    # download quality preference — "best" by default; resolutions are rejected for audio sources
+    format: FormatPreference = FormatPreference.BEST
+
+    @model_validator(mode="after")
+    def _validate_format_for_source_type(self):
+        # resolution formats (480p, 720p, etc.) only make sense for video;
+        # audio sources can only use "best" or "smallest"
+        if self.type == SourceType.AUDIO and self.format not in AUDIO_SAFE_FORMATS:
+            raise ValueError(
+                f"Format '{self.format.value}' is not valid for audio sources. "
+                f"Use 'best' or 'smallest'."
+            )
+        return self
 
 
 class PipelineOperation(BaseModel):

@@ -33,18 +33,17 @@ class CeleryConfig:
     task_queues = (
         Queue("default", routing_key="default"),
         Queue("email", routing_key="email"),
+        Queue("orchestrator", routing_key="orchestrator"),
+        Queue("op.download", routing_key="op.download"),
     )
-    
-    
 
     # --------------------------
     # Task Routing
     # --------------------------
     task_routes = {
-        # email
-        "celery_app.task.send_email_task": {
-            "queue": "email"
-        },
+        "jobs.email.send":         {"queue": "email"},
+        "jobs.orchestrator.process": {"queue": "orchestrator"},
+        "jobs.download.execute":   {"queue": "op.download"},
     }
 
 

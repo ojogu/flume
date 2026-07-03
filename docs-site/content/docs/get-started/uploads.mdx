@@ -1,15 +1,177 @@
 ---
 title: Uploads
-description: Managing media uploads to Flume.
+description: Managing media uploads to Flume using our two-phase ingestion lifecycle.
 ---
 
-# Uploads
+import { Laptop, Server, Database, CloudDownload, Webhook, MessagesSquare, Rocket, Check, Info, ArrowRight, ArrowUpRight } from 'lucide-react';
 
-Before processing files that aren't available via public URL, you must upload them to Flume.
+<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-bold uppercase tracking-wider mb-6">
+  <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse"></span>
+  Media Ingestion
+</div>
 
-## Upload Flow
-1. **Presign:** Request a presigned URL.
-2. **PUT:** Upload the file bytes.
-3. **Complete:** Notify Flume that the upload is finished.
+# Securely move files into the <br/> <span className="text-display text-brand font-normal">Flume infrastructure.</span>
 
-Supported formats include MP4, MOV, MKV for video, and MP3, WAV for audio.
+Before processing files that aren't available via public URL, they must be uploaded directly to Flume. We use a two-phase flow to ensure integrity and scale.
+
+<div className="flex flex-col sm:flex-row gap-4 py-8 mb-12">
+  <a href="/docs/api-reference" className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-white bg-brand rounded-full hover:bg-brand-mid transition-all shadow-lg shadow-brand/20 group">
+    View API Reference
+    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+  </a>
+</div>
+
+<h3 className="text-sm font-bold uppercase tracking-[0.2em] text-text-muted mb-12 text-center">The Upload Lifecycle</h3>
+
+<div className="p-8 md:p-14 rounded-[2.5rem] bg-card border border-border mb-32 relative overflow-hidden">
+  <div className="flex flex-col md:flex-row items-center justify-between gap-10 relative z-10">
+    
+    <div className="flex flex-col items-center gap-4 text-center">
+      <div className="w-16 h-16 bg-white/5 border border-border rounded-2xl flex items-center justify-center">
+        <Laptop className="h-8 w-8 text-text-muted" />
+      </div>
+      <span className="text-sm font-bold">Your App</span>
+    </div>
+
+    <div className="flex-1 h-px border-t-2 border-dashed border-border relative min-w-[60px] hidden md:block">
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 bg-card text-[10px] font-bold text-text-muted uppercase tracking-wider">1. Presign</div>
+    </div>
+
+    <div className="flex flex-col items-center gap-4 text-center">
+      <div className="w-16 h-16 bg-brand/10 border border-brand/30 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(29,158,117,0.1)]">
+        <Server className="h-8 w-8 text-brand" />
+      </div>
+      <span className="text-sm font-bold">Flume API</span>
+    </div>
+
+    <div className="flex-1 h-px border-t-2 border-dashed border-border relative min-w-[60px] hidden md:block">
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 bg-card text-[10px] font-bold text-text-muted uppercase tracking-wider">2. PUT Bytes</div>
+    </div>
+
+    <div className="flex flex-col items-center gap-4 text-center">
+      <div className="w-16 h-16 bg-white/5 border border-border rounded-2xl flex items-center justify-center">
+        <Database className="h-8 w-8 text-text-muted" />
+      </div>
+      <span className="text-sm font-bold">R2 Storage</span>
+    </div>
+
+    <div className="flex-1 h-px border-t-2 border-dashed border-border relative min-w-[60px] hidden md:block">
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 bg-card text-[10px] font-bold text-text-muted uppercase tracking-wider">3. Complete</div>
+    </div>
+
+    <div className="flex flex-col items-center gap-4 text-center">
+      <div className="w-16 h-16 bg-brand/10 border border-brand/30 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(29,158,117,0.1)]">
+        <Server className="h-8 w-8 text-brand" />
+      </div>
+      <span className="text-sm font-bold">Flume API</span>
+    </div>
+
+  </div>
+</div>
+
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start mb-32">
+  <div className="lg:sticky lg:top-8">
+    <h2 className="text-3xl font-bold mb-6">Two-Phase Execution</h2>
+    <p className="text-lg text-text-secondary leading-relaxed mb-8">
+      The two-phase upload flow solves the "trust" problem inherent in client-side uploads. By requiring a completion step, Flume verifies the payload actually landed in storage before allowing it to be used in a job.
+    </p>
+    <div className="flex items-start gap-4 p-5 bg-white/5 rounded-2xl border border-border">
+      <Info className="h-6 w-6 text-brand shrink-0 mt-0.5" />
+      <p className="text-sm text-text-secondary leading-relaxed">
+        <strong className="text-foreground">Security Note:</strong> Always generate presigned URLs on your backend. Never expose your API keys in the browser or mobile client to prevent unauthorized storage access.
+      </p>
+    </div>
+  </div>
+  
+  <div className="bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+    <div className="px-6 py-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+      <div className="flex gap-2">
+        <div className="w-3 h-3 rounded-full bg-red-500/50" />
+        <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+        <div className="w-3 h-3 rounded-full bg-green-500/50" />
+      </div>
+      <div className="text-[10px] font-bold uppercase tracking-widest text-white/40">Bash</div>
+    </div>
+    <div className="p-8 font-mono text-[13px] leading-[1.6] overflow-x-auto text-white">
+      <div className="text-white/40 mb-2"># 1. Request presigned URL</div>
+      <div className="mb-6">
+        <span className="text-brand font-bold">curl</span> -X POST https://api.flume.africa/v1/uploads/presign \<br />
+        &nbsp;&nbsp;-H <span className="text-yellow-200/80">"X-API-Key: flm_..."</span>
+      </div>
+
+      <div className="text-white/40 mb-2"># 2. Upload bytes directly to R2</div>
+      <div className="mb-6">
+        <span className="text-brand font-bold">curl</span> -X PUT <span className="text-yellow-200/80">"https://r2.presigned.url/..."</span> \<br />
+        &nbsp;&nbsp;--data-binary <span className="text-yellow-200/80">"@video.mp4"</span>
+      </div>
+
+      <div className="text-white/40 mb-2"># 3. Verify and complete</div>
+      <div>
+        <span className="text-brand font-bold">curl</span> -X POST https://api.flume.africa/v1/uploads/U_ID/complete \<br />
+        &nbsp;&nbsp;-H <span className="text-yellow-200/80">"X-API-Key: flm_..."</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 className="text-3xl font-bold mb-12">Output Delivery</h2>
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-32">
+  <div className="p-8 rounded-[2rem] bg-card border border-border hover:border-brand transition-all group relative overflow-hidden">
+    <div className="flex items-center justify-between mb-8">
+      <span className="text-[10px] font-bold text-brand uppercase tracking-widest">01</span>
+      <div className="w-12 h-12 bg-brand/10 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(29,158,117,0.1)] group-hover:bg-brand group-hover:text-white transition-all">
+        <CloudDownload className="h-6 w-6 transition-transform group-hover:scale-110" />
+      </div>
+    </div>
+    <h3 className="text-xl font-bold mb-3">Cloudflare R2</h3>
+    <p className="text-sm text-text-secondary leading-relaxed">
+      The default delivery method for large outputs. Files over 50MB are hosted on unique public URLs with 24-hour retention.
+    </p>
+  </div>
+
+  <div className="p-8 rounded-[2rem] bg-card border border-border hover:border-brand transition-all group relative overflow-hidden">
+    <div className="flex items-center justify-between mb-8">
+      <span className="text-[10px] font-bold text-brand uppercase tracking-widest">02</span>
+      <div className="w-12 h-12 bg-white/5 border border-border rounded-2xl flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-all">
+        <Webhook className="h-6 w-6 transition-transform group-hover:scale-110" />
+      </div>
+    </div>
+    <h3 className="text-xl font-bold mb-3">Custom Webhooks</h3>
+    <p className="text-sm text-text-secondary leading-relaxed">
+      Register your own endpoint URLs to receive asynchronous HTTP POST callbacks containing links to your processed assets.
+    </p>
+  </div>
+
+  <div className="p-8 rounded-[2rem] bg-card border border-border hover:border-brand transition-all group relative overflow-hidden">
+    <div className="flex items-center justify-between mb-8">
+      <span className="text-[10px] font-bold text-brand uppercase tracking-widest">03</span>
+      <div className="w-12 h-12 bg-white/5 border border-border rounded-2xl flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-all">
+        <MessagesSquare className="h-6 w-6 transition-transform group-hover:scale-110" />
+      </div>
+    </div>
+    <h3 className="text-xl font-bold mb-3">Native Chat Drops</h3>
+    <p className="text-sm text-text-secondary leading-relaxed">
+      For bot users, files under platform limits (e.g. 50MB) are delivered directly in-thread as native Telegram or WhatsApp artifacts.
+    </p>
+  </div>
+</div>
+
+<div className="mt-24 p-1 rounded-[2.5rem] bg-gradient-to-br from-brand-mid/20 to-transparent border border-border overflow-hidden relative group">
+  <div className="absolute inset-0 opacity-20 mix-blend-overlay pointer-events-none bg-[url('https://images.unsplash.com/photo-1597773150796-e5c14ebecbf5?auto=format&w=1200&q=80&fit=crop')] bg-cover transition-transform duration-700 group-hover:scale-105" />
+  <div className="p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-10 relative z-10 text-center md:text-left">
+    <div className="max-w-md">
+      <h2 className="text-3xl md:text-4xl font-bold mb-6 leading-tight">Ready to process?</h2>
+      <p className="text-lg text-text-secondary mb-10 leading-relaxed">
+        Once your file is uploaded and marked unattached, reference its URI in your job pipeline to begin transformations.
+      </p>
+      <a href="/docs/get-started/quickstart" className="inline-flex items-center text-brand text-lg font-bold group/link">
+        Go to Quickstart
+        <ArrowUpRight className="ml-2 h-6 w-6 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+      </a>
+    </div>
+    <div className="w-16 h-16 md:w-24 md:h-24 bg-brand rounded-full flex items-center justify-center text-white shadow-2xl shadow-brand/40 group-hover:scale-110 transition-transform">
+      <Rocket className="h-10 w-10 md:h-12 md:w-12" />
+    </div>
+  </div>
+</div>

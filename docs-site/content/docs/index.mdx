@@ -4,11 +4,12 @@ description: Media processing infrastructure for developers.
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
-import { Rocket, BookOpen, Video, Image, Music, Layers, Wand2, ShieldCheck, Zap, Globe, Cpu } from 'lucide-react';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Rocket, BookOpen, Video, Image, Music, Layers, Wand2, ShieldCheck, Zap, Globe, Cpu, GitMerge, Terminal, Copy, ArrowRight, CircleCheck } from 'lucide-react';
 
-# Media processing infrastructure for developers
+# Build Products, Not <span className="text-display text-brand font-normal ml-1">Media Backends.</span>
 
-Build media workflows with a single pipeline API. Flume handles the heavy lifting of media transcoding, extraction, and transformation so you can focus on building your core product.
+Flume handles the heavy lifting of media transcoding, extraction, and transformation so you can focus on building your core product.
 
 <div className="flex flex-col sm:flex-row gap-4 py-8">
   <a href="/docs/get-started/quickstart" className="inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-sm">
@@ -21,25 +22,61 @@ Build media workflows with a single pipeline API. Flume handles the heavy liftin
   </a>
 </div>
 
-## Why Flume?
+## Why Developers Choose Flume
 
-<Cards>
-  <Card
-    title="Single Pipeline API"
-    description="Orchestrate complex media workflows with a declarative JSON request."
-    icon={<Zap />}
-  />
-  <Card
-    title="Global Infrastructure"
-    description="Low-latency processing with infrastructure hosted on the continent."
-    icon={<Globe />}
-  />
-  <Card
-    title="Developer First"
-    description="Official SDKs and predictable pricing designed for scale."
-    icon={<Cpu />}
-  />
-</Cards>
+<div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-16">
+  {/* Pillar 1: Infrastructure */}
+  <div className="md:col-span-2 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group overflow-hidden relative min-h-[240px]">
+    <div className="relative z-10">
+      <h3 className="text-xl font-bold mb-3">Build Products, Not Media Backends</h3>
+      <p className="text-text-secondary text-sm leading-relaxed mb-6 max-w-sm">
+        Flume removes the engineering effort required to build and operate media processing systems. Focus on your features while we handle the scale.
+      </p>
+    </div>
+    <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-1/2 p-4 bg-black/40 backdrop-blur-md rounded-l-2xl border-y border-l border-white/5 font-mono text-[11px] leading-tight text-brand/90 shadow-2xl">
+      <div className="flex items-center gap-1.5 mb-3 border-b border-white/5 pb-2">
+        <div className="w-2 h-2 rounded-full bg-red-500/50" />
+        <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
+        <div className="w-2 h-2 rounded-full bg-green-500/50" />
+      </div>
+      <pre>
+{`{
+  "source": "art_123",
+  "pipeline": [
+    { "op": "trim", "s": 0, "e": 10 },
+    { "op": "extract_audio" }
+  ]
+}`}
+      </pre>
+    </div>
+  </div>
+
+  {/* Pillar 2: Composability */}
+  <div className="md:col-span-1 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group flex flex-col justify-between min-h-[240px]">
+    <div>
+      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-brand-light transition-colors text-text-muted group-hover:text-brand">
+        <GitMerge className="h-6 w-6" />
+      </div>
+      <h3 className="text-lg font-bold mb-2">Composable Pipelines</h3>
+      <p className="text-text-secondary text-xs leading-relaxed">
+        Transform, combine, extract, analyze, and generate media through reusable pipeline operations.
+      </p>
+    </div>
+  </div>
+
+  {/* Pillar 3: Developer First */}
+  <div className="md:col-span-1 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group flex flex-col justify-between min-h-[240px]">
+    <div>
+      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-brand-light transition-colors text-text-muted group-hover:text-brand">
+        <Terminal className="h-6 w-6" />
+      </div>
+      <h3 className="text-lg font-bold mb-2">Developer First</h3>
+      <p className="text-text-secondary text-xs leading-relaxed">
+        Official SDKs, consistent APIs, webhooks, and documentation designed for production applications.
+      </p>
+    </div>
+  </div>
+</div>
 
 ## Popular Guides
 
@@ -50,36 +87,58 @@ Solve real-world media problems with our task-oriented guides.
     title="Compress a video"
     description="Reduce file size without sacrificing quality."
     href="/docs/guides/transform/compress"
-    icon={<Video />}
+    icon={<Video className="h-4 w-4" />}
   />
   <Card
     title="Generate thumbnails"
     description="Extract high-quality frames from any video."
     href="/docs/guides/extract/thumbnails"
-    icon={<Image />}
+    icon={<Image className="h-4 w-4" />}
   />
   <Card
     title="Extract audio"
     description="Isolate audio tracks from video files."
     href="/docs/guides/extract/audio"
-    icon={<Music />}
+    icon={<Music className="h-4 w-4" />}
   />
   <Card
     title="Convert media formats"
     description="Seamlessly switch between containers and codecs."
     href="/docs/guides/transform/convert"
-    icon={<Layers />}
+    icon={<Layers className="h-4 w-4" />}
   />
   <Card
     title="Merge videos"
     description="Combine multiple clips into a single file."
     href="/docs/guides/combine/merge"
-    icon={<Wand2 />}
+    icon={<Wand2 className="h-4 w-4" />}
   />
   <Card
     title="Add a watermark"
     description="Protect your content with visual overlays."
     href="/docs/guides/transform/watermark"
-    icon={<ShieldCheck />}
+    icon={<ShieldCheck className="h-4 w-4" />}
   />
 </Cards>
+
+<div className="mt-24 p-1 rounded-3xl bg-gradient-to-br from-brand-mid/20 to-transparent border border-border overflow-hidden relative group">
+  <div className="absolute inset-0 opacity-10 mix-blend-overlay pointer-events-none bg-[url('https://images.unsplash.com/photo-1526289034009-0240ddb68ce3?auto=format&w=1200&q=80&fit=crop')] bg-cover transition-transform duration-700 group-hover:scale-105" />
+  <div className="p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+    <div className="max-w-md">
+      <h2 className="text-2xl md:text-3xl font-bold mb-4">Ready to process media at scale?</h2>
+      <p className="text-text-secondary mb-8 leading-relaxed">
+        Integrate Flume into your production stack today and build the next generation of media applications.
+      </p>
+      <a href="/docs/get-started/quickstart" className="inline-flex items-center text-brand font-bold group/link">
+        Go to Quickstart 
+        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+      </a>
+    </div>
+    <div className="w-full md:w-auto min-w-[320px] p-4 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-between group/code shadow-2xl">
+      <code className="text-sm font-mono text-brand font-medium">npm install @flume/node</code>
+      <button className="p-2 text-text-muted hover:text-white transition-colors">
+        <Copy className="h-4 w-4" />
+      </button>
+    </div>
+  </div>
+</div>

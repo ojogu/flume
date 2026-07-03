@@ -15,7 +15,11 @@ from src.utils.telemetry import setup_telemetry
 
 bg_task = Celery(
     "celery",
-    include=["celery_app.task"]
+    include=[
+        "celery_app.email",
+        "celery_app.download",
+        "celery_app.orchestrator",
+    ],
 )
 
 bg_task.conf.update(
