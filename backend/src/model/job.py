@@ -8,10 +8,16 @@ from .base import BaseModel
 
 
 class JobStatus(str, enum.Enum):
+    # non-terminal
     PENDING = "pending"
-    RUNNING = "running"
-    COMPLETE = "complete"
+    PROCESSING = "processing"
+    # terminal
+    SUCCEEDED = "succeeded"
+    PARTIAL_SUCCESS = "partial_success"
     FAILED = "failed"
+
+
+TERMINAL_JOB_STATUSES = {JobStatus.SUCCEEDED, JobStatus.PARTIAL_SUCCESS, JobStatus.FAILED}
 
 
 class SourceType(str, enum.Enum):
@@ -42,10 +48,24 @@ class Job(BaseModel):
     source_type = sa.Column(sa.String, nullable=False)
     pipeline_steps = sa.Column(JSONB, nullable=True)
     outputs = sa.Column(JSONB, nullable=True)
+    # SourceInfo + MediaInfo stored after download; FFmpeg pipeline reads this
+    # instead of running ffprobe on the downloaded file.  Null until the worker
+    # completes the download/extraction phase.
+    source_metadata = sa.Column(JSONB, nullable=True)
     completed_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
+
+    # optional self-referential FK for playlist fan-out children
+    parent_job_id = sa.Column(
+        sa.UUID,
+        sa.ForeignKey("jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     api_key = relationship("ApiKey", back_populates="jobs")
     job_steps = relationship("JobStep", back_populates="job")
+    # child jobs (playlist fan-out); parent side of the self-referential relationship
+    children = relationship("Job", backref="parent", remote_side="Job.id")
 
 
 class JobStep(BaseModel):

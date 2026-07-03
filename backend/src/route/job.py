@@ -62,6 +62,12 @@ async def create_job(
 
     logger.info(f"Job {job.id} created — status={job.status}, source={job.source_uri}")
 
+    # Dispatch job processing to the orchestrator queue.
+    # Celery task_id == job UUID so monitoring tools show the application ID.
+    from celery_app.orchestrator import process_job
+    process_job.apply_async(args=[str(job.id)], task_id=str(job.id))
+    logger.info("Job %s dispatched to orchestrator", job.id)
+
     # Wrap in standard {status, message, data} envelope with HTTP 201
     return success(
         data=JobResponse(**job.to_dict()).model_dump(),
