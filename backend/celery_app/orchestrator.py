@@ -45,11 +45,11 @@ async def _process_job_async(job_id: str):
         job = await service.get_job(job_id)
 
         if not job:
-            logger.error("Job %s not found — aborting", job_id)
+            logger.error(f"Job {job_id} not found — aborting")
             return
 
         if job.status != JobStatus.PENDING.value:
-            logger.warning("Job %s is not PENDING (status=%s) — aborting", job_id, job.status)
+            logger.warning(f"Job {job_id} is not PENDING (status={job.status}) — aborting")
             return
 
         # mark as processing
@@ -69,7 +69,7 @@ async def _process_job_async(job_id: str):
                 else:
                     await _handle_single(service, job)
         except Exception as e:
-            logger.error("Orchestration failed for job %s: %s", job_id, e)
+            logger.error(f"Orchestration failed for job {job_id}: {e}")
             await service.update_status(job.id, JobStatus.FAILED, error=str(e))
 
 
@@ -153,7 +153,7 @@ def _resolve_selection(parent: Job, info) -> list[int] | None:
 
     total = info.playlist_count or 0
     if total == 0:
-        logger.error("Playlist %s has no entries", parent.id)
+        logger.error(f"Playlist {parent.id} has no entries")
         return None
 
     # full playlist processing — process all entries

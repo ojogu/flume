@@ -165,7 +165,7 @@ def extract_info(url: str) -> ExtractedInfo:
         download=False,
     )
     with yt_dlp.YoutubeDL(opts) as ydl:
-        logger.info("Extracting metadata from %s", url)
+        logger.info(f"Extracting metadata from {url}")
         raw = ydl.extract_info(url, download=False)
         logger.info(
             "Metadata extracted — type=%s, title=%s",
@@ -208,7 +208,7 @@ def download(
             url, fmt.value, source_type,
         )
         raw = ydl.extract_info(url, download=True)
-        logger.info("Download complete — title=%s", raw.get("title", "unknown"))
+        logger.info(f"Download complete — title={raw.get('title', 'unknown')}")
 
     ext = raw.get("ext", "mp4")
     local_path = str(Path(workspace_dir) / f"input.{ext}")

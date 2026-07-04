@@ -86,11 +86,11 @@ class JobService:
 
         if error:
             # store error in a convention field if one exists, or log it
-            logger.error("Job %s failed: %s", job_id, error)
+            logger.error(f"Job {job_id} failed: {error}")
 
         await self.db.flush()
         await self.db.commit()
-        logger.info("Job %s status → %s", job_id, status.value)
+        logger.info(f"Job {job_id} status → {status.value}")
 
     async def set_source_metadata(self, job_id: uuid.UUID, metadata: dict) -> None:
         """Store the ``SourceInfo + MediaInfo`` dict after download completes."""
@@ -101,7 +101,7 @@ class JobService:
         job.source_metadata = metadata
         await self.db.flush()
         await self.db.commit()
-        logger.info("Job %s source_metadata set", job_id)
+        logger.info(f"Job {job_id} source_metadata set")
 
     # ── JobStep lifecycle ──────────────────────────────────────────────────────
 
@@ -152,7 +152,7 @@ class JobService:
 
         await self.db.flush()
         await self.db.commit()
-        logger.info("JobStep %s → %s", step_id, status.value)
+        logger.info(f"JobStep {step_id} → {status.value}")
 
     async def get_pending_job_step(self, job_id: uuid.UUID, operation: str) -> JobStep | None:
         """Find the first PENDING step for a given operation on a job."""
@@ -204,7 +204,7 @@ class JobService:
             )
         except Exception as e:
             await self.db.rollback()
-            logger.error("Failed to create child jobs for %s: %s", parent_job.id, e)
+            logger.error(f"Failed to create child jobs for {parent_job.id}: {e}")
             raise DatabaseError()
 
         return children

@@ -66,7 +66,7 @@ async def create_job(
     # Celery task_id == job UUID so monitoring tools show the application ID.
     from celery_app.orchestrator import process_job
     process_job.apply_async(args=[str(job.id)], task_id=str(job.id))
-    logger.info("Job %s dispatched to orchestrator", job.id)
+    logger.info(f"Job {job.id} dispatched to orchestrator")
 
     # Wrap in standard {status, message, data} envelope with HTTP 201
     return success(
