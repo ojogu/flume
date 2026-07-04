@@ -45,6 +45,9 @@ async def create_job(
         source_type=source.type.value,
         pipeline=[op.model_dump() for op in body.pipeline],
     )
+    # inject implicit download as step 0 — always runs first
+    download_type = "r2" if source.uri.startswith("uploads/") else "yt-dlp"
+    spec.insert(0, {"operation": "download", "params": {"type": download_type}})
     logger.info(
         f"Pipeline validation passed — "
         f"{len(spec)} steps: {[s['operation'] for s in spec]}"
@@ -52,12 +55,14 @@ async def create_job(
 
     # Persist the job in pending state with the enriched pipeline spec and outputs
     outputs = [o.model_dump() for o in body.outputs]
+    selection = source.selection.model_dump() if source.selection else None
     job = await job_service.create_job(
         api_key_id=api_key.id,
         source_uri=source.uri,
         source_type=source.type.value,
         pipeline_spec=spec,
         outputs=outputs,
+        selection=selection,
     )
 
     logger.info(f"Job {job.id} created — status={job.status}, source={job.source_uri}")
@@ -66,7 +71,7 @@ async def create_job(
     # Celery task_id == job UUID so monitoring tools show the application ID.
     from celery_app.orchestrator import process_job
     process_job.apply_async(args=[str(job.id)], task_id=str(job.id))
-    logger.info("Job %s dispatched to orchestrator", job.id)
+    logger.info(f"Job {job.id} dispatched to orchestrator")
 
     # Wrap in standard {status, message, data} envelope with HTTP 201
     return success(

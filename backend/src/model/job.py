@@ -48,11 +48,17 @@ class Job(BaseModel):
     source_type = sa.Column(sa.String, nullable=False)
     pipeline_steps = sa.Column(JSONB, nullable=True)
     outputs = sa.Column(JSONB, nullable=True)
+    # user's playlist entry selection (1-based ints); null = process all entries
+    selection = sa.Column(JSONB, nullable=True)
     # SourceInfo + MediaInfo stored after download; FFmpeg pipeline reads this
     # instead of running ffprobe on the downloaded file.  Null until the worker
     # completes the download/extraction phase.
     source_metadata = sa.Column(JSONB, nullable=True)
+    error = sa.Column(sa.Text, nullable=True)
     completed_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
+
+    # 1-based position within a playlist (null for non-playlist jobs)
+    playlist_entry_index = sa.Column(sa.Integer, nullable=True)
 
     # optional self-referential FK for playlist fan-out children
     parent_job_id = sa.Column(

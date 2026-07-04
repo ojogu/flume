@@ -31,6 +31,7 @@ class JobService:
         pipeline_spec: list[dict] | None = None,
         outputs: list[dict] | None = None,
         parent_job_id: uuid.UUID | None = None,
+        selection: dict | None = None,
     ) -> Job:
         """Create a job in pending state with the validated pipeline spec."""
         job = Job(
@@ -41,6 +42,7 @@ class JobService:
             pipeline_steps=pipeline_spec,
             outputs=outputs,
             parent_job_id=parent_job_id,
+            selection=selection,
         )
         self.db.add(job)
         try:
@@ -85,12 +87,12 @@ class JobService:
             job.completed_at = datetime.now(timezone.utc)
 
         if error:
-            # store error in a convention field if one exists, or log it
-            logger.error("Job %s failed: %s", job_id, error)
+            job.error = error
+            logger.error(f"Job {job_id} failed: {error}")
 
         await self.db.flush()
         await self.db.commit()
-        logger.info("Job %s status → %s", job_id, status.value)
+        logger.info(f"Job {job_id} status → {status.value}")
 
     async def set_source_metadata(self, job_id: uuid.UUID, metadata: dict) -> None:
         """Store the ``SourceInfo + MediaInfo`` dict after download completes."""
@@ -101,7 +103,7 @@ class JobService:
         job.source_metadata = metadata
         await self.db.flush()
         await self.db.commit()
-        logger.info("Job %s source_metadata set", job_id)
+        logger.info(f"Job {job_id} source_metadata set")
 
     # ── JobStep lifecycle ──────────────────────────────────────────────────────
 
@@ -152,7 +154,7 @@ class JobService:
 
         await self.db.flush()
         await self.db.commit()
-        logger.info("JobStep %s → %s", step_id, status.value)
+        logger.info(f"JobStep {step_id} → {status.value}")
 
     async def get_pending_job_step(self, job_id: uuid.UUID, operation: str) -> JobStep | None:
         """Find the first PENDING step for a given operation on a job."""
@@ -170,27 +172,28 @@ class JobService:
     async def create_child_jobs(
         self,
         parent_job: Job,
-        selection: list[int],
+        entry_urls: list[str],
         pipeline_steps: list[dict],
         outputs: list[dict],
     ) -> list[Job]:
-        """Create one child Job per selected playlist entry.
+        """Create one child Job per playlist entry URL.
 
         Each child inherits the parent's ``pipeline_steps`` and ``outputs``,
         but gets its own ``source_uri`` (the individual video URL from the
-        playlist entry).
+        playlist entry) and a 1-based ``playlist_entry_index``.
         """
         children: list[Job] = []
         try:
-            for entry_index in selection:
+            for entry_index, url in enumerate(entry_urls, start=1):
                 child = Job(
                     api_key_id=parent_job.api_key_id,
-                    source_uri=parent_job.source_uri,
+                    source_uri=url,
                     source_type=parent_job.source_type,
                     status=JobStatus.PENDING.value,
                     pipeline_steps=pipeline_steps,
                     outputs=outputs,
                     parent_job_id=parent_job.id,
+                    playlist_entry_index=entry_index,
                 )
                 self.db.add(child)
                 children.append(child)
@@ -204,7 +207,7 @@ class JobService:
             )
         except Exception as e:
             await self.db.rollback()
-            logger.error("Failed to create child jobs for %s: %s", parent_job.id, e)
+            logger.error(f"Failed to create child jobs for {parent_job.id}: {e}")
             raise DatabaseError()
 
         return children

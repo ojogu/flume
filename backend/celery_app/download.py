@@ -21,6 +21,7 @@ from src.model.job import JobStatus, StepStatus
 from src.service.downloader import download, build_artifact_from_local, assert_size_under_limit, guess_container
 from src.service.storage import storage
 from src.utils.config import config
+from src.schema.download import DownloadResult
 
 logger = logging.getLogger(__name__)
 
@@ -48,27 +49,27 @@ async def _download_task_async(job_id: str):
     from src.service.jobs import JobService
 
     async with get_async_db_session() as db:
-        service = JobService(db)
+        job_service = JobService(db)
         job_uuid = uuid.UUID(job_id)
-        job = await service.get_job(job_uuid)
+        job = await job_service.get_job(job_uuid)
 
         if not job:
-            logger.error("Job %s not found — aborting download", job_id)
+            logger.error(f"Job {job_id} not found — aborting download")
             return
 
         # find the download JobStep
-        step = await service.get_pending_job_step(job_uuid, "download")
+        step = await job_service.get_pending_job_step(job_uuid, "download")
         if not step:
-            logger.error("No pending download step for job %s", job_id)
+            logger.error(f"No pending download step for job {job_id}")
             return
 
         # mark step running
-        await service.update_job_step(step.id, StepStatus.RUNNING)
+        await job_service.update_job_step(step.id, StepStatus.RUNNING)
 
         try:
             # create isolated workspace
             workspace = _ensure_workspace(job_uuid)
-            logger.info("Workspace ready for job %s: %s", job_id, workspace)
+            logger.info(f"Workspace ready for job {job_id}: {workspace}")
 
             # download — external URLs via yt-dlp, upload URIs via R2 presigned GET
             is_upload = job.source_uri.startswith("uploads/")
@@ -86,30 +87,30 @@ async def _download_task_async(job_id: str):
                 include={"source", "media"},
                 exclude_none=True,
             )
-            await service.set_source_metadata(job_uuid, source_meta)
+            await job_service.set_source_metadata(job_uuid, source_meta)
 
             # mark download step complete
-            await service.update_job_step(
+            await job_service.update_job_step(
                 step.id,
                 StepStatus.COMPLETE,
                 output_artifact=result.artifact.model_dump(exclude_none=True),
             )
 
             # if this job has a parent, notify for aggregate computation
-            await service.notify_child_complete(job_uuid)
+            await job_service.notify_child_complete(job_uuid)
 
-            logger.info("Download complete for job %s — %s", job_id, result.local_path)
+            logger.info(f"Download complete for job {job_id} — {result.local_path}")
 
         except Exception as e:
-            logger.error("Download failed for job %s: %s", job_id, e)
-            await service.update_job_step(
+            logger.error(f"Download failed for job {job_id}: {e}")
+            await job_service.update_job_step(
                 step.id, StepStatus.FAILED, error=str(e),
             )
-            await service.update_status(
+            await job_service.update_status(
                 job_uuid, JobStatus.FAILED, error=f"Download failed: {e}",
             )
             # still notify parent so it can compute partial_success
-            await service.notify_child_complete(job_uuid)
+            await job_service.notify_child_complete(job_uuid)
 
 
 def _ensure_workspace(job_uuid: uuid.UUID) -> Path:
@@ -131,7 +132,7 @@ async def _download_upload_source(job, workspace: Path) -> "DownloadResult":
     builds an ``Artifact`` without yt-dlp metadata (codec, resolution,
     duration — the FFmpeg pipeline fills those gaps via ffprobe).
     """
-    from src.schema.download import DownloadResult
+    
 
     presigned_url = await storage.generate_presigned_download_url(job.source_uri)
 
@@ -152,7 +153,7 @@ async def _download_upload_source(job, workspace: Path) -> "DownloadResult":
         local_path, job.source_uri, job_id=str(job.id),
     )
 
-    logger.info("R2 download complete for job %s — %s (%d bytes)", job.id, local_path, artifact.file.size_bytes)
+    logger.info(f"R2 download complete for job {job.id} — {local_path} ({artifact.file.size_bytes} bytes)")
 
     return DownloadResult(
         local_path=local_path,

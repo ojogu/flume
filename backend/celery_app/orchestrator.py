@@ -41,120 +41,102 @@ async def _process_job_async(job_id: str):
     from src.service.jobs import JobService
 
     async with get_async_db_session() as db:
-        service = JobService(db)
-        job = await service.get_job(job_id)
+        job_service = JobService(db)
+        job = await job_service.get_job(job_id)
 
         if not job:
-            logger.error("Job %s not found — aborting", job_id)
+            logger.error(f"Job {job_id} not found — aborting")
             return
 
         if job.status != JobStatus.PENDING.value:
-            logger.warning("Job %s is not PENDING (status=%s) — aborting", job_id, job.status)
+            logger.warning(f"Job {job_id} is not PENDING (status={job.status}) — aborting")
             return
 
         # mark as processing
-        await service.update_status(job.id, JobStatus.PROCESSING)
+        await job_service.update_status(job.id, JobStatus.PROCESSING)
 
         try:
             # upload URIs are always single videos — skip yt-dlp extraction
             is_upload = job.source_uri.startswith("uploads/")
             if is_upload:
-                await _handle_single(service, job)
+                await _handle_single(job_service, job)
             else:
                 # extract metadata — this is synchronous yt-dlp, runs in thread
                 info = extract_info(job.source_uri)
 
                 if info.is_playlist:
-                    await _handle_playlist(service, job, info)
+                    await _handle_playlist(job_service, job, info)
                 else:
-                    await _handle_single(service, job)
+                    await _handle_single(job_service, job)
         except Exception as e:
-            logger.error("Orchestration failed for job %s: %s", job_id, e)
-            await service.update_status(job.id, JobStatus.FAILED, error=str(e))
+            logger.error(f"Orchestration failed for job {job_id}: {e}")
+            await job_service.update_status(job.id, JobStatus.FAILED, error=str(e))
 
 
-async def _handle_single(service: JobService, job: Job):
+async def _handle_single(job_service: JobService, job: Job):
     """Create JobSteps for a single video and dispatch the download task."""
     from celery_app.download import download_task
 
-    # step 0: implicit download
-    await service.create_job_step(job.id, 0, "download")
-
-    # steps 1..N: user's pipeline (deferred — processor not yet built)
-    if job.pipeline_steps:
-        for i, step in enumerate(job.pipeline_steps, start=1):
-            op = step.get("operation", "unknown")
-            await service.create_job_step(job.id, i, op)
+    # full pipeline is already on the job (download injected as step 0 at route level)
+    for i, step in enumerate(job.pipeline_steps):
+        await job_service.create_job_step(job.id, i, step.get("operation", "unknown"))
 
     logger.info(
-        "Job %s — created %d steps, dispatching download",
-        job.id,
-        1 + (len(job.pipeline_steps) if job.pipeline_steps else 0),
+        f"Job {job.id} — created {len(job.pipeline_steps)} steps, dispatching download",
     )
 
     # dispatch download — Celery task_id == job UUID for monitoring
     download_task.apply_async(args=[str(job.id)], task_id=str(job.id))
 
 
-async def _handle_playlist(service: JobService, parent: Job, info):
+async def _handle_playlist(job_service: JobService, parent: Job, info):
     """Fan out into child jobs — one per selected playlist entry."""
     from celery_app.download import download_task
 
     # validate selection against playlist
     selection = _resolve_selection(parent, info)
     if selection is None:
-        await service.update_status(parent.id, JobStatus.FAILED)
+        await job_service.update_status(parent.id, JobStatus.FAILED)
         return
 
-    # create child jobs
-    children = await service.create_child_jobs(
+    # resolve per-entry URLs from extracted info
+    entry_urls = [info.entries[i].url for i in selection]
+
+    children = await job_service.create_child_jobs(
         parent_job=parent,
-        selection=selection,
+        entry_urls=entry_urls,
         pipeline_steps=parent.pipeline_steps,
         outputs=parent.outputs,
     )
 
     if not children:
-        await service.update_status(parent.id, JobStatus.FAILED, error="No valid playlist entries")
+        await job_service.update_status(parent.id, JobStatus.FAILED, error="No valid playlist entries")
         return
 
     # create JobSteps + dispatch each child
     for child in children:
-        await service.create_job_step(child.id, 0, "download")
-        if child.pipeline_steps:
-            for i, step in enumerate(child.pipeline_steps, start=1):
-                op = step.get("operation", "unknown")
-                await service.create_job_step(child.id, i, op)
+        for i, step in enumerate(child.pipeline_steps):
+            await job_service.create_job_step(child.id, i, step.get("operation", "unknown"))
 
         download_task.apply_async(args=[str(child.id)], task_id=str(child.id))
 
-    logger.info(
-        "Parent %s — fanned out %d child jobs",
-        parent.id, len(children),
-    )
+    logger.info(f"Parent {parent.id} — fanned out {len(children)} child jobs")
 
 
 def _resolve_selection(parent: Job, info) -> list[int] | None:
-    """Return the final list of 0-based entry indices to process.
+    """Return 0-based entry indices to process.
 
-    If the parent was submitted with a user ``selection``, use those
-    (converting from 1-based to 0-based).  Otherwise select every entry.
-
-    Returns ``None`` when validation fails (caller should fail the parent).
+    If the parent has a stored ``selection`` (1-based ints from the request),
+    convert them to 0-based and filter out-of-bounds.  Otherwise select every
+    entry.  Returns ``None`` when the playlist is empty.
     """
-    from src.utils.db import get_async_db_session
-    from src.service.jobs import JobService
-
-    # The parent's source.selection isn't stored directly on the Job model.
-    # It was part of the request body but not persisted in the Job record.
-    # For now, if the job has a user-provided selection, we need to find it.
-    # Since the orchestrator is the first to inspect the URL, we check the
-    # playlist count against the entitlements.
-
     total = info.playlist_count or 0
     if total == 0:
-        logger.error("Playlist %s has no entries", parent.id)
+        logger.error(f"Playlist {parent.id} has no entries")
         return None
 
-    # full playlist processing — process all entries
+    if parent.selection:
+        entries = parent.selection.get("entries", [])
+        return [i - 1 for i in entries if 1 <= i <= total]
+
     return list(range(total))
