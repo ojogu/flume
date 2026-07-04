@@ -46,3 +46,6 @@ backend/vids/
 
 # Generated posts
 posts/
+
+# AI design-to-code artifacts
+.kombai/
