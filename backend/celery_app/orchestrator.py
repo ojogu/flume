@@ -56,13 +56,18 @@ async def _process_job_async(job_id: str):
         await service.update_status(job.id, JobStatus.PROCESSING)
 
         try:
-            # extract metadata — this is synchronous yt-dlp, runs in thread
-            info = extract_info(job.source_uri)
-
-            if info.is_playlist:
-                await _handle_playlist(service, job, info)
-            else:
+            # upload URIs are always single videos — skip yt-dlp extraction
+            is_upload = job.source_uri.startswith("uploads/")
+            if is_upload:
                 await _handle_single(service, job)
+            else:
+                # extract metadata — this is synchronous yt-dlp, runs in thread
+                info = extract_info(job.source_uri)
+
+                if info.is_playlist:
+                    await _handle_playlist(service, job, info)
+                else:
+                    await _handle_single(service, job)
         except Exception as e:
             logger.error("Orchestration failed for job %s: %s", job_id, e)
             await service.update_status(job.id, JobStatus.FAILED, error=str(e))
