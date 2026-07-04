@@ -6,17 +6,20 @@
 #   4. Notify parent job for aggregate state computation
 #
 # Runs on the **op.download** queue (many workers, I/O-bound).
-# ───────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────
 
 import logging
 import os
 import uuid
 from pathlib import Path
 
+import httpx
+
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.job import JobStatus, StepStatus
-from src.service.downloader import download
+from src.service.downloader import download, build_artifact_from_local, assert_size_under_limit, guess_container
+from src.service.storage import storage
 from src.utils.config import config
 
 logger = logging.getLogger(__name__)
@@ -67,13 +70,10 @@ async def _download_task_async(job_id: str):
             workspace = _ensure_workspace(job_uuid)
             logger.info("Workspace ready for job %s: %s", job_id, workspace)
 
-            # download — currently supports external URLs via yt-dlp.
-            # Upload-sourced jobs will fetch via R2 presigned GET in a future pass.
+            # download — external URLs via yt-dlp, upload URIs via R2 presigned GET
             is_upload = job.source_uri.startswith("uploads/")
             if is_upload:
-                # ── placeholder: R2 presigned GET → workspace ────────
-                # (future when the upload flow is integrated with the worker)
-                raise NotImplementedError("R2 source fetch not yet implemented")
+                result = await _download_upload_source(job, workspace)
             else:
                 result = download(
                     url=job.source_uri,
@@ -121,3 +121,41 @@ def _ensure_workspace(job_uuid: uuid.UUID) -> Path:
     workspace = Path(config.workspaces_dir) / f"job_{short}"
     workspace.mkdir(parents=True, exist_ok=True)
     return workspace
+
+
+async def _download_upload_source(job, workspace: Path) -> "DownloadResult":
+    """Fetch an upload-sourced file from R2 into the job workspace.
+
+    Generates a presigned GET URL from the R2 storage layer, streams the
+    file into ``workspace/input.{ext}``, verifies the size limit, and
+    builds an ``Artifact`` without yt-dlp metadata (codec, resolution,
+    duration — the FFmpeg pipeline fills those gaps via ffprobe).
+    """
+    from src.schema.download import DownloadResult
+
+    presigned_url = await storage.generate_presigned_download_url(job.source_uri)
+
+    # Determine the file extension from the object key (e.g. ``video.mp4``)
+    ext = guess_container(job.source_uri)
+    local_path = str(workspace / f"input.{ext}")
+
+    async with httpx.AsyncClient() as client:
+        async with client.stream("GET", presigned_url) as response:
+            response.raise_for_status()
+            with open(local_path, "wb") as f:
+                async for chunk in response.aiter_bytes():
+                    f.write(chunk)
+
+    assert_size_under_limit(local_path)
+
+    artifact = build_artifact_from_local(
+        local_path, job.source_uri, job_id=str(job.id),
+    )
+
+    logger.info("R2 download complete for job %s — %s (%d bytes)", job.id, local_path, artifact.file.size_bytes)
+
+    return DownloadResult(
+        local_path=local_path,
+        metadata=artifact.model_dump(),
+        artifact=artifact,
+    )

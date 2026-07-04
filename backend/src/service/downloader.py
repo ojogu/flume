@@ -79,7 +79,7 @@ def _get_file_size(path: str) -> int:
     return os.stat(path, follow_symlinks=True).st_size
 
 
-def _assert_size_under_limit(path: str) -> None:
+def assert_size_under_limit(path: str) -> None:
     """Raise ValueError if file exceeds the configured max download size."""
     size = _get_file_size(path)
     if size > config.max_download_size_bytes:
@@ -91,7 +91,7 @@ def _assert_size_under_limit(path: str) -> None:
         )
 
 
-def _guess_container(path: str) -> str:
+def guess_container(path: str) -> str:
     """Extract the file extension (without dot) as the container name."""
     return Path(path).suffix.lstrip(".") or "unknown"
 
@@ -222,7 +222,7 @@ def download(
                 f"No file found in workspace after download: {workspace_dir}"
             )
 
-    _assert_size_under_limit(local_path)
+    assert_size_under_limit(local_path)
 
     extracted = _raw_to_extracted_info(raw)
     artifact = build_artifact(extracted, local_path, job_id="unknown")
@@ -255,7 +255,7 @@ def build_artifact(info: ExtractedInfo, local_path: str, job_id: str = "unknown"
     except OSError:
         size_bytes = 0
 
-    container = _guess_container(local_path)
+    container = guess_container(local_path)
 
     file_info = FileInfo(
         path=local_path,
@@ -276,6 +276,47 @@ def build_artifact(info: ExtractedInfo, local_path: str, job_id: str = "unknown"
 
     return Artifact(
         id=f"art_{info.video_id}",
+        job_id=job_id,
+        source=source,
+        file=file_info,
+        media=media,
+        status="completed",
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+def build_artifact_from_local(
+    local_path: str,
+    source_uri: str,
+    job_id: str = "unknown",
+) -> Artifact:
+    """Build an artifact from a local file without yt-dlp metadata.
+
+    Used for upload-sourced jobs (R2 → workspace). MediaInfo fields
+    are left at defaults — the FFmpeg pipeline fills gaps via ffprobe
+    when it encounters missing metadata.
+    """
+    try:
+        size_bytes = _get_file_size(local_path)
+    except OSError:
+        size_bytes = 0
+
+    container = guess_container(local_path)
+
+    source = SourceInfo(
+        platform="upload",
+        video_id=Path(source_uri).stem,
+        url=source_uri,
+    )
+    file_info = FileInfo(
+        path=local_path,
+        size_bytes=size_bytes,
+        container=container,
+    )
+    media = MediaInfo(duration_seconds=0.0)
+
+    return Artifact(
+        id=f"art_{Path(source_uri).stem}",
         job_id=job_id,
         source=source,
         file=file_info,
