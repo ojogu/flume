@@ -95,7 +95,7 @@ Before processing files that aren't available via public URL, they must be uploa
     <div className="p-8 font-mono text-[13px] leading-[1.6] overflow-x-auto text-white">
       <div className="text-white/40 mb-2"># 1. Request presigned URL</div>
       <div className="mb-6">
-        <span className="text-brand font-bold">curl</span> -X POST https://api.flume.africa/v1/uploads/presign \<br />
+        <span className="text-brand font-bold">curl</span> -X POST https://api.flume.ojogulabs.xyz/v1/uploads/presign \<br />
         &nbsp;&nbsp;-H <span className="text-yellow-200/80">"X-API-Key: flm_..."</span>
       </div>
 
@@ -107,7 +107,7 @@ Before processing files that aren't available via public URL, they must be uploa
 
       <div className="text-white/40 mb-2"># 3. Verify and complete</div>
       <div>
-        <span className="text-brand font-bold">curl</span> -X POST https://api.flume.africa/v1/uploads/U_ID/complete \<br />
+        <span className="text-brand font-bold">curl</span> -X POST https://api.flume.ojogulabs.xyz/v1/uploads/U_ID/complete \<br />
         &nbsp;&nbsp;-H <span className="text-yellow-200/80">"X-API-Key: flm_..."</span>
       </div>
     </div>

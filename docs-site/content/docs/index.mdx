@@ -26,20 +26,21 @@ Flume handles the heavy lifting of media transcoding, extraction, and transforma
 
 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-16">
   {/* Pillar 1: Infrastructure */}
-  <div className="md:col-span-2 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group overflow-hidden relative min-h-[240px]">
-    <div className="relative z-10">
-      <h3 className="text-xl font-bold mb-3">Build Products, Not Media Backends</h3>
-      <p className="text-text-secondary text-sm leading-relaxed mb-6 max-w-sm">
-        Flume removes the engineering effort required to build and operate media processing systems. Focus on your features while we handle the scale.
-      </p>
-    </div>
-    <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-1/2 p-4 bg-black/40 backdrop-blur-md rounded-l-2xl border-y border-l border-white/5 font-mono text-[11px] leading-tight text-brand/90 shadow-2xl">
-      <div className="flex items-center gap-1.5 mb-3 border-b border-white/5 pb-2">
-        <div className="w-2 h-2 rounded-full bg-red-500/50" />
-        <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
-        <div className="w-2 h-2 rounded-full bg-green-500/50" />
+  <div className="md:col-span-2 min-w-0 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group overflow-hidden relative min-h-[240px]">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 h-full">
+      <div className="md:max-w-[55%] shrink-0">
+        <h3 className="text-xl font-bold mb-3">Build Products, Not Media Backends</h3>
+        <p className="text-text-secondary text-sm leading-relaxed">
+          Flume removes the engineering effort required to build and operate media processing systems. Focus on your features while we handle the scale.
+        </p>
       </div>
-      <pre>
+      <div className="hidden md:block md:w-[45%] shrink-0 min-w-0 p-4 bg-black/40 backdrop-blur-md rounded-2xl border border-white/5 font-mono text-[11px] leading-tight text-brand/90 shadow-2xl overflow-hidden">
+        <div className="flex items-center gap-1.5 mb-3 border-b border-white/5 pb-2">
+          <div className="w-2 h-2 rounded-full bg-red-500/50" />
+          <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
+          <div className="w-2 h-2 rounded-full bg-green-500/50" />
+        </div>
+        <pre className="whitespace-pre-wrap break-words">
 {`{
   "source": "art_123",
   "pipeline": [
@@ -47,13 +48,14 @@ Flume handles the heavy lifting of media transcoding, extraction, and transforma
     { "op": "extract_audio" }
   ]
 }`}
-      </pre>
+        </pre>
+      </div>
     </div>
   </div>
 
   {/* Pillar 2: Composability */}
-  <div className="md:col-span-1 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group flex flex-col justify-between min-h-[240px]">
-    <div>
+  <div className="md:col-span-1 min-w-0 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group flex flex-col justify-between min-h-[240px] overflow-hidden">
+    <div className="min-w-0">
       <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-brand-light transition-colors text-text-muted group-hover:text-brand">
         <GitMerge className="h-6 w-6" />
       </div>
@@ -65,8 +67,8 @@ Flume handles the heavy lifting of media transcoding, extraction, and transforma
   </div>
 
   {/* Pillar 3: Developer First */}
-  <div className="md:col-span-1 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group flex flex-col justify-between min-h-[240px]">
-    <div>
+  <div className="md:col-span-1 min-w-0 p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group flex flex-col justify-between min-h-[240px] overflow-hidden">
+    <div className="min-w-0">
       <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-brand-light transition-colors text-text-muted group-hover:text-brand">
         <Terminal className="h-6 w-6" />
       </div>

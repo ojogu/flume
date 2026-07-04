@@ -15,7 +15,7 @@ import { Key, CircleCheck, Laptop, Terminal, Server, ShieldCheck, Info, External
 All programmatic requests require an active API key. We use simple header-based authentication to keep your integration clean and secure.
 
 <div className="flex flex-col sm:flex-row gap-4 py-8 mb-12">
-  <a href="https://flume.ojogulabs.xyz/dashboard" className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-white bg-brand rounded-full hover:bg-brand-mid transition-all shadow-lg shadow-brand/20 group">
+  <a href="https://flume.ojogulabs.xyz/dashboard/keys" className="inline-flex items-center justify-center px-8 py-4 text-base font-bold text-white bg-brand rounded-full hover:bg-brand-mid transition-all shadow-lg shadow-brand/20 group">
     Manage Keys
     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
   </a>
@@ -129,7 +129,7 @@ All programmatic requests require an active API key. We use simple header-based 
     <div className="p-8 font-mono text-sm leading-relaxed overflow-x-auto text-white">
       <div className="text-white/40 mb-2"># Verify your connection</div>
       <span className="text-brand font-bold">curl</span> -H <span className="text-yellow-200/80">"X-API-Key: flm_FPq7J2AB..."</span> \<br />
-      &nbsp;&nbsp;https://api.flume.africa/v1/auth/verify
+      &nbsp;&nbsp;https://api.flume.ojogulabs.xyz/v1/auth/verify
     </div>
   </div>
 </div>
@@ -142,7 +142,7 @@ All programmatic requests require an active API key. We use simple header-based 
       <p className="text-lg text-text-secondary mb-10 leading-relaxed">
         Need to rotate a key or generate a new one? Visit your project settings in the dashboard.
       </p>
-      <a href="https://flume.ojogulabs.xyz/dashboard" className="inline-flex items-center text-brand text-lg font-bold group/link">
+      <a href="https://flume.ojogulabs.xyz/dashboard/keys" className="inline-flex items-center text-brand text-lg font-bold group/link">
         Go to Dashboard
         <ExternalLink className="ml-2 h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
       </a>
