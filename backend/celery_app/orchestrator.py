@@ -77,19 +77,12 @@ async def _handle_single(service: JobService, job: Job):
     """Create JobSteps for a single video and dispatch the download task."""
     from celery_app.download import download_task
 
-    # step 0: implicit download
-    await service.create_job_step(job.id, 0, "download")
-
-    # steps 1..N: user's pipeline (deferred — processor not yet built)
-    if job.pipeline_steps:
-        for i, step in enumerate(job.pipeline_steps, start=1):
-            op = step.get("operation", "unknown")
-            await service.create_job_step(job.id, i, op)
+    # full pipeline is already on the job (download injected as step 0 at route level)
+    for i, step in enumerate(job.pipeline_steps):
+        await service.create_job_step(job.id, i, step.get("operation", "unknown"))
 
     logger.info(
-        "Job %s — created %d steps, dispatching download",
-        job.id,
-        1 + (len(job.pipeline_steps) if job.pipeline_steps else 0),
+        f"Job {job.id} — created {len(job.pipeline_steps)} steps, dispatching download",
     )
 
     # dispatch download — Celery task_id == job UUID for monitoring
@@ -120,11 +113,8 @@ async def _handle_playlist(service: JobService, parent: Job, info):
 
     # create JobSteps + dispatch each child
     for child in children:
-        await service.create_job_step(child.id, 0, "download")
-        if child.pipeline_steps:
-            for i, step in enumerate(child.pipeline_steps, start=1):
-                op = step.get("operation", "unknown")
-                await service.create_job_step(child.id, i, op)
+        for i, step in enumerate(child.pipeline_steps):
+            await service.create_job_step(child.id, i, step.get("operation", "unknown"))
 
         download_task.apply_async(args=[str(child.id)], task_id=str(child.id))
 

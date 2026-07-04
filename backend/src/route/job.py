@@ -45,6 +45,9 @@ async def create_job(
         source_type=source.type.value,
         pipeline=[op.model_dump() for op in body.pipeline],
     )
+    # inject implicit download as step 0 — always runs first
+    download_type = "r2" if source.uri.startswith("uploads/") else "yt-dlp"
+    spec.insert(0, {"operation": "download", "params": {"type": download_type}})
     logger.info(
         f"Pipeline validation passed — "
         f"{len(spec)} steps: {[s['operation'] for s in spec]}"
