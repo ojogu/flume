@@ -68,6 +68,7 @@ class JobResponse(BaseModel):
     source_type: SourceType
     pipeline_steps: Optional[list] = None
     outputs: Optional[list] = None
+    playlist_entry_index: Optional[int] = None
     completed_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

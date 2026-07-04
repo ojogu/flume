@@ -55,6 +55,9 @@ class Job(BaseModel):
     error = sa.Column(sa.Text, nullable=True)
     completed_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
 
+    # 1-based position within a playlist (null for non-playlist jobs)
+    playlist_entry_index = sa.Column(sa.Integer, nullable=True)
+
     # optional self-referential FK for playlist fan-out children
     parent_job_id = sa.Column(
         sa.UUID,

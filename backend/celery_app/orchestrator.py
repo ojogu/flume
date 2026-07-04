@@ -99,10 +99,12 @@ async def _handle_playlist(service: JobService, parent: Job, info):
         await service.update_status(parent.id, JobStatus.FAILED)
         return
 
-    # create child jobs
+    # resolve per-entry URLs from extracted info
+    entry_urls = [info.entries[i].url for i in selection]
+
     children = await service.create_child_jobs(
         parent_job=parent,
-        selection=selection,
+        entry_urls=entry_urls,
         pipeline_steps=parent.pipeline_steps,
         outputs=parent.outputs,
     )
@@ -127,19 +129,16 @@ async def _handle_playlist(service: JobService, parent: Job, info):
 def _resolve_selection(parent: Job, info) -> list[int] | None:
     """Return the final list of 0-based entry indices to process.
 
-    If the parent was submitted with a user ``selection``, use those
-    (converting from 1-based to 0-based).  Otherwise select every entry.
+    If the parent was submitted with a user ``selection``, use those (converting from 1-based to 0-based).  Otherwise select every entry.
 
     Returns ``None`` when validation fails (caller should fail the parent).
     """
-    from src.utils.db import get_async_db_session
-    from src.service.jobs import JobService
+
 
     # The parent's source.selection isn't stored directly on the Job model.
     # It was part of the request body but not persisted in the Job record.
     # For now, if the job has a user-provided selection, we need to find it.
-    # Since the orchestrator is the first to inspect the URL, we check the
-    # playlist count against the entitlements.
+    # Since the orchestrator is the first to inspect the URL, we check the playlist count against the entitlements.
 
     total = info.playlist_count or 0
     if total == 0:

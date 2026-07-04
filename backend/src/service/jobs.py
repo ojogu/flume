@@ -170,27 +170,28 @@ class JobService:
     async def create_child_jobs(
         self,
         parent_job: Job,
-        selection: list[int],
+        entry_urls: list[str],
         pipeline_steps: list[dict],
         outputs: list[dict],
     ) -> list[Job]:
-        """Create one child Job per selected playlist entry.
+        """Create one child Job per playlist entry URL.
 
         Each child inherits the parent's ``pipeline_steps`` and ``outputs``,
         but gets its own ``source_uri`` (the individual video URL from the
-        playlist entry).
+        playlist entry) and a 1-based ``playlist_entry_index``.
         """
         children: list[Job] = []
         try:
-            for entry_index in selection:
+            for entry_index, url in enumerate(entry_urls, start=1):
                 child = Job(
                     api_key_id=parent_job.api_key_id,
-                    source_uri=parent_job.source_uri,
+                    source_uri=url,
                     source_type=parent_job.source_type,
                     status=JobStatus.PENDING.value,
                     pipeline_steps=pipeline_steps,
                     outputs=outputs,
                     parent_job_id=parent_job.id,
+                    playlist_entry_index=entry_index,
                 )
                 self.db.add(child)
                 children.append(child)
