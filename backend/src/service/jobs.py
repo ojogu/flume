@@ -85,7 +85,7 @@ class JobService:
             job.completed_at = datetime.now(timezone.utc)
 
         if error:
-            # store error in a convention field if one exists, or log it
+            job.error = error
             logger.error(f"Job {job_id} failed: {error}")
 
         await self.db.flush()

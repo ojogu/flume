@@ -52,6 +52,7 @@ class Job(BaseModel):
     # instead of running ffprobe on the downloaded file.  Null until the worker
     # completes the download/extraction phase.
     source_metadata = sa.Column(JSONB, nullable=True)
+    error = sa.Column(sa.Text, nullable=True)
     completed_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
 
     # optional self-referential FK for playlist fan-out children
