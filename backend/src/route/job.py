@@ -55,12 +55,14 @@ async def create_job(
 
     # Persist the job in pending state with the enriched pipeline spec and outputs
     outputs = [o.model_dump() for o in body.outputs]
+    selection = source.selection.model_dump() if source.selection else None
     job = await job_service.create_job(
         api_key_id=api_key.id,
         source_uri=source.uri,
         source_type=source.type.value,
         pipeline_spec=spec,
         outputs=outputs,
+        selection=selection,
     )
 
     logger.info(f"Job {job.id} created — status={job.status}, source={job.source_uri}")

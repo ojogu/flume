@@ -31,6 +31,7 @@ class JobService:
         pipeline_spec: list[dict] | None = None,
         outputs: list[dict] | None = None,
         parent_job_id: uuid.UUID | None = None,
+        selection: dict | None = None,
     ) -> Job:
         """Create a job in pending state with the validated pipeline spec."""
         job = Job(
@@ -41,6 +42,7 @@ class JobService:
             pipeline_steps=pipeline_spec,
             outputs=outputs,
             parent_job_id=parent_job_id,
+            selection=selection,
         )
         self.db.add(job)
         try:

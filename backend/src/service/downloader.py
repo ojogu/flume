@@ -109,9 +109,7 @@ def _safe_float(value: object) -> float | None:
 def _raw_to_extracted_info(raw: dict) -> ExtractedInfo:
     """Convert a raw yt-dlp info dict into a clean ExtractedInfo.
 
-    Strips away subtitles, chapters, format lists, HTTP headers, and
-    every other yt-dlp field that isn't needed by the FFmpeg pipeline
-    or playlist dispatch logic.
+    Strips away subtitles, chapters, format lists, HTTP headers, and every other yt-dlp field that isn't needed by the FFmpeg pipeline or playlist dispatch logic.
     """
     is_playlist = raw.get("_type") == "playlist"
 
@@ -167,11 +165,7 @@ def extract_info(url: str) -> ExtractedInfo:
     with yt_dlp.YoutubeDL(opts) as ydl:
         logger.info(f"Extracting metadata from {url}")
         raw = ydl.extract_info(url, download=False)
-        logger.info(
-            "Metadata extracted — type=%s, title=%s",
-            raw.get("_type", "video"),
-            raw.get("title", "unknown"),
-        )
+        logger.info(f"Metadata extracted — type={raw.get('_type', 'video')}, title={raw.get('title', 'unknown')}")
         return _raw_to_extracted_info(raw)
 
 
@@ -203,10 +197,7 @@ def download(
     opts = _build_ydl_opts(workspace_dir, format_string, download=True)
 
     with yt_dlp.YoutubeDL(opts) as ydl:
-        logger.info(
-            "Downloading %s  (format=%s, type=%s)",
-            url, fmt.value, source_type,
-        )
+        logger.info(f"Downloading {url}  (format={fmt.value}, type={source_type})")
         raw = ydl.extract_info(url, download=True)
         logger.info(f"Download complete — title={raw.get('title', 'unknown')}")
 
