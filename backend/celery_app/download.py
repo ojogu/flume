@@ -47,9 +47,11 @@ def download_task(job_id: str):
 async def _download_task_async(job_id: str):
     from src.utils.db import get_async_db_session
     from src.service.jobs import JobService
+    from src.service.events import EventService
 
     async with get_async_db_session() as db:
         job_service = JobService(db)
+        event_service = EventService(db)
         job_uuid = uuid.UUID(job_id)
         job = await job_service.get_job(job_uuid)
 
@@ -65,6 +67,17 @@ async def _download_task_async(job_id: str):
 
         # mark step running
         await job_service.update_job_step(step.id, StepStatus.RUNNING)
+
+        await event_service.emit(
+            event_type="step.started",
+            resource_id=job_uuid,
+            data={
+                "step_id": str(step.id),
+                "job_id": job_id,
+                "operation": step.operation,
+                "step_index": step.step_index,
+            },
+        )
 
         try:
             # create isolated workspace
@@ -100,8 +113,37 @@ async def _download_task_async(job_id: str):
                 output_artifact=result.artifact.model_dump(exclude_none=True),
             )
 
+            await event_service.emit(
+                event_type="step.completed",
+                resource_id=job_uuid,
+                data={
+                    "step_id": str(step.id),
+                    "job_id": job_id,
+                    "operation": step.operation,
+                    "step_index": step.step_index,
+                    "output_artifact": result.artifact.model_dump(exclude_none=True),
+                },
+            )
+
             # if this job has a parent, notify for aggregate computation
             await job_service.notify_child_complete(job_uuid)
+
+            # determine final status after parent aggregation
+            updated_job = await job_service.get_job(job_uuid)
+            final_status = updated_job.status if updated_job else JobStatus.SUCCEEDED.value
+
+            await event_service.emit(
+                event_type="job.completed",
+                resource_id=job_uuid,
+                data={
+                    "job_id": job_id,
+                    "status": final_status,
+                    "source_uri": job.source_uri,
+                    "source_type": job.source_type,
+                    "source_metadata": source_meta,
+                    "error": None,
+                },
+            )
 
             logger.info(f"Download complete for job {job_id} — {result.local_path}")
 
@@ -113,6 +155,29 @@ async def _download_task_async(job_id: str):
             await job_service.update_status(
                 job_uuid, JobStatus.FAILED, error=f"Download failed: {e}",
             )
+
+            await event_service.emit(
+                event_type="step.failed",
+                resource_id=job_uuid,
+                data={
+                    "step_id": str(step.id),
+                    "job_id": job_id,
+                    "operation": step.operation,
+                    "step_index": step.step_index,
+                    "error": str(e),
+                },
+            )
+
+            await event_service.emit(
+                event_type="job.failed",
+                resource_id=job_uuid,
+                data={
+                    "job_id": job_id,
+                    "status": JobStatus.FAILED.value,
+                    "error": f"Download failed: {e}",
+                },
+            )
+
             # still notify parent so it can compute partial_success
             await job_service.notify_child_complete(job_uuid)
 

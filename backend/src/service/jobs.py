@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.model.job import Job, JobStatus, TERMINAL_JOB_STATUSES, JobStep, StepStatus
@@ -23,6 +24,50 @@ class JobService:
     async def get_job(self, job_id: uuid.UUID) -> Job | None:
         """Fetch a job by its UUID."""
         result = await self.db.execute(select(Job).where(Job.id == job_id))
+        return result.scalar_one_or_none()
+
+    async def list_jobs(
+        self,
+        api_key_id: uuid.UUID,
+        status: str | None = None,
+        created_after: datetime | None = None,
+        page: int = 1,
+        per_page: int = 20,
+    ) -> tuple[list[Job], int]:
+        """Paginated job listing scoped to an API key.
+
+        Returns ``(jobs, total_count)`` ordered by creation time descending.
+        """
+        base = select(Job).where(Job.api_key_id == api_key_id)
+
+        if status:
+            base = base.where(Job.status == status)
+        if created_after:
+            base = base.where(Job.created_at >= created_after)
+
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
+        )
+
+        query = (
+            base
+            .order_by(Job.created_at.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+        result = await self.db.execute(query)
+        jobs = list(result.scalars().all())
+
+        return jobs, total or 0
+
+    async def get_job_detail(self, job_id: uuid.UUID, api_key_id: uuid.UUID) -> Job | None:
+        """Fetch a single job with steps, scoped by API key ownership."""
+        result = await self.db.execute(
+            select(Job)
+            .options(selectinload(Job.job_steps))
+            .where(Job.id == job_id)
+            .where(Job.api_key_id == api_key_id)
+        )
         return result.scalar_one_or_none()
 
     async def create_job(

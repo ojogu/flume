@@ -35,6 +35,7 @@ class CeleryConfig:
         Queue("email", routing_key="email"),
         Queue("orchestrator", routing_key="orchestrator"),
         Queue("op.download", routing_key="op.download"),
+        Queue("webhook", routing_key="webhook"),
     )
 
     # --------------------------
@@ -44,6 +45,7 @@ class CeleryConfig:
         "jobs.email.send":         {"queue": "email"},
         "jobs.orchestrator.process": {"queue": "orchestrator"},
         "jobs.download.execute":   {"queue": "op.download"},
+        "jobs.webhook.deliver":    {"queue": "webhook"},
     }
 
 

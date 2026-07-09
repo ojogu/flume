@@ -2,6 +2,7 @@
 
 from .api import ApiKey
 from .base import Base, BaseModel
+from .event import WebhookSubscription, WebhookDelivery
 from .job import Job, JobStep
 from .upload import Upload
 from .user import User, Project, MagicLinkToken
@@ -16,4 +17,6 @@ __all__ = [
     "Job",
     "JobStep",
     "Upload",
+    "WebhookSubscription",
+    "WebhookDelivery",
 ]
