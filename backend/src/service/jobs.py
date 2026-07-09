@@ -6,6 +6,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.model.job import Job, JobStatus, TERMINAL_JOB_STATUSES, JobStep, StepStatus
+from src.schema.download import ExtractedInfo
+from src.service.downloader import build_source_meta
 from src.core.exception_base import DatabaseError, NotFoundError
 from src.utils.log import get_logger
 
@@ -172,24 +174,26 @@ class JobService:
     async def create_child_jobs(
         self,
         parent_job: Job,
-        entry_urls: list[str],
+        entry_metas: list[tuple[str, ExtractedInfo]],
         pipeline_steps: list[dict],
         outputs: list[dict],
     ) -> list[Job]:
-        """Create one child Job per playlist entry URL.
+        """Create one child Job per playlist entry.
 
         Each child inherits the parent's ``pipeline_steps`` and ``outputs``,
         but gets its own ``source_uri`` (the individual video URL from the
-        playlist entry) and a 1-based ``playlist_entry_index``.
+        playlist entry), a 1-based ``playlist_entry_index``, and
+        pre-populated ``source_metadata`` from the initial extraction.
         """
         children: list[Job] = []
         try:
-            for entry_index, url in enumerate(entry_urls, start=1):
+            for entry_index, (url, meta) in enumerate(entry_metas, start=1):
                 child = Job(
                     api_key_id=parent_job.api_key_id,
                     source_uri=url,
                     source_type=parent_job.source_type,
                     status=JobStatus.PENDING.value,
+                    source_metadata=build_source_meta(meta),
                     pipeline_steps=pipeline_steps,
                     outputs=outputs,
                     parent_job_id=parent_job.id,

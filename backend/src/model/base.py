@@ -1,12 +1,13 @@
-from typing import (  # Import Generic, List, TypeVar
+from datetime import datetime
+from typing import (
     Any,
-    Dict
+    Dict,
 )
 
 import sqlalchemy as sa
 import uuid
 from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeBase, declared_attr
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr
 
 
 
@@ -31,10 +32,10 @@ class BaseModel(Base):
     
     __abstract__ = True
     # Common columns every table inherits: UUID PK, timestamps, soft-delete support
-    id = sa.Column(sa.UUID, primary_key=True, default=uuid.uuid4)
-    created_at = sa.Column(sa.DateTime(timezone=True), default=sa.func.now())
-    updated_at = sa.Column(sa.DateTime(timezone=True), default=sa.func.now(), onupdate=sa.func.now())
-    deleted_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
+    id: Mapped[uuid.UUID] = sa.Column(sa.UUID, primary_key=True, default=uuid.uuid4)
+    created_at: Mapped[datetime] = sa.Column(sa.DateTime(timezone=True), default=sa.func.now())
+    updated_at: Mapped[datetime] = sa.Column(sa.DateTime(timezone=True), default=sa.func.now(), onupdate=sa.func.now())
+    deleted_at: Mapped[datetime | None] = sa.Column(sa.DateTime(timezone=True), nullable=True)
 
 
     # Auto-generates snake_case plural table names from CamelCase class names
@@ -52,19 +53,6 @@ class BaseModel(Base):
     def to_dict(self) -> Dict[str, Any]:
         """Converts the SQLAlchemy model instance to a dictionary."""
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-    
-    # Example: Common primary key
-    # id: Mapped[int] = mapped_column(primary_key=True, index=True)
-
-    # Example: Common timestamp columns
-    # created_at: Mapped[datetime] = mapped_column(
-    #     server_default=func.now(), nullable=False
-    # )
-    # updated_at: Mapped[datetime] = mapped_column(
-    #     server_default=func.now(), onupdate=func.now(), nullable=False
-    # )
-
 
 
 

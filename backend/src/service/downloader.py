@@ -2,13 +2,11 @@
 # Three responsibilities:
 #   extract_info   — pull metadata from a URL without downloading
 #   download       — fetch media to an isolated job workspace
-#   build_artifact — transform extracted info into the Artifact schema
-#                    that the FFmpeg pipeline consumes (never runs ffprobe)
+#   build_artifact — transform extracted info into the Artifact schema that the FFmpeg pipeline consumes (never runs ffprobe)
 #
 # This module is synchronous — it calls yt-dlp's Python API directly.
-# Celery tasks invoke it from worker processes; it is never called from
-# the FastAPI event loop.
-# ──────────────────────────────────────────────────────────────────────────────
+# Celery tasks invoke it from worker processes; it is never called from the FastAPI event loop.
+
 
 import logging
 import os
@@ -145,6 +143,32 @@ def _raw_to_extracted_info(raw: dict) -> ExtractedInfo:
     )
 
 
+def build_source_meta(info: ExtractedInfo) -> dict:
+    """Build the ``source_metadata`` dict shape from extracted info.
+
+    Matches the ``Artifact.source + Artifact.media`` subset that
+    ``download_task`` stores via ``set_source_metadata``, allowing metadata
+    to be pre-populated at orchestration time.
+    """
+    return {
+        "source": {
+            "platform": info.platform,
+            "video_id": info.video_id,
+            "url": info.url,
+        },
+        "media": {
+            "duration_seconds": info.duration_seconds,
+            "width": info.width,
+            "height": info.height,
+            "fps": info.fps,
+            "video_codec": info.video_codec,
+            "audio_codec": info.audio_codec,
+            "video_bitrate": info.video_bitrate,
+            "audio_bitrate": info.audio_bitrate,
+        },
+    }
+
+
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
@@ -152,8 +176,7 @@ def extract_info(url: str) -> ExtractedInfo:
     """Pull metadata from *url* without downloading any media.
 
     Returns a clean ``ExtractedInfo`` — no raw yt-dlp dicts, no subtitles,
-    no format lists, no HTTP metadata.  Use ``.is_playlist`` and ``.entries``
-    for playlist detection.
+    no format lists, no HTTP metadata.  Use ``.is_playlist`` and ``.entries`` for playlist detection.
 
     Raises ``yt_dlp.utils.DownloadError`` (or subclasses) on failure.
     """
@@ -167,6 +190,7 @@ def extract_info(url: str) -> ExtractedInfo:
         raw = ydl.extract_info(url, download=False)
         logger.info(f"Metadata extracted — type={raw.get('_type', 'video')}, title={raw.get('title', 'unknown')}")
         return _raw_to_extracted_info(raw)
+    #TODO: error handling
 
 
 def download(
@@ -180,8 +204,7 @@ def download(
 
     Args:
         url:            The media URL to download.
-        workspace_dir:  Absolute path to the job's isolated workspace directory.
-                        Must already exist (caller creates it).
+        workspace_dir:  Absolute path to the job's isolated workspace directory. Must already exist (caller creates it).
         fmt:            Quality preference — default BEST.
         source_type:    ``"video"`` or ``"audio"`` — affects format-string selection.
 
@@ -191,7 +214,7 @@ def download(
 
     Raises:
         yt_dlp.utils.DownloadError:  Download or extraction failure.
-        ValueError:                   File exceeds ``max_download_size_bytes``.
+        ValueError:       File exceeds ``max_download_size_bytes``.
     """
     format_string = _resolve_format_string(fmt, source_type)
     opts = _build_ydl_opts(workspace_dir, format_string, download=True)
@@ -229,11 +252,9 @@ def build_artifact(info: ExtractedInfo, local_path: str, job_id: str = "unknown"
     """Transform extracted info into a canonical ``Artifact`` schema.
 
     This is a pure data transformation — no I/O, no side effects.
-    The returned ``Artifact`` is the contract between the yt-dlp layer and the
-    FFmpeg layer; FFmpeg workers read from it and never call ffprobe.
+    The returned ``Artifact`` is the contract between the yt-dlp layer and the FFmpeg layer; FFmpeg workers read from it and never call ffprobe.
 
-    *job_id* is bound after the artifact is created (the Celery task knows the
-    job ID; the downloader itself doesn't).
+    *job_id* is bound after the artifact is created (the Celery task knows the job ID; the downloader itself doesn't).
     """
     source = SourceInfo(
         platform=info.platform,

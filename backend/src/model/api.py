@@ -1,8 +1,11 @@
+from datetime import datetime
 import enum
+import uuid
+
+import sqlalchemy as sa
+from sqlalchemy.orm import Mapped, relationship
 
 from .base import BaseModel
-import sqlalchemy as sa
-from sqlalchemy.orm import relationship
 
 
 class ApiKeyStatus(str, enum.Enum):
@@ -13,20 +16,20 @@ class ApiKeyStatus(str, enum.Enum):
 # ApiKey model — SHA-256 hashed keys with status lifecycle (active → revoked)
 
 class ApiKey(BaseModel):
-    user_id = sa.Column(
+    user_id: Mapped[uuid.UUID] = sa.Column(
         sa.UUID,
         sa.ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    name = sa.Column(sa.String, nullable=False)
-    key_hash = sa.Column(sa.String(64), nullable=False, unique=True)
-    key_prefix = sa.Column(sa.String(16), nullable=False)
-    status = sa.Column(sa.String, nullable=False, default=ApiKeyStatus.ACTIVE.value)
-    expires_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
-    last_used_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
+    name: Mapped[str] = sa.Column(sa.String, nullable=False)
+    key_hash: Mapped[str] = sa.Column(sa.String(64), nullable=False, unique=True)
+    key_prefix: Mapped[str] = sa.Column(sa.String(16), nullable=False)
+    status: Mapped[str] = sa.Column(sa.String, nullable=False, default=ApiKeyStatus.ACTIVE.value)
+    expires_at: Mapped[datetime | None] = sa.Column(sa.DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = sa.Column(sa.DateTime(timezone=True), nullable=True)
 
     # Bidirectional: ApiKey.user → User.api_keys
-    user = relationship("User", back_populates="api_keys")
-    jobs = relationship("Job", back_populates="api_key")
-    uploads = relationship("Upload", back_populates="api_key")
+    user: Mapped["User"] = relationship("User", back_populates="api_keys")
+    jobs: Mapped[list["Job"]] = relationship("Job", back_populates="api_key")
+    uploads: Mapped[list["Upload"]] = relationship("Upload", back_populates="api_key")
 

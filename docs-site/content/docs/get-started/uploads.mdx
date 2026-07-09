@@ -69,8 +69,8 @@ Before processing files that aren't available via public URL, they must be uploa
   </div>
 </div>
 
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start mb-32">
-  <div className="lg:sticky lg:top-8">
+<div className="flex flex-col gap-10 mb-32">
+  <div>
     <h2 className="text-3xl font-bold mb-6">Two-Phase Execution</h2>
     <p className="text-lg text-text-secondary leading-relaxed mb-8">
       The two-phase upload flow solves the "trust" problem inherent in client-side uploads. By requiring a completion step, Flume verifies the payload actually landed in storage before allowing it to be used in a job.
