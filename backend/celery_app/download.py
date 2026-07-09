@@ -21,7 +21,7 @@ from src.model.job import JobStatus, StepStatus
 from src.service.downloader import download, build_artifact_from_local, assert_size_under_limit, guess_container
 from src.service.storage import storage
 from src.utils.config import config
-from src.schema.download import DownloadResult
+from src.schema.download import FormatPreference, DownloadResult
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +76,14 @@ async def _download_task_async(job_id: str):
             if is_upload:
                 result = await _download_upload_source(job, workspace)
             else:
+                fmt = FormatPreference(
+                    job.pipeline_steps[0].get("params", {}).get("format", "best")
+                )
                 result = download(
                     url=job.source_uri,
                     workspace_dir=str(workspace),
                     source_type=job.source_type,
+                    fmt=fmt,
                 )
 
             # persist source metadata on the job

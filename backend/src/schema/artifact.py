@@ -5,51 +5,39 @@ from pydantic import BaseModel
 
 
 class SourceInfo(BaseModel):
-    # platform identifier from yt-dlp extractor key — "youtube", "instagram", etc.
-    platform: str
-    # unique video/media ID from the platform
-    video_id: str
-    # original URL the user submitted
-    url: str
+    platform: str  # platform identifier from yt-dlp extractor key — "youtube", "instagram", etc.
+    video_id: str # unique video/media ID from the platform
+    url: str # original URL the user submitted
+
 
 
 class FileInfo(BaseModel):
-    # absolute path to the file on disk in the job workspace
-    path: str
-    # file size in bytes
-    size_bytes: int
-    # container format — "mp4", "webm", "m4a", etc.
-    container: str
+    path: str # absolute path to the file on disk in the job workspace
+    size_bytes: int # file size in bytes
+    container: str # container format — "mp4", "webm", "m4a", etc.
 
 
 class MediaInfo(BaseModel):
-    # duration in seconds (float for sub-second precision)
-    duration_seconds: float
-    # video resolution — None for audio-only sources
-    width: int | None = None
-    height: int | None = None
-    # frames per second — None for audio
-    fps: float | None = None
-    # codec strings — "none" when the stream is absent (e.g. video-only has acodec="none")
+    duration_seconds: float # duration in seconds (float for sub-second precision)
+    width: int | None = None # video resolution — None for audio-only sources
+    height: int | None = None # frames per second — None for audio
+    
+    fps: float | None = None # codec strings — "none" when the stream is absent (e.g. video-only has acodec="none")
+
     video_codec: str | None = None
     audio_codec: str | None = None
-    # bitrates in bits per second, None when unknown
     video_bitrate: int | None = None
     audio_bitrate: int | None = None
+    # bitrates in bits per second, None when unknown
 
 
 class Artifact(BaseModel):
-    # unique artifact identifier, e.g. "art_<uuid short>"
-    id: str
-    # owning job identifier
-    job_id: str
-    # source metadata from the download/extraction phase
-    source: SourceInfo
-    # physical file properties
-    file: FileInfo
-    # media stream properties — FFmpeg reads this, never runs ffprobe
-    media: MediaInfo
-    # processing status — "pending", "downloading", "completed", "failed"
-    status: str = "completed"
-    # when the artifact was created
-    created_at: datetime
+    
+    id: str #unique artifact identifier, e.g. "art_<uuid short>"
+    job_id: str #owning job identifier
+    source: SourceInfo # source metadata from the download/extraction phase
+    file: FileInfo # physical file properties
+    media: MediaInfo # media stream properties — FFmpeg reads this, never runs ffprobe
+    status: str = "completed" # processing status — "pending", "downloading", "completed", "failed"
+    created_at: datetime #when the artifact was created
+    

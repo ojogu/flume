@@ -13,7 +13,7 @@ import logging
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.job import Job, JobStatus
-from src.service.downloader import extract_info
+from src.service.downloader import extract_info, build_source_meta
 from src.service.jobs import JobService
 
 logger = logging.getLogger(__name__)
@@ -61,12 +61,14 @@ async def _process_job_async(job_id: str):
             if is_upload:
                 await _handle_single(job_service, job)
             else:
-                # extract metadata — this is synchronous yt-dlp, runs in thread
+                # extract metadata, check if playlist — this is synchronous yt-dlp, runs in thread
                 info = extract_info(job.source_uri)
 
                 if info.is_playlist:
                     await _handle_playlist(job_service, job, info)
                 else:
+                    meta = build_source_meta(info)
+                    await job_service.set_source_metadata(job.id, meta)
                     await _handle_single(job_service, job)
         except Exception as e:
             logger.error(f"Orchestration failed for job {job_id}: {e}")
@@ -99,12 +101,12 @@ async def _handle_playlist(job_service: JobService, parent: Job, info):
         await job_service.update_status(parent.id, JobStatus.FAILED)
         return
 
-    # resolve per-entry URLs from extracted info
-    entry_urls = [info.entries[i].url for i in selection]
+    # resolve per-entry URLs + metadata from extracted info
+    entry_metas = [(info.entries[i].url, info.entries[i]) for i in selection]
 
     children = await job_service.create_child_jobs(
         parent_job=parent,
-        entry_urls=entry_urls,
+        entry_metas=entry_metas,
         pipeline_steps=parent.pipeline_steps,
         outputs=parent.outputs,
     )
