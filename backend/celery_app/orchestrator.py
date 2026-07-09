@@ -39,9 +39,11 @@ def process_job(job_id: str):
 async def _process_job_async(job_id: str):
     from src.utils.db import get_async_db_session
     from src.service.jobs import JobService
+    from src.service.events import EventService
 
     async with get_async_db_session() as db:
         job_service = JobService(db)
+        event_service = EventService(db)
         job = await job_service.get_job(job_id)
 
         if not job:
@@ -54,6 +56,17 @@ async def _process_job_async(job_id: str):
 
         # mark as processing
         await job_service.update_status(job.id, JobStatus.PROCESSING)
+
+        await event_service.emit(
+            event_type="job.processing",
+            resource_id=job.id,
+            data={
+                "job_id": str(job.id),
+                "status": JobStatus.PROCESSING.value,
+                "source_uri": job.source_uri,
+                "source_type": job.source_type,
+            },
+        )
 
         try:
             # upload URIs are always single videos — skip yt-dlp extraction
@@ -73,6 +86,15 @@ async def _process_job_async(job_id: str):
         except Exception as e:
             logger.error(f"Orchestration failed for job {job_id}: {e}")
             await job_service.update_status(job.id, JobStatus.FAILED, error=str(e))
+            await event_service.emit(
+                event_type="job.failed",
+                resource_id=job.id,
+                data={
+                    "job_id": str(job.id),
+                    "status": JobStatus.FAILED.value,
+                    "error": str(e),
+                },
+            )
 
 
 async def _handle_single(job_service: JobService, job: Job):

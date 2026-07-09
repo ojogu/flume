@@ -32,4 +32,5 @@ class ApiKey(BaseModel):
     user: Mapped["User"] = relationship("User", back_populates="api_keys")
     jobs: Mapped[list["Job"]] = relationship("Job", back_populates="api_key")
     uploads: Mapped[list["Upload"]] = relationship("Upload", back_populates="api_key")
+    webhook_subscriptions: Mapped[list["WebhookSubscription"]] = relationship("WebhookSubscription", back_populates="api_key")
 

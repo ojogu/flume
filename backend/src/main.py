@@ -11,6 +11,7 @@ from src.auth.route import auth_route
 from src.route.api import api_key_route
 from src.route.job import job_route
 from src.route.upload import upload_route
+from src.route.webhook import webhook_route
 from src.utils.config import Settings
 from src.utils.db import engine
 from src.utils.exception import register_error_handlers
@@ -56,6 +57,7 @@ internal_api.include_router(api_key_route)
 
 public_api.include_router(job_route)
 public_api.include_router(upload_route)
+public_api.include_router(webhook_route)
 
 
 @public_api.get("/root", tags=["health"])

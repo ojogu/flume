@@ -69,7 +69,41 @@ class JobResponse(BaseModel):
     pipeline_steps: Optional[list] = None
     outputs: Optional[list] = None
     selection: Optional[dict] = None
+    source_metadata: Optional[dict] = None
+    error: Optional[str] = None
+    parent_job_id: Optional[uuid.UUID] = None
     playlist_entry_index: Optional[int] = None
     completed_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+class StepResponse(BaseModel):
+    """A single pipeline step embedded in job detail responses."""
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    job_id: uuid.UUID
+    step_index: int
+    operation: str
+    status: str
+    input_artifact: Optional[dict] = None
+    output_artifact: Optional[dict] = None
+    error: Optional[str] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class JobDetailResponse(JobResponse):
+    """Single job detail — includes embedded steps."""
+    steps: list[StepResponse] = []
+
+
+class JobListResponse(BaseModel):
+    """Paginated list of jobs."""
+    total: int
+    page: int
+    per_page: int
+    jobs: list[JobResponse]
