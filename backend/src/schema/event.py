@@ -8,7 +8,6 @@ from pydantic import BaseModel
 class CreateWebhookSubscription(BaseModel):
     url: str
     events: list[str] = ["*"]
-    is_active: bool = True
 
 
 class UpdateWebhookSubscription(BaseModel):
