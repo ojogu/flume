@@ -1,9 +1,10 @@
 # ── Orchestrator task (orchestrator queue) ─────────────────────────────────
 # Responsibilities:
 #   1. Extract metadata from the source URL
-#   2. Detect playlist → fan out child jobs / single → dispatch download
-#   3. Create JobStep records for the implicit download step + user pipeline
-#   4. Route the actual download to the op.download queue
+#   2. Validate platform against supported platforms catalog
+#   3. Detect playlist → fan out child jobs / single → dispatch download
+#   4. Create JobStep records for the implicit download step + user pipeline
+#   5. Route the actual download to the op.download queue
 #
 # Runs on the **orchestrator** queue (few workers, lightweight tasks).
 # ──────────────────────────────────────────────────────────────────────────
@@ -40,10 +41,12 @@ async def _process_job_async(job_id: str):
     from src.utils.db import get_async_db_session
     from src.service.jobs import JobService
     from src.service.events import EventService
+    from src.service.platform import PlatformService
 
     async with get_async_db_session() as db:
         job_service = JobService(db)
         event_service = EventService(db)
+        platform_service = PlatformService(db)
         job = await job_service.get_job(job_id)
 
         if not job:
@@ -69,13 +72,61 @@ async def _process_job_async(job_id: str):
         )
 
         try:
-            # upload URIs are always single videos — skip yt-dlp extraction
+            # upload URIs are always single videos — skip yt-dlp extraction and platform validation
             is_upload = job.source_uri.startswith("uploads/")
             if is_upload:
                 await _handle_single(job_service, job)
             else:
                 # extract metadata, check if playlist — this is synchronous yt-dlp, runs in thread
                 info = extract_info(job.source_uri)
+
+                # validate platform before proceeding
+                platform = await platform_service.get_platform_by_slug(info.platform)
+                if not platform:
+                    error_msg = (
+                        f"Unsupported platform: '{info.platform}'. "
+                        f"This platform has not been added to Flume yet."
+                    )
+                    logger.error(f"Job {job_id} — {error_msg}")
+                    await job_service.set_source_metadata(job.id, {
+                        "source": {"platform": info.platform, "url": job.source_uri},
+                        "failure": {"reason": "unsupported_platform"},
+                    })
+                    await job_service.update_status(job.id, JobStatus.FAILED, error=error_msg)
+                    await event_service.emit(
+                        event_type="job.failed",
+                        resource_id=job.id,
+                        data={
+                            "job_id": str(job.id),
+                            "status": JobStatus.FAILED.value,
+                            "error": error_msg,
+                        },
+                    )
+                    return
+
+                if not platform.is_active:
+                    error_msg = f"Platform '{info.platform}' is currently disabled."
+                    if platform.limitations:
+                        error_msg += f" Reason: {platform.limitations}"
+                    logger.error(f"Job {job_id} — {error_msg}")
+                    await job_service.set_source_metadata(job.id, {
+                        "source": {"platform": info.platform, "url": job.source_uri},
+                        "failure": {
+                            "reason": "platform_disabled",
+                            "reason_detail": platform.limitations,
+                        },
+                    })
+                    await job_service.update_status(job.id, JobStatus.FAILED, error=error_msg)
+                    await event_service.emit(
+                        event_type="job.failed",
+                        resource_id=job.id,
+                        data={
+                            "job_id": str(job.id),
+                            "status": JobStatus.FAILED.value,
+                            "error": error_msg,
+                        },
+                    )
+                    return
 
                 if info.is_playlist:
                     await _handle_playlist(job_service, job, info)

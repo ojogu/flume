@@ -12,6 +12,8 @@ from src.route.api import api_key_route
 from src.route.job import job_route
 from src.route.upload import upload_route
 from src.route.webhook import webhook_route
+from src.route.platform import platform_route
+from src.route.utils import utils_route
 from src.utils.config import Settings
 from src.utils.db import engine
 from src.utils.exception import register_error_handlers
@@ -48,16 +50,18 @@ internal_api.add_middleware(
 
 
 # ── Routes per sub-app ────────────────────────────────────────────────────────
-# Internal: auth (Google OAuth, magic link) + API key CRUD.
-# Public: job submission + file uploads.
+# Internal: auth (Google OAuth, magic link), API key CRUD, platform CRUD.
+# Public: job submission, uploads, webhooks, utilities.
 
 internal_api.include_router(auth_route)
 internal_api.include_router(api_key_route)
+internal_api.include_router(platform_route)
 
 
 public_api.include_router(job_route)
 public_api.include_router(upload_route)
 public_api.include_router(webhook_route)
+public_api.include_router(utils_route)
 
 
 @public_api.get("/root", tags=["health"])

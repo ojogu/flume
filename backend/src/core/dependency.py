@@ -7,6 +7,8 @@ from src.service.api import ApiKeyService
 from src.service.jobs import JobService
 from src.service.upload import UploadService
 from src.service.events import EventService
+from src.service.platform import PlatformService
+from src.service.util import UtilService
 from src.model.api import ApiKey
 from src.core.exception_base import Unauthorized
 from src.utils.config import config
@@ -35,6 +37,12 @@ def get_upload_service(db: AsyncSession = Depends(get_session)):
 
 def get_event_service(db: AsyncSession = Depends(get_session)):
     return EventService(db=db)
+
+def get_platform_service(db: AsyncSession = Depends(get_session)):
+    return PlatformService(db=db)
+
+def get_util_service(db: AsyncSession = Depends(get_session)):
+    return UtilService(db=db)
 
 # Chains three dependencies: JWT extraction → DB session → user lookup by user_id from token
 async def get_current_user(
