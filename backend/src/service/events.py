@@ -1,8 +1,12 @@
+import hashlib
+import hmac
+import json
 import secrets
 from datetime import datetime, timezone
 from typing import Any
 import uuid
 
+import httpx
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -114,6 +118,59 @@ class EventService:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    # ── Test endpoint ─────────────────────────────────────────────────────
+
+    async def test_subscription(
+        self, subscription_id: uuid.UUID, api_key_id: uuid.UUID,
+    ) -> dict:
+        """Send a synchronous test ping to the subscriber URL.
+
+        Validates ownership, builds a real HMAC-signed payload, POSTs with
+        actual delivery headers, and returns the result immediately.
+        No delivery record is created.
+        """
+        sub = await self.get_subscription(subscription_id, api_key_id)
+
+        payload = {
+            "id": f"test_{uuid.uuid4()}",
+            "type": "ping",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "data": {"message": "Webhook test from Flume dashboard"},
+        }
+        body_bytes = json.dumps(payload, separators=(",", ":")).encode()
+        signature = hmac.new(
+            sub.secret.encode(), body_bytes, hashlib.sha256,
+        ).hexdigest()
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Signature-256": f"sha256={signature}",
+            "X-Event-ID": payload["id"],
+            "User-Agent": "Flume-Webhook/1.0",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(sub.url, content=body_bytes, headers=headers)
+
+            return {
+                "success": 200 <= response.status_code < 300,
+                "status_code": response.status_code,
+                "response_body": response.text[:4096],
+            }
+        except httpx.TimeoutException:
+            return {
+                "success": False,
+                "status_code": None,
+                "response_body": "Connection timeout after 10s",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "status_code": None,
+                "response_body": str(e)[:4096],
+            }
 
     # ── Event emission ────────────────────────────────────────────────────
 

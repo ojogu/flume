@@ -5,6 +5,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, relationship
 
+from src.utils.crypto import EncryptedText
+
 from .base import BaseModel
 
 
@@ -18,7 +20,7 @@ class WebhookSubscription(BaseModel):
     )
     url: Mapped[str] = sa.Column(sa.Text, nullable=False)
     events: Mapped[dict] = sa.Column(JSONB, nullable=False, default=["*"])
-    secret: Mapped[str] = sa.Column(sa.Text, nullable=False)
+    secret: Mapped[str] = sa.Column(EncryptedText, nullable=False)
     is_active: Mapped[bool] = sa.Column(sa.Boolean, default=True)
 
     api_key: Mapped["ApiKey"] = relationship("ApiKey", back_populates="webhook_subscriptions")

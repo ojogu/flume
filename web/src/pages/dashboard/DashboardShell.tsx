@@ -1,15 +1,17 @@
 import { useEffect } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Activity, BookOpen, Key, LogOut, Menu, User as UserIcon } from 'lucide-react'
+import { Activity, BookOpen, Key, LogOut, Menu, User as UserIcon, Webhook } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Wordmark } from '@/components/common/Wordmark'
+import { ApiKeySelector } from '@/components/dashboard/ApiKeySelector'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
 
 const DASHBOARD_NAV = [
   { href: '/dashboard/jobs', label: 'Jobs', icon: Activity, internal: true },
   { href: '/dashboard/keys', label: 'API Keys', icon: Key, internal: true },
+  { href: '/dashboard/webhooks', label: 'Webhooks', icon: Webhook, internal: true },
   { href: '/docs', label: 'Docs', icon: BookOpen, internal: false },
 ]
 
@@ -78,6 +80,7 @@ export function DashboardShell() {
 
         <div className="flex-1 px-4">
           <p className="text-label text-[var(--text-muted)] mb-4 px-2 tracking-widest">Development</p>
+          <ApiKeySelector />
           <NavItems />
         </div>
 

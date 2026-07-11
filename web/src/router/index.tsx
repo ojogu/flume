@@ -10,6 +10,7 @@ import { DashboardShell } from '@/pages/dashboard/DashboardShell'
 import { JobsPage } from '@/pages/dashboard/JobsPage'
 import { JobDetailPage } from '@/pages/dashboard/JobDetailPage'
 import { ApiKeysPage } from '@/pages/dashboard/ApiKeysPage'
+import { WebhooksPage } from '@/pages/dashboard/WebhooksPage'
 export const router = createBrowserRouter([
   {
     errorElement: <ErrorPage />,
@@ -53,6 +54,10 @@ export const router = createBrowserRouter([
           {
             path: 'keys',
             element: <ApiKeysPage />,
+          },
+          {
+            path: 'webhooks',
+            element: <WebhooksPage />,
           },
         ],
       },

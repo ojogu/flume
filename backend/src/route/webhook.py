@@ -31,7 +31,6 @@ async def create_webhook(
         api_key_id=api_key.id,
         url=body.url,
         events=body.events,
-        is_active=body.is_active,
     )
     return success(
         data=WebhookSubscriptionCreatedResponse(
@@ -98,6 +97,24 @@ async def delete_webhook(
         api_key_id=api_key.id,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@webhook_route.post("/{subscription_id}/test")
+async def test_webhook(
+    subscription_id: uuid.UUID,
+    api_key: ApiKey = Depends(get_api_key_from_header),
+    event_service: EventService = Depends(get_event_service),
+):
+    """Send a synchronous test ping to the subscriber URL.
+
+    Returns the HTTP status and response body so the dashboard can show
+    green (2xx) or red (non-2xx / error).
+    """
+    result = await event_service.test_subscription(
+        subscription_id=subscription_id,
+        api_key_id=api_key.id,
+    )
+    return success(data=result)
 
 
 @webhook_route.get("/{subscription_id}/deliveries")
