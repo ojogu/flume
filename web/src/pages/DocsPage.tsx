@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { 
   BookOpen, 
   Terminal, 
@@ -10,7 +9,6 @@ import {
   Copy,
   Check
 } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Navbar } from '@/components/common/Navbar'
 import { Footer } from '@/components/common/Footer'

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Activity, BookOpen, Key, LogOut, Menu, User as UserIcon, Webhook } from 'lucide-react'
+import { Activity, BookOpen, Key, LogOut, Menu, User as UserIcon, Webhook, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Wordmark } from '@/components/common/Wordmark'
@@ -12,6 +12,7 @@ const DASHBOARD_NAV = [
   { href: '/dashboard/jobs', label: 'Jobs', icon: Activity, internal: true },
   { href: '/dashboard/keys', label: 'API Keys', icon: Key, internal: true },
   { href: '/dashboard/webhooks', label: 'Webhooks', icon: Webhook, internal: true },
+  { href: '/dashboard/platforms', label: 'Platforms', icon: Globe, internal: true },
   { href: '/docs', label: 'Docs', icon: BookOpen, internal: false },
 ]
 

@@ -11,6 +11,7 @@ import { JobsPage } from '@/pages/dashboard/JobsPage'
 import { JobDetailPage } from '@/pages/dashboard/JobDetailPage'
 import { ApiKeysPage } from '@/pages/dashboard/ApiKeysPage'
 import { WebhooksPage } from '@/pages/dashboard/WebhooksPage'
+import { PlatformsPage } from '@/pages/dashboard/PlatformsPage'
 export const router = createBrowserRouter([
   {
     errorElement: <ErrorPage />,
@@ -58,6 +59,10 @@ export const router = createBrowserRouter([
           {
             path: 'webhooks',
             element: <WebhooksPage />,
+          },
+          {
+            path: 'platforms',
+            element: <PlatformsPage />,
           },
         ],
       },
