@@ -1,75 +1,75 @@
-export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed'
+import { v1ApiClient } from './api'
+
+export type JobStatus = 'pending' | 'processing' | 'succeeded' | 'partial_success' | 'failed'
+
 export type JobStepStatus = 'pending' | 'running' | 'completed' | 'failed'
 
 export interface JobStep {
   id: string
-  name: string
+  job_id: string
+  step_index: number
+  operation: string
+  input_artifact: any
+  output_artifact: any
+  error: string | null
   status: JobStepStatus
-  started_at: string | null  // ISO
-  completed_at: string | null // ISO
-  error?: {
-    message: string
-    stderr: string
-  }
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Job {
   id: string
+  api_key_id: string
   status: JobStatus
-  operation: string
-  created_at: string  // ISO
-  duration_ms: number | null
-  steps: JobStep[]
+  source_uri: string
+  source_type: string
+  pipeline_steps: any[]
+  outputs: any[]
+  selection: any
+  source_metadata: any
+  error: string | null
+  parent_job_id: string | null
+  playlist_entry_index: number | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+  steps?: JobStep[] // steps only in detail view
 }
 
-const MOCK_JOBS: Job[] = [
-  {
-    id: 'job_4k2n8z9p1m',
-    status: 'completed',
-    operation: 'Video Compression',
-    created_at: new Date(Date.now() - 3600000).toISOString(), // 1h ago
-    duration_ms: 45200,
-    steps: [
-      { id: '1', name: 'Download source', status: 'completed', started_at: '2026-06-11T21:00:00Z', completed_at: '2026-06-11T21:00:10Z' },
-      { id: '2', name: 'FFmpeg processing', status: 'completed', started_at: '2026-06-11T21:00:10Z', completed_at: '2026-06-11T21:00:40Z' },
-      { id: '3', name: 'Upload result', status: 'completed', started_at: '2026-06-11T21:00:40Z', completed_at: '2026-06-11T21:00:45Z' },
-    ]
-  },
-  {
-    id: 'job_7x1v3q5r8w',
-    status: 'failed',
-    operation: 'Audio Extraction',
-    created_at: new Date(Date.now() - 1800000).toISOString(), // 30m ago
-    duration_ms: 12000,
-    steps: [
-      { id: '1', name: 'Download source', status: 'completed', started_at: '2026-06-11T21:30:00Z', completed_at: '2026-06-11T21:30:10Z' },
-      { id: '2', name: 'Format analysis', status: 'failed', started_at: '2026-06-11T21:30:10Z', completed_at: '2026-06-11T21:30:12Z', error: {
-        message: 'Invalid media container',
-        stderr: 'ffprobe version 6.0 Copyright (c) 2007-2023 the FFmpeg developers\n[mov,mp4,m4a,3gp,3g2,mj2 @ 0x559e8f6f8c00] moov atom not found\n/tmp/input.mp4: Invalid data found when processing input'
-      }},
-    ]
-  },
-  {
-    id: 'job_1z9x2c3v4b',
-    status: 'processing',
-    operation: 'Thumbnail Generation',
-    created_at: new Date(Date.now() - 300000).toISOString(), // 5m ago
-    duration_ms: null,
-    steps: [
-      { id: '1', name: 'Download source', status: 'completed', started_at: '2026-06-11T21:55:00Z', completed_at: '2026-06-11T21:55:05Z' },
-      { id: '2', name: 'Scene detection', status: 'running', started_at: '2026-06-11T21:55:05Z', completed_at: null },
-      { id: '3', name: 'Frame capture', status: 'pending', started_at: null, completed_at: null },
-    ]
-  }
-]
-
-export async function getJobs(): Promise<Job[]> {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 600))
-  return MOCK_JOBS
+export interface JobsResponse {
+  total: number
+  page: number
+  per_page: number
+  jobs: Job[]
 }
 
-export async function getJob(id: string): Promise<Job | null> {
-  await new Promise(resolve => setTimeout(resolve, 400))
-  return MOCK_JOBS.find(j => j.id === id) || null
+export interface GetJobsParams {
+  status?: string
+  created_after?: string
+  page?: number
+  per_page?: number
+}
+
+/**
+ * Fetch jobs using the v1 public API.
+ */
+export async function getJobs(params: GetJobsParams = {}): Promise<JobsResponse> {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      query.set(key, value.toString())
+    }
+  })
+
+  const queryString = query.toString()
+  return v1ApiClient<JobsResponse>(`/job${queryString ? `?${queryString}` : ''}`)
+}
+
+/**
+ * Fetch a single job by ID using the v1 public API.
+ */
+export async function getJob(id: string): Promise<Job> {
+  return v1ApiClient<Job>(`/job/${id}`)
 }

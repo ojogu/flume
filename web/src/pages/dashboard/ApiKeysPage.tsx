@@ -33,8 +33,10 @@ import {
 } from '@/components/ui/alert-dialog'
 import { listApiKeys, createApiKey, revokeApiKey, ApiKey, ApiKeyCreated } from '@/lib/api-keys'
 import { formatRelativeTime, cn } from '@/lib/utils'
+import { useApiStore } from '@/stores/apiStore'
 
 export function ApiKeysPage() {
+  const { activeApiKey, setActiveApiKey } = useApiStore()
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -161,19 +163,34 @@ export function ApiKeysPage() {
                     {key.created_at ? formatRelativeTime(key.created_at) : '--'}
                   </TableCell>
                   <TableCell className="text-right">
-                    {key.status === 'active' ? (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setRevokingId(key.id)}
-                        className="text-[var(--text-muted)] hover:text-destructive hover:bg-destructive/10"
-                        title="Revoke key"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Badge variant="secondary">Revoked</Badge>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {key.status === 'active' && activeApiKey !== key.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[10px] uppercase font-bold"
+                          onClick={() => setActiveApiKey(key.id, key.name)}
+                        >
+                          Activate
+                        </Button>
+                      )}
+                      {key.status === 'active' && activeApiKey === key.id && (
+                        <Badge className="bg-brand/20 text-brand border-none hover:bg-brand/20 text-[10px] uppercase font-bold tracking-wider h-7">Active</Badge>
+                      )}
+                      {key.status === 'active' ? (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setRevokingId(key.id)}
+                          className="text-[var(--text-muted)] hover:text-destructive hover:bg-destructive/10"
+                          title="Revoke key"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary">Revoked</Badge>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

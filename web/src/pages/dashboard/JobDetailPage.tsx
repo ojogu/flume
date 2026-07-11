@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Copy, Check, Terminal, AlertCircle, Clock, CheckCircle2, Circle } from 'lucide-react'
+import { ChevronLeft, Copy, Check, AlertCircle, Clock, CheckCircle2, Circle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
@@ -12,7 +12,6 @@ export function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
   const [copiedId, setCopiedId] = useState(false)
-  const [expandedStderr, setExpandedStderr] = useState<string | null>(null)
 
   useEffect(() => {
     if (id) {
@@ -87,15 +86,15 @@ export function JobDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)]">
-                {job.operation}
+              <h1 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)] capitalize">
+                {job.source_type} Processing
               </h1>
-              <Badge variant={job.status === 'completed' ? 'default' : job.status === 'failed' ? 'destructive' : 'secondary'} className="mt-1">
-                {job.status}
+              <Badge variant={job.status === 'succeeded' ? 'default' : job.status === 'failed' ? 'destructive' : 'secondary'} className="mt-1 capitalize h-5 text-[10px] font-bold">
+                {job.status.replace('_', ' ')}
               </Badge>
             </div>
             <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-              <code className="bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded text-xs font-mono">{job.id}</code>
+              <code className="bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded text-xs font-mono border border-[var(--border-subtle)]">{job.id}</code>
               <button
                 onClick={() => copyToClipboard(job.id)}
                 className="text-[var(--text-muted)] hover:text-brand transition-colors p-1"
@@ -106,10 +105,10 @@ export function JobDetailPage() {
             </div>
           </div>
           
-          <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] p-4 rounded-xl text-right min-w-[140px]">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] p-4 rounded-xl text-right min-w-[140px] shadow-xs">
             <p className="text-label text-[var(--text-muted)] mb-1 tracking-wider">Duration</p>
-            <p className="text-2xl font-mono text-[var(--text-primary)]">
-              {formatDuration(job.duration_ms)}
+            <p className="text-2xl font-mono text-[var(--text-primary)] font-bold">
+              {job.completed_at ? formatDuration(new Date(job.completed_at).getTime() - new Date(job.created_at).getTime()) : '---'}
             </p>
           </div>
         </div>
@@ -118,11 +117,11 @@ export function JobDetailPage() {
       <Separator className="bg-[var(--border-subtle)]" />
 
       {/* Timeline */}
-      <div className="relative space-y-0 pb-12">
-        {job.steps.map((step, index) => (
+      <div className="relative space-y-0 pb-12 px-2">
+        {job.steps?.map((step, index) => (
           <div key={step.id} className="relative flex gap-6 pb-10 last:pb-0">
             {/* Connector Line */}
-            {index < job.steps.length - 1 && (
+            {index < (job.steps?.length || 0) - 1 && (
               <div className="absolute left-[9px] top-6 w-[2px] h-full bg-[var(--border-subtle)]" />
             )}
             
@@ -138,50 +137,23 @@ export function JobDetailPage() {
                   "font-semibold text-base",
                   step.status === 'failed' ? "text-destructive" : "text-[var(--text-primary)]"
                 )}>
-                  {step.name}
+                  {step.operation}
                 </h3>
                 {step.started_at && step.completed_at && (
-                  <span className="text-xs font-mono text-[var(--text-muted)]">
+                  <span className="text-xs font-mono text-[var(--text-muted)] font-medium">
                     {formatDuration(new Date(step.completed_at).getTime() - new Date(step.started_at).getTime())}
                   </span>
                 )}
               </div>
 
               {step.error && (
-                <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 space-y-4">
+                <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
                   <div className="flex items-start gap-3 text-destructive">
                     <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold">Step failed</p>
-                      <p className="text-sm opacity-90 leading-relaxed">{step.error.message}</p>
+                      <p className="text-sm font-bold uppercase tracking-wider">Step failed</p>
+                      <p className="text-sm opacity-90 leading-relaxed">{step.error}</p>
                     </div>
-                  </div>
-                  
-                  <div className="pt-2 border-t border-destructive/10">
-                    <button
-                      onClick={() => setExpandedStderr(expandedStderr === step.id ? null : step.id)}
-                      className="text-xs text-destructive/80 hover:text-destructive flex items-center gap-2 font-medium transition-colors"
-                    >
-                      <Terminal className="h-3.5 w-3.5" />
-                      {expandedStderr === step.id ? 'Hide technical logs' : 'Show technical logs (stderr)'}
-                    </button>
-
-                    {expandedStderr === step.id && (
-                      <div className="mt-3 relative">
-                        <pre className="p-4 bg-black/5 dark:bg-black/40 rounded-lg border border-destructive/10 overflow-x-auto text-[11px] font-mono text-[var(--text-secondary)] leading-relaxed max-h-60">
-                          {step.error.stderr}
-                        </pre>
-                        <div className="absolute top-2 right-2">
-                           <button
-                             onClick={() => navigator.clipboard.writeText(step.error!.stderr)}
-                             className="p-1.5 rounded hover:bg-black/10 transition-colors text-destructive/60 hover:text-destructive"
-                             title="Copy logs"
-                           >
-                             <Copy className="h-3 w-3" />
-                           </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
