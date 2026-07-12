@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from src.core.exception_base import NotFoundError
 from src.model.event import WebhookSubscription, WebhookDelivery
+from src.model.api import ApiKey
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -171,6 +172,143 @@ class EventService:
                 "status_code": None,
                 "response_body": str(e)[:4096],
             }
+
+    # ── User-scoped queries (for internal/dashboard API) ────────────────────────
+
+    async def _verify_subscription_ownership(
+        self, user_id: uuid.UUID, subscription_id: uuid.UUID
+    ) -> WebhookSubscription:
+        """Verify a subscription belongs to the user; raise NotFoundError if not."""
+        result = await self.db.execute(
+            select(WebhookSubscription)
+            .join(ApiKey, WebhookSubscription.api_key_id == ApiKey.id)
+            .where(WebhookSubscription.id == subscription_id)
+            .where(ApiKey.user_id == user_id)
+        )
+        sub = result.scalar_one_or_none()
+        if not sub:
+            raise NotFoundError(f"WebhookSubscription {subscription_id} not found")
+        return sub
+
+    async def list_subscriptions_by_user(
+        self, user_id: uuid.UUID, api_key_id: uuid.UUID | None = None,
+    ) -> list[WebhookSubscription]:
+        """List all subscriptions for a user, optionally filtered by API key."""
+        base = (
+            select(WebhookSubscription)
+            .join(ApiKey, WebhookSubscription.api_key_id == ApiKey.id)
+            .where(ApiKey.user_id == user_id)
+        )
+        if api_key_id:
+            base = base.where(WebhookSubscription.api_key_id == api_key_id)
+
+        result = await self.db.execute(
+            base.order_by(WebhookSubscription.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_subscription_by_user(
+        self, user_id: uuid.UUID, subscription_id: uuid.UUID,
+    ) -> WebhookSubscription:
+        """Fetch a single subscription, verifying user ownership."""
+        return await self._verify_subscription_ownership(user_id, subscription_id)
+
+    async def create_subscription_by_user(
+        self,
+        user_id: uuid.UUID,
+        api_key_id: uuid.UUID,
+        url: str,
+        events: list[str] | None = None,
+        is_active: bool = True,
+    ) -> tuple[WebhookSubscription, str]:
+        """Create a webhook subscription, verifying the API key belongs to the user."""
+        # Verify the API key belongs to this user
+        result = await self.db.execute(
+            select(ApiKey).where(ApiKey.id == api_key_id, ApiKey.user_id == user_id)
+        )
+        api_key = result.scalar_one_or_none()
+        if not api_key:
+            raise NotFoundError(f"API key {api_key_id} not found")
+
+        return await self.create_subscription(
+            api_key_id=api_key_id, url=url, events=events, is_active=is_active,
+        )
+
+    async def update_subscription_by_user(
+        self, user_id: uuid.UUID, subscription_id: uuid.UUID, **kwargs: Any,
+    ) -> WebhookSubscription:
+        """Update a subscription, verifying user ownership."""
+        sub = await self._verify_subscription_ownership(user_id, subscription_id)
+
+        for key in ("url", "events", "is_active"):
+            if key in kwargs:
+                setattr(sub, key, kwargs[key])
+
+        await self.db.flush()
+        await self.db.commit()
+        await self.db.refresh(sub)
+        logger.info(f"WebhookSubscription {subscription_id} updated (user {user_id})")
+        return sub
+
+    async def delete_subscription_by_user(
+        self, user_id: uuid.UUID, subscription_id: uuid.UUID,
+    ) -> None:
+        """Delete a subscription, verifying user ownership."""
+        sub = await self._verify_subscription_ownership(user_id, subscription_id)
+        await self.db.delete(sub)
+        await self.db.commit()
+        logger.info(f"WebhookSubscription {subscription_id} deleted (user {user_id})")
+
+    async def list_deliveries_by_user(
+        self, user_id: uuid.UUID, subscription_id: uuid.UUID, limit: int = 50,
+    ) -> list[WebhookDelivery]:
+        """List recent deliveries for a subscription, verifying user ownership."""
+        await self._verify_subscription_ownership(user_id, subscription_id)
+
+        result = await self.db.execute(
+            select(WebhookDelivery)
+            .where(WebhookDelivery.subscription_id == subscription_id)
+            .order_by(WebhookDelivery.created_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def test_subscription_by_user(
+        self, user_id: uuid.UUID, subscription_id: uuid.UUID,
+    ) -> dict:
+        """Send a test ping to a subscription, verifying user ownership."""
+        sub = await self._verify_subscription_ownership(user_id, subscription_id)
+
+        payload = {
+            "id": f"test_{uuid.uuid4()}",
+            "type": "ping",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "data": {"message": "Webhook test from Flume dashboard"},
+        }
+        body_bytes = json.dumps(payload, separators=(",", ":")).encode()
+        signature = hmac.new(
+            sub.secret.encode(), body_bytes, hashlib.sha256,
+        ).hexdigest()
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Signature-256": f"sha256={signature}",
+            "X-Event-ID": payload["id"],
+            "User-Agent": "Flume-Webhook/1.0",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(sub.url, content=body_bytes, headers=headers)
+            return {
+                "success": 200 <= response.status_code < 300,
+                "status_code": response.status_code,
+                "response_body": response.text[:4096],
+            }
+        except httpx.TimeoutException:
+            return {"success": False, "status_code": None, "response_body": "Connection timeout after 10s"}
+        except Exception as e:
+            return {"success": False, "status_code": None, "response_body": str(e)[:4096]}
 
     # ── Event emission ────────────────────────────────────────────────────
 

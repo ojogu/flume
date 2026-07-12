@@ -1,4 +1,4 @@
-import { v1ApiClient } from './api'
+import { apiClient } from './api'
 
 export type JobStatus = 'pending' | 'processing' | 'succeeded' | 'partial_success' | 'failed'
 
@@ -22,6 +22,7 @@ export interface JobStep {
 export interface Job {
   id: string
   api_key_id: string
+  api_key_name?: string | null
   status: JobStatus
   source_uri: string
   source_type: string
@@ -48,12 +49,14 @@ export interface JobsResponse {
 export interface GetJobsParams {
   status?: string
   created_after?: string
+  api_key_id?: string
   page?: number
   per_page?: number
 }
 
 /**
- * Fetch jobs using the v1 public API.
+ * Fetch jobs using the internal JWT-authenticated API.
+ * Returns all jobs across the user's API keys, with optional filters.
  */
 export async function getJobs(params: GetJobsParams = {}): Promise<JobsResponse> {
   const query = new URLSearchParams()
@@ -64,12 +67,14 @@ export async function getJobs(params: GetJobsParams = {}): Promise<JobsResponse>
   })
 
   const queryString = query.toString()
-  return v1ApiClient<JobsResponse>(`/job${queryString ? `?${queryString}` : ''}`)
+  const res = await apiClient<{ status: string; data: JobsResponse }>(`/jobs${queryString ? `?${queryString}` : ''}`)
+  return res.data
 }
 
 /**
- * Fetch a single job by ID using the v1 public API.
+ * Fetch a single job by ID using the internal JWT-authenticated API.
  */
 export async function getJob(id: string): Promise<Job> {
-  return v1ApiClient<Job>(`/job/${id}`)
+  const res = await apiClient<{ status: string; data: Job }>(`/jobs/${id}`)
+  return res.data
 }

@@ -5,7 +5,7 @@ from fastapi.responses import Response
 
 from src.core.dependency import get_api_key_from_header, get_event_service
 from src.model.api import ApiKey
-from src.schema.event import (
+from src.public.schema.webhooks import (
     CreateWebhookSubscription,
     UpdateWebhookSubscription,
     WebhookSubscriptionCreatedResponse,

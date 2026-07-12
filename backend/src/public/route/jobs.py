@@ -12,7 +12,7 @@ from src.core.dependency import (
 )
 from src.model.api import ApiKey
 from src.model.job import JobStatus
-from src.schema.job import (
+from src.public.schema.jobs import (
     CreateJobRequest,
     JobDetailResponse,
     JobListResponse,

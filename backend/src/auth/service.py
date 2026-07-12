@@ -5,6 +5,7 @@
 from datetime import timedelta, datetime, timezone
 import secrets
 from fastapi import Request
+import bcrypt
 import jwt
 import uuid
 from src.utils.config import config
@@ -77,6 +78,14 @@ class AuthService:
         except jwt.PyJWTError as e:
             logger.error(f"error decoding token: {e}", exc_info=True)
             raise TokenExpired("error decoding token")
+
+    @staticmethod
+    def hash_password(plain: str) -> str:
+        return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
+
+    @staticmethod
+    def verify_password(plain: str, hashed: str) -> bool:
+        return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 

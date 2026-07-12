@@ -27,6 +27,8 @@ class User(BaseModel):
     last_name: Mapped[str | None] = sa.Column(sa.String, nullable=True)
     is_active: Mapped[bool] = sa.Column(sa.Boolean, default=False, nullable=False)
     auth_provider: Mapped[str] = sa.Column(sa.String, nullable=False)
+    password_hash: Mapped[str | None] = sa.Column(sa.String(128), nullable=True)
+    is_admin: Mapped[bool] = sa.Column(sa.Boolean, default=False, nullable=False)
 
     # Bidirectional relationship: User.api_keys → ApiKey.user
     api_keys: Mapped[list["ApiKey"]] = relationship("ApiKey", back_populates="user")

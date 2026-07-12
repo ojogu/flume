@@ -11,14 +11,20 @@ export function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [job, setJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState(false)
 
   useEffect(() => {
     if (id) {
-      getJob(id).then((data) => {
-        setJob(data)
-        setLoading(false)
-      })
+      getJob(id)
+        .then((data) => {
+          setJob(data)
+          setLoading(false)
+        })
+        .catch((err) => {
+          setError(err.message || 'Failed to load job')
+          setLoading(false)
+        })
     }
   }, [id])
 
@@ -50,11 +56,13 @@ export function JobDetailPage() {
     )
   }
 
-  if (!job) {
+  if (error || !job) {
     return (
       <div className="text-center py-20">
         <h2 className="text-display text-2xl text-[var(--text-primary)]">Job not found</h2>
-        <p className="text-[var(--text-secondary)] mt-2">The job you are looking for does not exist or has been deleted.</p>
+        <p className="text-[var(--text-secondary)] mt-2">
+          {error || 'The job you are looking for does not exist or has been deleted.'}
+        </p>
         <Link to="/dashboard/jobs" className="mt-6 inline-block text-brand hover:underline font-medium">
           Back to jobs
         </Link>
@@ -75,14 +83,14 @@ export function JobDetailPage() {
     <div className="max-w-4xl space-y-8">
       {/* Header */}
       <div className="space-y-4">
-        <Link 
-          to="/dashboard/jobs" 
+        <Link
+          to="/dashboard/jobs"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)] hover:text-brand transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to jobs
         </Link>
-        
+
         <div className="flex flex-wrap items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -103,8 +111,11 @@ export function JobDetailPage() {
                 {copiedId ? <Check className="h-3.5 w-3.5 text-brand" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
             </div>
+            {job.api_key_name && (
+              <p className="text-xs text-[var(--text-muted)]">API Key: {job.api_key_name}</p>
+            )}
           </div>
-          
+
           <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] p-4 rounded-xl text-right min-w-[140px] shadow-xs">
             <p className="text-label text-[var(--text-muted)] mb-1 tracking-wider">Duration</p>
             <p className="text-2xl font-mono text-[var(--text-primary)] font-bold">
@@ -124,7 +135,7 @@ export function JobDetailPage() {
             {index < (job.steps?.length || 0) - 1 && (
               <div className="absolute left-[9px] top-6 w-[2px] h-full bg-[var(--border-subtle)]" />
             )}
-            
+
             {/* Node Icon Container */}
             <div className="relative z-10 pt-0.5 bg-[var(--background)]">
               <StepIcon status={step.status} />

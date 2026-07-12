@@ -35,8 +35,7 @@ export function WebhooksPage() {
 
   const { data: webhooks, isLoading, isError } = useQuery({
     queryKey: ['webhooks', activeApiKey],
-    queryFn: listWebhooks,
-    enabled: !!activeApiKey,
+    queryFn: () => listWebhooks(activeApiKey || undefined),
   })
 
   const createMutation = useMutation({
@@ -58,26 +57,14 @@ export function WebhooksPage() {
   })
 
   const handleCreate = () => {
-    if (!url) return
-    createMutation.mutate({ url, events: ['*'] })
+    if (!url || !activeApiKey) return
+    createMutation.mutate({ api_key_id: activeApiKey, url, events: ['*'] })
   }
 
   const handleReset = () => {
     setShowCreateModal(false)
     setUrl('')
     setCreatedSecret(null)
-  }
-
-  if (!activeApiKey) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="h-16 w-16 rounded-full bg-[var(--brand-light)] flex items-center justify-center mb-6">
-          <AlertCircle className="h-8 w-8 text-brand" />
-        </div>
-        <h2 className="text-display text-2xl text-[var(--text-primary)] mb-2">No active API key</h2>
-        <p className="text-[var(--text-secondary)] max-w-sm mb-8">Select an API key from the sidebar to manage webhooks.</p>
-      </div>
-    )
   }
 
   return (
@@ -87,7 +74,7 @@ export function WebhooksPage() {
           <h1 className="text-display text-3xl text-[var(--text-primary)]">Webhooks</h1>
           <p className="text-[var(--text-secondary)] mt-1">Listen for Flume events in real-time.</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+        <Button onClick={() => setShowCreateModal(true)} className="gap-2" disabled={!activeApiKey}>
           <Plus className="h-4 w-4" />
           Add endpoint
         </Button>
@@ -106,9 +93,15 @@ export function WebhooksPage() {
         ) : webhooks?.length === 0 ? (
           <div className="p-16 border border-dashed border-[var(--border-subtle)] rounded-xl text-center bg-[var(--bg-subtle)]/30">
             <Webhook className="h-10 w-10 text-[var(--text-muted)] mx-auto mb-4 opacity-20" />
-            <h3 className="text-lg font-semibold text-[var(--text-primary)]">No endpoints configured</h3>
-            <p className="text-[var(--text-secondary)] mt-1 mb-6 text-sm max-w-sm mx-auto"> Register a URL to receive processing updates, job completion notifications, and more directly in your system. </p>
-            <Button variant="outline" onClick={() => setShowCreateModal(true)}>Register your first webhook</Button>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+              {activeApiKey ? 'No endpoints configured' : 'Select an API key'}
+            </h3>
+            <p className="text-[var(--text-secondary)] mt-1 mb-6 text-sm max-w-sm mx-auto">
+              {activeApiKey
+                ? 'Register a URL to receive processing updates, job completion notifications, and more directly in your system.'
+                : 'Select an API key above to view and manage its webhooks.'}
+            </p>
+            {activeApiKey && <Button variant="outline" onClick={() => setShowCreateModal(true)}>Register your first webhook</Button>}
           </div>
         ) : (
           webhooks?.map(webhook => (

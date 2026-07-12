@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.model.job import Job, JobStatus, TERMINAL_JOB_STATUSES, JobStep, StepStatus
+from src.model.api import ApiKey
 from src.schema.download import ExtractedInfo
 from src.service.downloader import build_source_meta
 from src.core.exception_base import DatabaseError, NotFoundError
@@ -67,6 +68,63 @@ class JobService:
             .options(selectinload(Job.job_steps))
             .where(Job.id == job_id)
             .where(Job.api_key_id == api_key_id)
+        )
+        return result.scalar_one_or_none()
+
+    # ── User-scoped queries (for internal/dashboard API) ────────────────────────
+
+    async def list_jobs_by_user(
+        self,
+        user_id: uuid.UUID,
+        status: str | None = None,
+        api_key_id: uuid.UUID | None = None,
+        created_after: datetime | None = None,
+        page: int = 1,
+        per_page: int = 20,
+    ) -> tuple[list[Job], int]:
+        """Paginated job listing for all API keys belonging to a user.
+
+        Optional ``api_key_id`` filter narrows to a single key.
+        Returns ``(jobs, total_count)`` ordered by creation time descending.
+        """
+        base = (
+            select(Job)
+            .join(ApiKey, Job.api_key_id == ApiKey.id)
+            .where(ApiKey.user_id == user_id)
+        )
+
+        if api_key_id:
+            base = base.where(Job.api_key_id == api_key_id)
+        if status:
+            base = base.where(Job.status == status)
+        if created_after:
+            base = base.where(Job.created_at >= created_after)
+
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
+        )
+
+        query = (
+            base
+            .order_by(Job.created_at.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+        result = await self.db.execute(query)
+        jobs = list(result.scalars().all())
+
+        return jobs, total or 0
+
+    async def get_job_detail_by_user(
+        self, user_id: uuid.UUID, job_id: uuid.UUID
+    ) -> Job | None:
+        """Fetch a single job with steps, verifying the job belongs to the user."""
+        result = await self.db.execute(
+            select(Job)
+            .options(selectinload(Job.job_steps))
+            .join(ApiKey, Job.api_key_id == ApiKey.id)
+            .where(Job.id == job_id)
+            .where(ApiKey.user_id == user_id)
         )
         return result.scalar_one_or_none()
 

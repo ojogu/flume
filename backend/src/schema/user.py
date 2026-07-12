@@ -19,6 +19,7 @@ class UserResponse(BaseModel):
     email_verified: bool
     oauth_verified: bool
     onboarded: bool
+    is_admin: bool = False
     name: Optional[str] = None
     picture: Optional[str] = None
     first_name: Optional[str] = None
@@ -38,6 +39,8 @@ class CreateUser(BaseModel):
     email_verified: bool = False
     oauth_verified: bool = False
     onboarded: bool = False
+    password: Optional[str] = None
+    is_admin: bool = False
     name: Optional[str] = None
     picture: Optional[str] = None
     first_name: Optional[str] = None
@@ -54,6 +57,8 @@ class UpdateUser(BaseModel):
     email_verified: Optional[bool] = None
     oauth_verified: Optional[bool] = None
     onboarded: Optional[bool] = None
+    password: Optional[str] = None
+    is_admin: Optional[bool] = None
     name: Optional[str] = None
     picture: Optional[str] = None
     first_name: Optional[str] = None

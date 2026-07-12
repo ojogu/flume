@@ -1,7 +1,9 @@
-import { v1ApiClient } from './api'
+import { apiClient } from './api'
 
 export interface WebhookSubscription {
   id: string
+  api_key_id: string
+  api_key_name?: string | null
   url: string
   events: string[]
   is_active: boolean
@@ -31,38 +33,48 @@ export interface WebhookTestResult {
 }
 
 /**
- * List all webhook subscriptions for the active API key.
+ * List all webhook subscriptions for the user, optionally filtered by API key.
  */
-export async function listWebhooks(): Promise<WebhookSubscription[]> {
-  return v1ApiClient<WebhookSubscription[]>('/webhooks')
+export async function listWebhooks(api_key_id?: string): Promise<WebhookSubscription[]> {
+  const query = api_key_id ? `?api_key_id=${api_key_id}` : ''
+  const res = await apiClient<{ status: string; data: WebhookSubscription[] }>(`/webhooks${query}`)
+  return res.data
 }
 
 /**
- * Create a new webhook subscription.
+ * Create a new webhook subscription on a specific API key.
  */
-export async function createWebhook(req: { url: string; events: string[] }): Promise<WebhookSubscription> {
-  return v1ApiClient<WebhookSubscription>('/webhooks', {
+export async function createWebhook(req: {
+  api_key_id: string
+  url: string
+  events: string[]
+}): Promise<WebhookSubscription> {
+  const res = await apiClient<{ status: string; data: WebhookSubscription }>('/webhooks', {
     method: 'POST',
     body: JSON.stringify(req),
   })
+  return res.data
 }
 
 /**
  * Update an existing webhook subscription.
  */
-export async function updateWebhook(id: string, req: Partial<{ url: string; events: string[]; is_active: boolean }>): Promise<WebhookSubscription> {
-  return v1ApiClient<WebhookSubscription>(`/webhooks/${id}`, {
+export async function updateWebhook(
+  id: string,
+  req: Partial<{ url: string; events: string[]; is_active: boolean }>
+): Promise<WebhookSubscription> {
+  const res = await apiClient<{ status: string; data: WebhookSubscription }>(`/webhooks/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(req),
   })
+  return res.data
 }
 
 /**
  * Delete a webhook subscription.
  */
 export async function deleteWebhook(id: string): Promise<void> {
-  // DELETE /v1/webhooks/{id} returns 204 No Content
-  await v1ApiClient<void>(`/webhooks/${id}`, {
+  await apiClient<void>(`/webhooks/${id}`, {
     method: 'DELETE',
   })
 }
@@ -71,14 +83,16 @@ export async function deleteWebhook(id: string): Promise<void> {
  * List delivery attempts for a specific subscription.
  */
 export async function listWebhookDeliveries(id: string): Promise<WebhookDelivery[]> {
-  return v1ApiClient<WebhookDelivery[]>(`/webhooks/${id}/deliveries`)
+  const res = await apiClient<{ status: string; data: WebhookDelivery[] }>(`/webhooks/${id}/deliveries`)
+  return res.data
 }
 
 /**
  * Trigger a synchronous test ping for a webhook.
  */
 export async function testWebhook(id: string): Promise<WebhookTestResult> {
-  return v1ApiClient<WebhookTestResult>(`/webhooks/${id}/test`, {
+  const res = await apiClient<{ status: string; data: WebhookTestResult }>(`/webhooks/${id}/test`, {
     method: 'POST',
   })
+  return res.data
 }

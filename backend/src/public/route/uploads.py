@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 
 from src.core.dependency import get_api_key_from_header, get_upload_service
 from src.model.api import ApiKey
-from src.schema.upload import PresignUploadRequest, PresignUploadResponse, UploadResponse
+from src.public.schema.uploads import PresignUploadRequest, PresignUploadResponse, UploadResponse
 from src.service.upload import UploadService
 from src.utils.response import success
 

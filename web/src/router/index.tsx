@@ -7,11 +7,16 @@ import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { DashboardShell } from '@/pages/dashboard/DashboardShell'
+import { DashboardErrorPage } from '@/pages/dashboard/DashboardErrorPage'
+import { DashboardNotFoundPage } from '@/pages/dashboard/DashboardNotFoundPage'
 import { JobsPage } from '@/pages/dashboard/JobsPage'
 import { JobDetailPage } from '@/pages/dashboard/JobDetailPage'
 import { ApiKeysPage } from '@/pages/dashboard/ApiKeysPage'
 import { WebhooksPage } from '@/pages/dashboard/WebhooksPage'
 import { PlatformsPage } from '@/pages/dashboard/PlatformsPage'
+import { AdminShell } from '@/pages/admin/AdminShell'
+import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
+import { AdminPlatformsPage } from '@/pages/admin/AdminPlatformsPage'
 export const router = createBrowserRouter([
   {
     errorElement: <ErrorPage />,
@@ -39,6 +44,7 @@ export const router = createBrowserRouter([
       {
         path: '/dashboard',
         element: <DashboardShell />,
+        errorElement: <DashboardErrorPage />,
         children: [
           {
             index: true,
@@ -63,6 +69,32 @@ export const router = createBrowserRouter([
           {
             path: 'platforms',
             element: <PlatformsPage />,
+          },
+          {
+            path: '*',
+            element: <DashboardNotFoundPage />,
+          },
+        ],
+      },
+      {
+        path: '/admin',
+        children: [
+          {
+            path: 'login',
+            element: <AdminLoginPage />,
+          },
+          {
+            element: <AdminShell />,
+            children: [
+              {
+                index: true,
+                element: <Navigate to="platforms" replace />,
+              },
+              {
+                path: 'platforms',
+                element: <AdminPlatformsPage />,
+              },
+            ],
           },
         ],
       },
