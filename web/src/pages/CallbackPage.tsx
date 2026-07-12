@@ -39,6 +39,7 @@ export function CallbackPage() {
             name: null,
             picture: null,
             onboarded: onboarded === 'true',
+            is_admin: false,
           })
         }
       })
@@ -49,6 +50,7 @@ export function CallbackPage() {
           name: null,
           picture: null,
           onboarded: onboarded === 'true',
+          is_admin: false,
         })
       })
       .finally(() => {

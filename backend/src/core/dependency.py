@@ -10,6 +10,7 @@ from src.service.events import EventService
 from src.service.platform import PlatformService
 from src.service.util import UtilService
 from src.model.api import ApiKey
+from src.model.user import User
 from src.core.exception_base import Unauthorized
 from src.utils.config import config
 from src.utils.db import get_session
@@ -52,6 +53,14 @@ async def get_current_user(
     logger.info(f"user details: {user_details}")
     user_id = user_details["user"]["user_id"]
     user = await user_service.get_user_by_id(user_id)
+    return user
+
+
+async def get_current_admin(
+    user: User = Depends(get_current_user),
+) -> User:
+    if not user.is_admin:
+        raise Unauthorized("Admin access required")
     return user
 
 

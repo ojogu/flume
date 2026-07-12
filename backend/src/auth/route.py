@@ -9,6 +9,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from src.service.user import UserService
 from src.core.dependency import get_current_user, get_user_service, google_service
 from src.model.user import User
@@ -17,7 +18,7 @@ from src.utils.response import success
 from src.utils.log import get_logger
 
 from src.auth.service import RefreshTokenBearer
-from src.core.exception_base import InvalidToken
+from src.core.exception_base import InvalidToken, InvalidEmailPassword
 from src.utils.config import config
 from src.utils.redis import key_exist, set_cache
 from .service import auth_service
@@ -25,6 +26,43 @@ from .service import auth_service
 logger = get_logger(__name__)
 
 auth_route = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@auth_route.post("/login")
+async def login(body: LoginRequest, user_service: UserService = Depends(get_user_service)):
+    user = await user_service.get_user_by_email(email=body.email)
+    if not user or not user.password_hash:
+        raise InvalidEmailPassword("Invalid email or password")
+
+    if not auth_service.verify_password(body.password, user.password_hash):
+        raise InvalidEmailPassword("Invalid email or password")
+
+    if not user.is_active:
+        raise InvalidEmailPassword("Account is not active")
+
+    payload = {"user_id": str(user.id), "email": user.email}
+    access = auth_service.create_access_token(user_data=payload)
+    refresh = auth_service.create_access_token(
+        user_data=payload, refresh=True, expiry=timedelta(days=config.refresh_token_expiry),
+    )
+    return success(data={
+        "access_token": access,
+        "refresh_token": refresh,
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "name": user.name,
+            "picture": user.picture,
+            "onboarded": user.onboarded,
+            "is_admin": user.is_admin,
+        },
+    })
+
 
 #google oauth
 @auth_route.get("/login")
@@ -140,6 +178,7 @@ async def get_me(user: User = Depends(get_current_user)):
         "name": user.name,
         "picture": user.picture,
         "onboarded": user.onboarded,
+        "is_admin": user.is_admin,
     })
 
 @auth_route.post("/logout", tags=["auth"])
@@ -177,7 +216,9 @@ async def get_new_tokens_token(token_details: dict = Depends(RefreshTokenBearer(
     if datetime.fromtimestamp(expiry_timestamp, tz=timezone.utc) > datetime.now(timezone.utc):
         access_token = auth_service.create_access_token(user_data=token_details["user"])
         refresh_token = auth_service.create_access_token(
-            user_data=token_details["user"], refresh=True
+            user_data=token_details["user"],
+            refresh=True,
+            expiry=timedelta(days=config.refresh_token_expiry),
         )
 
         # Blacklist the old refresh token so it can't be reused if leaked

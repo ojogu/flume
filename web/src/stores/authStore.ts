@@ -7,6 +7,7 @@ export interface User {
   name: string | null
   picture: string | null
   onboarded: boolean
+  is_admin: boolean
 }
 
 interface AuthState {
