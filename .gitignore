@@ -40,6 +40,7 @@ migrate.sh
 
 # Dev-only scripts
 backend/dev_drop_db.py
+backend/seed_admin.py
 
 # Test media files
 backend/vids/

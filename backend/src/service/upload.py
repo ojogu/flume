@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from src.model.upload import Upload, UploadStatus
-from src.schema.upload import PresignedUploadResult
+from src.public.schema.uploads import PresignedUploadResult
 from src.core.exception_base import NotFoundError, BadRequest, DatabaseError
 from src.utils.log import get_logger
 from src.service.storage import storage, build_object_key

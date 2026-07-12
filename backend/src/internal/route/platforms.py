@@ -2,9 +2,9 @@ import uuid
 
 from fastapi import APIRouter, Depends
 
-from src.core.dependency import get_current_user, get_platform_service
+from src.core.dependency import get_current_admin, get_platform_service
 from src.model.user import User
-from src.schema.platform import (
+from src.internal.schema.platforms import (
     CreatePlatformRequest,
     UpdatePlatformRequest,
     PlatformResponse,
@@ -24,7 +24,7 @@ platform_route = APIRouter(prefix="/platforms", tags=["platforms"])
 @platform_route.post("")
 async def create_platform(
     body: CreatePlatformRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_admin),
     platform_service: PlatformService = Depends(get_platform_service),
 ):
     platform = await platform_service.create_platform(data=body.model_dump())
@@ -36,7 +36,7 @@ async def create_platform(
 
 @platform_route.get("")
 async def list_platforms(
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_admin),
     platform_service: PlatformService = Depends(get_platform_service),
     active_only: bool = False,
 ):
@@ -52,7 +52,7 @@ async def list_platforms(
 @platform_route.get("/{platform_id}")
 async def get_platform(
     platform_id: uuid.UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_admin),
     platform_service: PlatformService = Depends(get_platform_service),
 ):
     platform = await platform_service.get_platform(platform_id=platform_id)
@@ -65,7 +65,7 @@ async def get_platform(
 async def update_platform(
     platform_id: uuid.UUID,
     body: UpdatePlatformRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_admin),
     platform_service: PlatformService = Depends(get_platform_service),
 ):
     platform = await platform_service.update_platform(
@@ -81,7 +81,7 @@ async def update_platform(
 @platform_route.delete("/{platform_id}")
 async def delete_platform(
     platform_id: uuid.UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_current_admin),
     platform_service: PlatformService = Depends(get_platform_service),
 ):
     await platform_service.delete_platform(platform_id=platform_id)
