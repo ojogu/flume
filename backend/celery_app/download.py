@@ -17,6 +17,7 @@ import httpx
 
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
+from src.model.event import EventType
 from src.model.job import JobStatus, StepStatus
 from src.service.downloader import download, build_artifact_from_local, assert_size_under_limit, guess_container
 from src.service.storage import storage
@@ -69,7 +70,7 @@ async def _download_task_async(job_id: str):
         await job_service.update_job_step(step.id, StepStatus.RUNNING)
 
         await event_service.emit(
-            event_type="step.started",
+            event_type=EventType.STEP_STARTED,
             resource_id=job_uuid,
             data={
                 "step_id": str(step.id),
@@ -114,7 +115,7 @@ async def _download_task_async(job_id: str):
             )
 
             await event_service.emit(
-                event_type="step.completed",
+                event_type=EventType.STEP_COMPLETED,
                 resource_id=job_uuid,
                 data={
                     "step_id": str(step.id),
@@ -133,7 +134,7 @@ async def _download_task_async(job_id: str):
             final_status = updated_job.status if updated_job else JobStatus.SUCCEEDED.value
 
             await event_service.emit(
-                event_type="job.completed",
+                event_type=EventType.JOB_COMPLETED,
                 resource_id=job_uuid,
                 data={
                     "job_id": job_id,
@@ -157,7 +158,7 @@ async def _download_task_async(job_id: str):
             )
 
             await event_service.emit(
-                event_type="step.failed",
+                event_type=EventType.STEP_FAILED,
                 resource_id=job_uuid,
                 data={
                     "step_id": str(step.id),
@@ -169,7 +170,7 @@ async def _download_task_async(job_id: str):
             )
 
             await event_service.emit(
-                event_type="job.failed",
+                event_type=EventType.JOB_FAILED,
                 resource_id=job_uuid,
                 data={
                     "job_id": job_id,

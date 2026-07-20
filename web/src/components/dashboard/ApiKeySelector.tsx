@@ -12,7 +12,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function ApiKeySelector() {
-  const { activeApiKey, setActiveApiKey } = useApiStore()
+  const { activeApiKey, activeKeyName, setActiveApiKey } = useApiStore()
 
   const { data, isLoading } = useQuery({
     queryKey: ['api-keys'],
@@ -20,6 +20,15 @@ export function ApiKeySelector() {
   })
 
   const activeKeys = data?.keys?.filter(k => k.status === 'active') ?? []
+
+  const handleValueChange = (v: string) => {
+    if (v === '__all__') {
+      setActiveApiKey(null, null)
+    } else {
+      const key = activeKeys.find(k => k.id === v)
+      setActiveApiKey(v, key?.name || key?.key_prefix || null)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -37,10 +46,12 @@ export function ApiKeySelector() {
       </div>
       <Select
         value={activeApiKey ?? '__all__'}
-        onValueChange={(v) => setActiveApiKey(v === '__all__' ? null : v, null)}
+        onValueChange={handleValueChange}
       >
         <SelectTrigger className="w-full bg-[var(--bg-card)] border-[var(--border-subtle)] h-9 text-xs">
-          <SelectValue placeholder="All Keys" />
+          <SelectValue placeholder="All Keys">
+            {activeKeyName || 'All Keys'}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="__all__">All Keys</SelectItem>

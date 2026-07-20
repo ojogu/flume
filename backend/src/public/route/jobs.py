@@ -11,6 +11,7 @@ from src.core.dependency import (
     get_upload_service,
 )
 from src.model.api import ApiKey
+from src.model.event import EventType
 from src.model.job import JobStatus
 from src.public.schema.jobs import (
     CreateJobRequest,
@@ -93,7 +94,7 @@ async def create_job(
 
     # Emit job.created event for webhook subscribers
     await event_service.emit(
-        event_type="job.created",
+        event_type=EventType.JOB_CREATED,
         resource_id=job.id,
         data={
             "job_id": str(job.id),

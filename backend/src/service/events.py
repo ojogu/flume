@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.exception_base import NotFoundError
-from src.model.event import WebhookSubscription, WebhookDelivery
+from src.model.event import EventType, WebhookSubscription, WebhookDelivery
 from src.model.api import ApiKey
 from src.utils.log import get_logger
 
@@ -34,8 +34,7 @@ class EventService:
     ) -> tuple[WebhookSubscription, str]:
         """Create a webhook subscription with an auto-generated HMAC secret.
 
-        Returns ``(subscription, plaintext_secret)`` — the secret is returned
-        only once at creation time.
+        Returns ``(subscription, plaintext_secret)`` — the secret is returned only once at creation time.
         """
         secret = secrets.token_hex(32)
         sub = WebhookSubscription(
@@ -314,12 +313,11 @@ class EventService:
 
     async def emit(
         self,
-        event_type: str,
+        event_type: EventType,
         resource_id: uuid.UUID,
         data: dict,
     ) -> list[WebhookDelivery]:
-        """Find active subscriptions matching the event type, create pending deliveries,
-        and dispatch the Celery webhook task for each.
+        """Find active subscriptions matching the event type, create pending deliveries, and dispatch the Celery webhook task for each.
 
         Returns the list of created ``WebhookDelivery`` records.
         """
@@ -360,7 +358,7 @@ class EventService:
         return deliveries
 
     async def _find_matching_subscriptions(
-        self, event_type: str,
+        self, event_type: EventType,
     ) -> list[WebhookSubscription]:
         """Return active subscriptions that match the event type (exact match or wildcard)."""
         result = await self.db.execute(
