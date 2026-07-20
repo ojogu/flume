@@ -13,6 +13,7 @@ import logging
 
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
+from src.model.event import EventType
 from src.model.job import Job, JobStatus
 from src.service.downloader import extract_info, build_source_meta
 from src.service.jobs import JobService
@@ -61,7 +62,7 @@ async def _process_job_async(job_id: str):
         await job_service.update_status(job.id, JobStatus.PROCESSING)
 
         await event_service.emit(
-            event_type="job.processing",
+            event_type=EventType.JOB_PROCESSING,
             resource_id=job.id,
             data={
                 "job_id": str(job.id),
@@ -94,7 +95,7 @@ async def _process_job_async(job_id: str):
                     })
                     await job_service.update_status(job.id, JobStatus.FAILED, error=error_msg)
                     await event_service.emit(
-                        event_type="job.failed",
+                        event_type=EventType.JOB_FAILED,
                         resource_id=job.id,
                         data={
                             "job_id": str(job.id),
@@ -118,7 +119,7 @@ async def _process_job_async(job_id: str):
                     })
                     await job_service.update_status(job.id, JobStatus.FAILED, error=error_msg)
                     await event_service.emit(
-                        event_type="job.failed",
+                        event_type=EventType.JOB_FAILED,
                         resource_id=job.id,
                         data={
                             "job_id": str(job.id),
@@ -138,7 +139,7 @@ async def _process_job_async(job_id: str):
             logger.error(f"Orchestration failed for job {job_id}: {e}")
             await job_service.update_status(job.id, JobStatus.FAILED, error=str(e))
             await event_service.emit(
-                event_type="job.failed",
+                event_type=EventType.JOB_FAILED,
                 resource_id=job.id,
                 data={
                     "job_id": str(job.id),

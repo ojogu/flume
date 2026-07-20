@@ -17,8 +17,7 @@ from src.service.events import EventService
 from src.utils.response import success
 
 # ── Internal webhook routes (JWT authenticated) ──────────────────────────────
-# Dashboard-facing endpoints for managing webhook subscriptions across all of
-# a user's API keys. The user's identity comes from the JWT.
+# Dashboard-facing endpoints for managing webhook subscriptions across all of a user's API keys. The user's identity comes from the JWT.
 
 internal_webhook_route = APIRouter(prefix="/webhooks", tags=["internal-webhooks"])
 

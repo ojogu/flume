@@ -2,7 +2,7 @@
 
 from .api import ApiKey
 from .base import Base, BaseModel
-from .event import WebhookSubscription, WebhookDelivery
+from .event import EventType, ALL_EVENT_TYPES, WebhookSubscription, WebhookDelivery
 from .job import Job, JobStep
 from .platform import Platform
 from .upload import Upload
@@ -19,6 +19,8 @@ __all__ = [
     "JobStep",
     "Platform",
     "Upload",
+    "EventType",
+    "ALL_EVENT_TYPES",
     "WebhookSubscription",
     "WebhookDelivery",
 ]

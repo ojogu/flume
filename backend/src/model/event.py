@@ -1,4 +1,5 @@
 from datetime import datetime
+import enum
 import uuid
 
 import sqlalchemy as sa
@@ -8,6 +9,25 @@ from sqlalchemy.orm import Mapped, relationship
 from src.utils.crypto import EncryptedText
 
 from .base import BaseModel
+
+
+class EventType(str, enum.Enum):
+    """All webhook event types emitted by Flume.
+
+    Subscriptions filter on these values (or use ``"*"`` for wildcard).
+    """
+
+    JOB_CREATED = "job.created"
+    JOB_PROCESSING = "job.processing"
+    JOB_COMPLETED = "job.completed"
+    JOB_FAILED = "job.failed"
+    JOB_CANCELLED = "job.cancelled"
+    STEP_STARTED = "step.started"
+    STEP_COMPLETED = "step.completed"
+    STEP_FAILED = "step.failed"
+
+
+ALL_EVENT_TYPES = {e.value for e in EventType}
 
 
 class WebhookSubscription(BaseModel):
