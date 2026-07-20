@@ -1,14 +1,10 @@
 from datetime import datetime
 from typing import Optional
 import uuid
-import enum
 
 from pydantic import BaseModel
 
-
-class ApiKeyStatus(str, enum.Enum):
-    ACTIVE = "active"
-    REVOKED = "revoked"
+from src.model.api import ApiKeyStatus
 
 
 class CreateApiKeyRequest(BaseModel):
