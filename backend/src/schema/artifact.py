@@ -1,7 +1,16 @@
 from datetime import datetime
-
+import enum
 
 from pydantic import BaseModel
+
+
+class ArtifactStatus(str, enum.Enum):
+    """Processing status of an artifact through the pipeline."""
+
+    PENDING = "pending"
+    DOWNLOADING = "downloading"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class SourceInfo(BaseModel):
@@ -38,6 +47,6 @@ class Artifact(BaseModel):
     source: SourceInfo # source metadata from the download/extraction phase
     file: FileInfo # physical file properties
     media: MediaInfo # media stream properties — FFmpeg reads this, never runs ffprobe
-    status: str = "completed" # processing status — "pending", "downloading", "completed", "failed"
+    status: ArtifactStatus = ArtifactStatus.COMPLETED
     created_at: datetime #when the artifact was created
     

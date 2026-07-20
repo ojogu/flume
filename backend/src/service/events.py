@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.exception_base import NotFoundError
-from src.model.event import EventType, WebhookSubscription, WebhookDelivery
+from src.model.event import DeliveryStatus, EventType, WebhookSubscription, WebhookDelivery
 from src.model.api import ApiKey
 from src.utils.log import get_logger
 
@@ -336,7 +336,7 @@ class EventService:
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "data": data,
                 },
-                status="pending",
+                status=DeliveryStatus.PENDING.value,
             )
             self.db.add(delivery)
             deliveries.append(delivery)

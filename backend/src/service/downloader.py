@@ -15,7 +15,7 @@ from pathlib import Path
 
 import yt_dlp
 
-from src.schema.artifact import Artifact, SourceInfo, FileInfo, MediaInfo
+from src.schema.artifact import Artifact, ArtifactStatus, SourceInfo, FileInfo, MediaInfo
 from src.schema.download import FormatPreference, DownloadResult, ExtractedInfo
 from src.utils.config import config
 
@@ -292,7 +292,7 @@ def build_artifact(info: ExtractedInfo, local_path: str, job_id: str = "unknown"
         source=source,
         file=file_info,
         media=media,
-        status="completed",
+        status=ArtifactStatus.COMPLETED,
         created_at=datetime.now(timezone.utc),
     )
 
@@ -333,6 +333,6 @@ def build_artifact_from_local(
         source=source,
         file=file_info,
         media=media,
-        status="completed",
+        status=ArtifactStatus.COMPLETED,
         created_at=datetime.now(timezone.utc),
     )

@@ -18,7 +18,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from src.model.event import WebhookDelivery
+from src.model.event import DeliveryStatus, WebhookDelivery
 
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
@@ -60,7 +60,7 @@ async def _deliver_webhook_async(delivery_id: str):
             logger.error(f"WebhookDelivery {delivery_id} not found")
             return
 
-        if delivery.status != "pending":
+        if delivery.status != DeliveryStatus.PENDING.value:
             logger.warning(
                 f"WebhookDelivery {delivery_id} already {delivery.status} — skipping"
             )
@@ -97,7 +97,7 @@ async def _deliver_webhook_async(delivery_id: str):
             delivery.response_body = response.text[:4096]
 
             if 200 <= response.status_code < 300:
-                delivery.status = "delivered"
+                delivery.status = DeliveryStatus.DELIVERED.value
                 delivery.completed_at = datetime.now(timezone.utc)
                 logger.info(
                     "Webhook %s delivered to %s (status=%d)",
@@ -119,7 +119,7 @@ async def _handle_failure(delivery: WebhookDelivery, url: str) -> None:
     delivery.attempts += 1
 
     if delivery.attempts >= MAX_ATTEMPTS:
-        delivery.status = "exhausted"
+        delivery.status = DeliveryStatus.EXHAUSTED.value
         delivery.completed_at = datetime.now(timezone.utc)
         logger.error(
             "Webhook %s exhausted after %d attempts — %s",

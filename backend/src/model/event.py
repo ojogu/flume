@@ -30,6 +30,14 @@ class EventType(str, enum.Enum):
 ALL_EVENT_TYPES = {e.value for e in EventType}
 
 
+class DeliveryStatus(str, enum.Enum):
+    """Lifecycle states for a webhook delivery attempt."""
+
+    PENDING = "pending"
+    DELIVERED = "delivered"
+    EXHAUSTED = "exhausted"
+
+
 class WebhookSubscription(BaseModel):
     """A webhook subscription — subscriber endpoint, event filter, and HMAC secret."""
 
@@ -57,7 +65,7 @@ class WebhookDelivery(BaseModel):
     )
     event_type: Mapped[str] = sa.Column(sa.Text, nullable=False)
     payload: Mapped[dict] = sa.Column(JSONB, nullable=False)
-    status: Mapped[str] = sa.Column(sa.String, nullable=False, default="pending")
+    status: Mapped[str] = sa.Column(sa.String, nullable=False, default=DeliveryStatus.PENDING.value)
     response_code: Mapped[int | None] = sa.Column(sa.Integer, nullable=True)
     response_body: Mapped[str | None] = sa.Column(sa.Text, nullable=True)
     attempts: Mapped[int] = sa.Column(sa.Integer, nullable=False, default=0)
