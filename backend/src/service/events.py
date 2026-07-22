@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 from src.core.exception_base import NotFoundError
 from src.model.event import DeliveryStatus, EventType, WebhookSubscription, WebhookDelivery
 from src.model.api import ApiKey
+from src.internal.schema.webhooks import InternalWebhookResponse
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -180,6 +181,7 @@ class EventService:
         """Verify a subscription belongs to the user; raise NotFoundError if not."""
         result = await self.db.execute(
             select(WebhookSubscription)
+            .options(selectinload(WebhookSubscription.api_key))
             .join(ApiKey, WebhookSubscription.api_key_id == ApiKey.id)
             .where(WebhookSubscription.id == subscription_id)
             .where(ApiKey.user_id == user_id)
@@ -195,6 +197,7 @@ class EventService:
         """List all subscriptions for a user, optionally filtered by API key."""
         base = (
             select(WebhookSubscription)
+            .options(selectinload(WebhookSubscription.api_key))
             .join(ApiKey, WebhookSubscription.api_key_id == ApiKey.id)
             .where(ApiKey.user_id == user_id)
         )
@@ -309,6 +312,15 @@ class EventService:
         except Exception as e:
             return {"success": False, "status_code": None, "response_body": str(e)[:4096]}
 
+    # ── Response enrichment ──────────────────────────────────────────────
+
+    def enrich_subscription(self, sub: WebhookSubscription) -> InternalWebhookResponse:
+        """Build an InternalWebhookResponse with the API key name from the eager-loaded relationship."""
+        return InternalWebhookResponse(
+            **sub.to_dict(),
+            api_key_name=sub.api_key.name if sub.api_key else None,
+        )
+
     # ── Event emission ────────────────────────────────────────────────────
 
     async def emit(
@@ -316,12 +328,13 @@ class EventService:
         event_type: EventType,
         resource_id: uuid.UUID,
         data: dict,
+        api_key_id: uuid.UUID,
     ) -> list[WebhookDelivery]:
         """Find active subscriptions matching the event type, create pending deliveries, and dispatch the Celery webhook task for each.
 
         Returns the list of created ``WebhookDelivery`` records.
         """
-        subscriptions = await self._find_matching_subscriptions(event_type)
+        subscriptions = await self._find_matching_subscriptions(event_type, api_key_id)
         if not subscriptions:
             return []
 
@@ -358,12 +371,13 @@ class EventService:
         return deliveries
 
     async def _find_matching_subscriptions(
-        self, event_type: EventType,
+        self, event_type: EventType, api_key_id: uuid.UUID,
     ) -> list[WebhookSubscription]:
         """Return active subscriptions that match the event type (exact match or wildcard)."""
         result = await self.db.execute(
             select(WebhookSubscription)
             .where(WebhookSubscription.is_active.is_(True))
+            .where(WebhookSubscription.api_key_id == api_key_id)
         )
         subs = list(result.scalars().all())
 

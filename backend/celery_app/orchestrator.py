@@ -69,6 +69,7 @@ async def _process_job_async(job_id: str):
                 "source_uri": job.source_uri,
                 "source_type": job.source_type,
             },
+            api_key_id=job.api_key_id,
         )
 
         try:
@@ -101,6 +102,7 @@ async def _process_job_async(job_id: str):
                             "status": JobStatus.FAILED.value,
                             "error": error_msg,
                         },
+                        api_key_id=job.api_key_id,
                     )
                     return
 
@@ -125,6 +127,7 @@ async def _process_job_async(job_id: str):
                             "status": JobStatus.FAILED.value,
                             "error": error_msg,
                         },
+                        api_key_id=job.api_key_id,
                     )
                     return
 
@@ -145,6 +148,7 @@ async def _process_job_async(job_id: str):
                     "status": JobStatus.FAILED.value,
                     "error": str(e),
                 },
+                api_key_id=job.api_key_id,
             )
 
 

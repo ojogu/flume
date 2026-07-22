@@ -102,6 +102,7 @@ async def create_job(
             "source_uri": job.source_uri,
             "source_type": job.source_type,
         },
+        api_key_id=api_key.id,
     )
 
     # Dispatch job processing to the orchestrator queue.
