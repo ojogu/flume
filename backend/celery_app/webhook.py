@@ -11,7 +11,6 @@
 import hashlib
 import hmac
 import json
-import logging
 from datetime import datetime, timezone, timedelta
 
 import httpx
@@ -22,8 +21,9 @@ from src.model.event import DeliveryStatus, WebhookDelivery
 
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
+from src.utils.log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Exponential backoff schedule: attempts → delay in seconds
 BACKOFF_SCHEDULE = [10, 60, 600, 3600]  # 10s, 1m, 10m, 1h

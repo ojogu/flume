@@ -9,16 +9,15 @@
 # Runs on the **orchestrator** queue (few workers, lightweight tasks).
 # ──────────────────────────────────────────────────────────────────────────
 
-import logging
-
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
 from src.model.job import Job, JobStatus
 from src.service.downloader import extract_info, build_source_meta
 from src.service.jobs import JobService
+from src.utils.log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @bg_task.task(

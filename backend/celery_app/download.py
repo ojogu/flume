@@ -8,7 +8,6 @@
 # Runs on the **op.download** queue (many workers, I/O-bound).
 # ─────────────────────────────────────────────────────
 
-import logging
 import os
 import uuid
 from pathlib import Path
@@ -23,8 +22,9 @@ from src.service.downloader import download, build_artifact_from_local, assert_s
 from src.service.storage import storage
 from src.utils.config import config
 from src.schema.download import FormatPreference, DownloadResult
+from src.utils.log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @bg_task.task(

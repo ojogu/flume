@@ -2,12 +2,11 @@
 # Email dispatch task with retry. Async-to-sync bridge for calling async
 # service methods from Celery's synchronous execution context.
 
-import logging
-
 from celery_app.celery import bg_task
 from src.core.email_service import send_email_notification
+from src.utils.log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 
