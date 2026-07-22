@@ -33,6 +33,8 @@ bg_task.config_from_object(CeleryConfig)
 # OTel init guarded by env var: celery.py is imported at FastAPI startup too, but we only want the worker process to have its own tracer (service_name="flume-worker")
 if os.getenv("CELERY_WORKER") == "true":
     setup_telemetry(service_name="flume-worker")
+    from src.utils.log import configure_structlog
+    configure_structlog()
     CeleryInstrumentor().instrument()
 
 # interval = config.celery_beat_interval
