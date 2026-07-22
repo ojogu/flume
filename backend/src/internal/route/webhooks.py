@@ -6,38 +6,19 @@ from fastapi import status as http_status
 
 from src.core.dependency import get_current_user, get_event_service
 from src.model.user import User
+from src.service.events import EventService
 from src.internal.schema.webhooks import (
     CreateInternalWebhookRequest,
     UpdateInternalWebhookRequest,
-    InternalWebhookResponse,
     InternalWebhookCreatedResponse,
     InternalWebhookDeliveryResponse,
 )
-from src.service.events import EventService
 from src.utils.response import success
 
 # ── Internal webhook routes (JWT authenticated) ──────────────────────────────
 # Dashboard-facing endpoints for managing webhook subscriptions across all of a user's API keys. The user's identity comes from the JWT.
 
 internal_webhook_route = APIRouter(prefix="/webhooks", tags=["internal-webhooks"])
-
-
-async def _enrich_subscription(
-    event_service: EventService, sub, user_id: uuid.UUID
-) -> InternalWebhookResponse:
-    """Attach api_key_name to a subscription response."""
-    from sqlalchemy import select
-    from src.model.api import ApiKey
-
-    result = await event_service.db.execute(
-        select(ApiKey.name).where(ApiKey.id == sub.api_key_id, ApiKey.user_id == user_id)
-    )
-    api_key_name = result.scalar_one_or_none()
-
-    return InternalWebhookResponse(
-        **sub.to_dict(),
-        api_key_name=api_key_name,
-    )
 
 
 @internal_webhook_route.get("")
@@ -50,7 +31,7 @@ async def list_webhooks(
     subs = await event_service.list_subscriptions_by_user(
         user_id=user.id, api_key_id=api_key_id,
     )
-    enriched = [await _enrich_subscription(event_service, s, user.id) for s in subs]
+    enriched = [event_service.enrich_subscription(s) for s in subs]
     return success(data=[s.model_dump() for s in enriched])
 
 
@@ -67,7 +48,7 @@ async def create_webhook(
         url=body.url,
         events=body.events,
     )
-    enriched = await _enrich_subscription(event_service, sub, user.id)
+    enriched = event_service.enrich_subscription(sub)
     return success(
         data=InternalWebhookCreatedResponse(
             **enriched.model_dump(),
@@ -86,7 +67,7 @@ async def get_webhook(
 ):
     """Get a single webhook subscription, verifying user ownership."""
     sub = await event_service.get_subscription_by_user(user.id, subscription_id)
-    enriched = await _enrich_subscription(event_service, sub, user.id)
+    enriched = event_service.enrich_subscription(sub)
     return success(data=enriched.model_dump())
 
 
@@ -103,7 +84,7 @@ async def update_webhook(
         subscription_id=subscription_id,
         **body.model_dump(exclude_unset=True),
     )
-    enriched = await _enrich_subscription(event_service, sub, user.id)
+    enriched = event_service.enrich_subscription(sub)
     return success(
         data=enriched.model_dump(),
         message="Webhook subscription updated",

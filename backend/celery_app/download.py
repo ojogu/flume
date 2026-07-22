@@ -78,6 +78,7 @@ async def _download_task_async(job_id: str):
                 "operation": step.operation,
                 "step_index": step.step_index,
             },
+            api_key_id=job.api_key_id,
         )
 
         try:
@@ -124,6 +125,7 @@ async def _download_task_async(job_id: str):
                     "step_index": step.step_index,
                     "output_artifact": result.artifact.model_dump(exclude_none=True),
                 },
+                api_key_id=job.api_key_id,
             )
 
             # if this job has a parent, notify for aggregate computation
@@ -144,6 +146,7 @@ async def _download_task_async(job_id: str):
                     "source_metadata": source_meta,
                     "error": None,
                 },
+                api_key_id=job.api_key_id,
             )
 
             logger.info(f"Download complete for job {job_id} — {result.local_path}")
@@ -167,6 +170,7 @@ async def _download_task_async(job_id: str):
                     "step_index": step.step_index,
                     "error": str(e),
                 },
+                api_key_id=job.api_key_id,
             )
 
             await event_service.emit(
@@ -177,6 +181,7 @@ async def _download_task_async(job_id: str):
                     "status": JobStatus.FAILED.value,
                     "error": f"Download failed: {e}",
                 },
+                api_key_id=job.api_key_id,
             )
 
             # still notify parent so it can compute partial_success
