@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Plus, Webhook, Trash2, AlertCircle, Check, Copy, Play, Loader2, Info } from 'lucide-react'
+import { Plus, Webhook, Trash2, AlertCircle, Check, Copy, Play, Loader2, Info, Pencil } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { 
   Dialog, 
@@ -18,6 +19,7 @@ import {
 import { 
   listWebhooks, 
   createWebhook, 
+  updateWebhook,
   deleteWebhook, 
   testWebhook, 
   listWebhookDeliveries,
@@ -26,10 +28,25 @@ import {
 import { formatRelativeTime, cn } from '@/lib/utils'
 import { useApiStore } from '@/stores/apiStore'
 
+const EVENT_CATALOG = [
+  { type: 'job.created', description: 'Job was created and queued for processing', group: 'Job events' },
+  { type: 'job.processing', description: 'Worker picked up the job for execution', group: 'Job events' },
+  { type: 'job.completed', description: 'Job finished successfully — all pipeline steps passed', group: 'Job events' },
+  { type: 'job.failed', description: 'Job could not complete', group: 'Job events' },
+  { type: 'step.started', description: 'Pipeline step began execution', group: 'Step events' },
+  { type: 'step.completed', description: 'Pipeline step finished successfully', group: 'Step events' },
+  { type: 'step.failed', description: 'Pipeline step failed', group: 'Step events' },
+]
+
+const JOB_EVENTS = EVENT_CATALOG.filter(e => e.group === 'Job events')
+const STEP_EVENTS = EVENT_CATALOG.filter(e => e.group === 'Step events')
+
 export function WebhooksPage() {
   const { activeApiKey } = useApiStore()
   const queryClient = useQueryClient()
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingWebhook, setEditingWebhook] = useState<WebhookSubscription | null>(null)
   const [url, setUrl] = useState('')
   const [createdSecret, setCreatedSecret] = useState<string | null>(null)
 
@@ -48,6 +65,17 @@ export function WebhooksPage() {
     onError: (err: any) => toast.error(err.message || 'Failed to create webhook')
   })
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, ...req }: { id: string; url?: string; events?: string[] }) => updateWebhook(id, req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks'] })
+      toast.success('Webhook updated')
+      setShowEditModal(false)
+      setEditingWebhook(null)
+    },
+    onError: (err: any) => toast.error(err.message || 'Failed to update webhook')
+  })
+
   const deleteMutation = useMutation({
     mutationFn: deleteWebhook,
     onSuccess: () => {
@@ -56,9 +84,14 @@ export function WebhooksPage() {
     }
   })
 
-  const handleCreate = () => {
+  const handleCreate = (events: string[]) => {
     if (!url || !activeApiKey) return
-    createMutation.mutate({ api_key_id: activeApiKey, url, events: ['*'] })
+    createMutation.mutate({ api_key_id: activeApiKey, url, events })
+  }
+
+  const handleEdit = (events: string[]) => {
+    if (!editingWebhook) return
+    updateMutation.mutate({ id: editingWebhook.id, url: editingWebhook.url, events })
   }
 
   const handleReset = () => {
@@ -105,7 +138,12 @@ export function WebhooksPage() {
           </div>
         ) : (
           webhooks?.map(webhook => (
-            <WebhookCard key={webhook.id} webhook={webhook} onDelete={() => deleteMutation.mutate(webhook.id)} />
+            <WebhookCard 
+              key={webhook.id} 
+              webhook={webhook} 
+              onDelete={() => deleteMutation.mutate(webhook.id)}
+              onEdit={() => { setEditingWebhook(webhook); setShowEditModal(true) }}
+            />
           ))
         )}
       </div>
@@ -118,11 +156,21 @@ export function WebhooksPage() {
         loading={createMutation.isPending}
         secret={createdSecret}
       />
+
+      {editingWebhook && (
+        <EditWebhookDialog
+          open={showEditModal}
+          onOpenChange={(open: boolean) => { if (!open) { setShowEditModal(false); setEditingWebhook(null) } }}
+          webhook={editingWebhook}
+          onSave={handleEdit}
+          loading={updateMutation.isPending}
+        />
+      )}
     </div>
   )
 }
 
-function WebhookCard({ webhook, onDelete }: { webhook: WebhookSubscription, onDelete: () => void }) {
+function WebhookCard({ webhook, onDelete, onEdit }: { webhook: WebhookSubscription, onDelete: () => void, onEdit: () => void }) {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{success: boolean, code: number | null, body: string} | null>(null)
 
@@ -153,7 +201,11 @@ function WebhookCard({ webhook, onDelete }: { webhook: WebhookSubscription, onDe
               </Badge>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {webhook.events.map(e => (
+              {webhook.events.includes('*') ? (
+                <span className="text-[10px] font-mono font-bold bg-brand/5 text-brand px-2 py-0.5 rounded border border-brand/20">
+                  All events
+                </span>
+              ) : webhook.events.map(e => (
                 <span key={e} className="text-[10px] font-mono font-bold bg-[var(--bg-subtle)] text-[var(--text-secondary)] px-2 py-0.5 rounded border border-[var(--border-subtle)]">
                   {e}
                 </span>
@@ -171,6 +223,14 @@ function WebhookCard({ webhook, onDelete }: { webhook: WebhookSubscription, onDe
             >
               {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 fill-current" />}
               Test Connection
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon-sm" 
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]"
+              onClick={onEdit}
+            >
+              <Pencil className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 
@@ -266,8 +326,76 @@ function DeliveryLogs({ subscriptionId }: { subscriptionId: string }) {
   )
 }
 
+function EventSelector({ selectedEvents, onChange }: { selectedEvents: string[], onChange: (events: string[]) => void }) {
+  const allEvents = selectedEvents.includes('*')
+
+  const toggleAll = () => {
+    onChange(allEvents ? [] : ['*'])
+  }
+
+  const toggleEvent = (type: string) => {
+    if (allEvents) return
+    if (selectedEvents.includes(type)) {
+      onChange(selectedEvents.filter(e => e !== type))
+    } else {
+      onChange([...selectedEvents, type])
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2.5">
+        <Checkbox checked={allEvents} onCheckedChange={toggleAll} />
+        <span className="text-sm font-medium text-[var(--text-primary)]">Receive all events</span>
+      </div>
+
+      {!allEvents && (
+        <div className="space-y-4 pl-1">
+          <div>
+            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Job events</p>
+            <div className="space-y-1">
+              {JOB_EVENTS.map(event => (
+                <label key={event.type} className="flex items-start gap-2.5 py-1 cursor-pointer group/item">
+                  <Checkbox 
+                    checked={selectedEvents.includes(event.type)} 
+                    onCheckedChange={() => toggleEvent(event.type)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="text-sm font-mono font-bold text-[var(--text-primary)]">{event.type}</span>
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{event.description}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Step events</p>
+            <div className="space-y-1">
+              {STEP_EVENTS.map(event => (
+                <label key={event.type} className="flex items-start gap-2.5 py-1 cursor-pointer group/item">
+                  <Checkbox 
+                    checked={selectedEvents.includes(event.type)} 
+                    onCheckedChange={() => toggleEvent(event.type)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="text-sm font-mono font-bold text-[var(--text-primary)]">{event.type}</span>
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{event.description}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CreateWebhookDialog({ open, onOpenChange, url, setUrl, onSave, loading, secret }: any) {
   const [copied, setCopied] = useState(false)
+  const [selectedEvents, setSelectedEvents] = useState<string[]>(['*'])
 
   if (secret) {
     return (
@@ -334,19 +462,57 @@ function CreateWebhookDialog({ open, onOpenChange, url, setUrl, onSave, loading,
           </div>
           
           <div className="p-4 bg-[var(--bg-subtle)] rounded-xl border border-[var(--border-subtle)]">
-             <div className="flex items-center justify-between mb-3">
-               <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Selected Events</p>
-               <Badge variant="outline" className="text-[9px] uppercase tracking-tighter bg-brand/5 text-brand border-brand/20">All events enabled</Badge>
-             </div>
-             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-               This endpoint will receive all system events including <code className="text-brand font-bold">job.*</code> and <code className="text-brand font-bold">step.*</code> lifecycle updates.
-             </p>
+            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3">Events</p>
+            <EventSelector selectedEvents={selectedEvents} onChange={setSelectedEvents} />
           </div>
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={onSave} disabled={loading || !url} className="min-w-[100px]">
+          <Button 
+            onClick={() => onSave(selectedEvents)} 
+            disabled={loading || !url || (!selectedEvents.includes('*') && selectedEvents.length === 0)} 
+            className="min-w-[100px]"
+          >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Register'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EditWebhookDialog({ open, onOpenChange, webhook, onSave, loading }: { 
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  webhook: WebhookSubscription
+  onSave: (events: string[]) => void
+  loading: boolean
+}) {
+  const [selectedEvents, setSelectedEvents] = useState<string[]>(webhook.events)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-display text-2xl">Edit Endpoint</DialogTitle>
+          <DialogDescription className="text-sm">
+            Update event subscriptions for <code className="font-mono text-[var(--text-primary)]">{webhook.url}</code>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-6 py-4">
+          <div className="p-4 bg-[var(--bg-subtle)] rounded-xl border border-[var(--border-subtle)]">
+            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3">Events</p>
+            <EventSelector selectedEvents={selectedEvents} onChange={setSelectedEvents} />
+          </div>
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button 
+            onClick={() => onSave(selectedEvents)} 
+            disabled={loading || (!selectedEvents.includes('*') && selectedEvents.length === 0)} 
+            className="min-w-[100px]"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
           </Button>
         </DialogFooter>
       </DialogContent>
