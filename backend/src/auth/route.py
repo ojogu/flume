@@ -1,72 +1,56 @@
 # ── Authentication routes ─────────────────────────────────────────────────────
-# Google OAuth (/login → /callback), magic link passwordless login,
-# token refresh, logout (token blacklisting), and /me profile endpoint.
-
-from datetime import datetime, timedelta, timezone
-from urllib.parse import urlencode
-
-from typing import Optional
+# Google OAuth (/login → /callback), magic link passwordless login, token refresh, logout (token blacklisting), and /me profile endpoint.
+# Thin controller: all business logic delegated to AuthService.
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
-from src.service.user import UserService
-from src.core.dependency import get_current_user, get_user_service, google_service
-from src.model.user import User
-from src.core.email_service import send_magic_link_email
-from src.utils.response import success
-from src.utils.log import get_logger
 
-from src.auth.service import RefreshTokenBearer
-from src.core.exception_base import InvalidToken, InvalidEmailPassword
-from src.utils.config import config
-from src.utils.redis import key_exist, set_cache
-from .service import auth_service
+from src.auth.schema import (
+    LoginRequest,
+    LoginResponse,
+    UserProfileResponse,
+)
+from src.auth.service import RefreshTokenBearer, auth_service
+from src.core.dependency import get_current_user, get_user_service
+from src.model.user import User
+from src.service.user import UserService
+from src.utils.log import get_logger
+from src.utils.response import success
 
 logger = get_logger(__name__)
 
 auth_route = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-
 @auth_route.post("/login")
-async def login(body: LoginRequest, user_service: UserService = Depends(get_user_service)):
-    user = await user_service.get_user_by_email(email=body.email)
-    if not user or not user.password_hash:
-        raise InvalidEmailPassword("Invalid email or password")
-
-    if not auth_service.verify_password(body.password, user.password_hash):
-        raise InvalidEmailPassword("Invalid email or password")
-
-    if not user.is_active:
-        raise InvalidEmailPassword("Account is not active")
-
-    payload = {"user_id": str(user.id), "email": user.email}
-    access = auth_service.create_access_token(user_data=payload)
-    refresh = auth_service.create_access_token(
-        user_data=payload, refresh=True, expiry=timedelta(days=config.refresh_token_expiry),
+async def login(
+    body: LoginRequest,
+    user_service: UserService = Depends(get_user_service),
+):
+    user = await auth_service.authenticate_user(
+        email=body.email,
+        password=body.password,
+        user_service=user_service,
     )
-    return success(data={
-        "access_token": access,
-        "refresh_token": refresh,
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "name": user.name,
-            "picture": user.picture,
-            "onboarded": user.onboarded,
-            "is_admin": user.is_admin,
-        },
-    })
+    tokens = auth_service.create_token_pair(user)
+    return success(
+        data=LoginResponse(
+            **tokens.model_dump(),
+            user=UserProfileResponse(
+                id=str(user.id),
+                email=user.email,
+                name=user.name,
+                picture=user.picture,
+                onboarded=user.onboarded,
+                is_admin=user.is_admin,
+            ),
+        ).model_dump()
+    )
 
 
-#google oauth
 @auth_route.get("/login")
 async def oauth_login():
+    from src.core.dependency import google_service
+
     url = google_service.login_with_google()
     return success(data={"url": url})
 
@@ -74,159 +58,67 @@ async def oauth_login():
 @auth_route.get("/callback")
 async def oauth(
     request: Request,
-    test: Optional[bool] = Query(None),
+    test: bool | None = Query(None),
     user_service: UserService = Depends(get_user_service),
 ):
     if test:
         logger.info("webhook is ready")
         return {"status": "ready"}
 
-    params = dict(request.query_params)
-    logger.info(f"query_params; {params}")  
-    # Step 1: Exchange Google auth code for access/refresh/id tokens
-    data = google_service.handle_callback(request)
-    # Step 2: Verify the ID token's signature and extract user profile
-    user_data = google_service.verify_id(data["id_token"])
-    user_info = {
-        "google_id": user_data["sub"],
-        "refresh_token": data["refresh_token"],
-        "access_token": data["access_token"],
-        "email": user_data["email"],
-        "auth_provider": "google",
-        "is_active": True,
-        "oauth_verified": True,
-        "onboarded": True,
-        "email_verified": user_data["email_verified"],
-        "name": user_data["name"],
-        "picture": user_data.get("picture"),
-        "first_name": user_data.get("given_name"),
-        "last_name": user_data.get("family_name"),
-    }
-    logger.info(f"user_data: {user_info}")
-
-    # Step 3: Upsert — update existing user or create new one
-    existing_user = await user_service.get_user_by_email(email=user_info["email"])
-
-    if existing_user and existing_user.email == user_info["email"]:
-        user = await user_service.update_user(
-            email=existing_user.email, update_data=user_info
-        )
-        logger.info(f"user updated: {user}")
-    elif not existing_user:
-        user = await user_service.create_user(**user_info)
-        logger.info(f"new_user: {user}")
-    else:
-        logger.warning("Email mismatch for existing user.")
-        return RedirectResponse(url=f"{config.frontend_url}/callback?error=email_mismatch", status_code=302)
-
-    # Step 4: Issue JWT pair (access + refresh) and redirect to frontend with tokens in URL
-    payload = {"user_id": str(user.id), "email": user.email}
-    access = auth_service.create_access_token(user_data=payload)
-    refresh = auth_service.create_access_token(
-        user_data=payload, refresh=True, expiry=timedelta(days=config.refresh_token_expiry),
-    )
-    params = {
-        "access-token": access,
-        "refresh-token": refresh,
-        "onboarded": str(user.onboarded).lower(),
-    }
-    logger.info(f"access: {access}, refresh: {refresh}")
-    return RedirectResponse(
-        url=f"{config.frontend_url}/callback?{urlencode(params)}",
-        status_code=302,
+    logger.info(f"query_params; {dict(request.query_params)}")
+    return await auth_service.handle_google_callback(
+        request=request,
+        user_service=user_service,
     )
 
 
-#magic link
 @auth_route.get("/magic-link")
-async def magic_link(email: str, user_service: UserService = Depends(get_user_service)):
-    token = await user_service.create_magic_link_token(email=email)
-    send_magic_link_email(to_email=email, token=token)
-    return success(message="If an account with that email exists, a magic link has been sent.")
+async def magic_link(
+    email: str,
+    user_service: UserService = Depends(get_user_service),
+):
+    await auth_service.request_magic_link(email=email, user_service=user_service)
+    return success(
+        message="If an account with that email exists, a magic link has been sent."
+    )
+
 
 @auth_route.get("/magic-link/verify")
-async def magic_link_callback(token: str, user_service: UserService = Depends(get_user_service)):
-    user = await user_service.verify_magic_link_and_login(token=token)
-    if not user:
-        return RedirectResponse(
-            url=f"{config.frontend_url}/callback?error=invalid_or_expired_token",
-            status_code=302,
-        )
+async def magic_link_callback(
+    token: str,
+    user_service: UserService = Depends(get_user_service),
+):
+    return await auth_service.verify_magic_link_callback(
+        token=token,
+        user_service=user_service,
+    )
 
-    payload = {"user_id": str(user.id), "email": user.email}
-    access = auth_service.create_access_token(user_data=payload)
-    refresh = auth_service.create_access_token(
-        user_data=payload, refresh=True, expiry=timedelta(days=config.refresh_token_expiry),
-    )
-    params = {
-        "access-token": access,
-        "refresh-token": refresh,
-        "onboarded": str(user.onboarded).lower(),
-    }
-    logger.info(f"Magic link verified for user {user.email}, redirecting with tokens.")
-    logger.info(f"access: {access}, refresh: {refresh}")
-    return RedirectResponse(
-        url=f"{config.frontend_url}/callback?{urlencode(params)}",
-        status_code=302,
-    )
 
 @auth_route.get("/me")
 async def get_me(user: User = Depends(get_current_user)):
-    return success(data={
-        "id": str(user.id),
-        "email": user.email,
-        "name": user.name,
-        "picture": user.picture,
-        "onboarded": user.onboarded,
-        "is_admin": user.is_admin,
-    })
+    return success(
+        data=UserProfileResponse(
+            id=str(user.id),
+            email=user.email,
+            name=user.name,
+            picture=user.picture,
+            onboarded=user.onboarded,
+            is_admin=user.is_admin,
+        ).model_dump()
+    )
+
 
 @auth_route.post("/logout", tags=["auth"])
 async def logout(token_details: dict = Depends(RefreshTokenBearer())):
-    """
-    Logout endpoint - invalidates the refresh token by blacklisting it.
-    Uses the same blacklisting logic as token refresh.
-    """
-    try:
-        jti = token_details["jti"]
-        # Prevent double-revocation: if token is already blacklisted, reject
-        if await key_exist(key=str(jti)):
-            raise InvalidToken("Refresh token has been revoked")
-
-        # Store jti in Redis with the token's remaining TTL — makes it unusable
-        await set_cache(key=str(jti), data="", ttl=config.refresh_token_expiry)
-        logger.info(f"User logged out, token {jti} has been revoked")
-
-        return success(
-            message="Logout successful",
-        )
-    except Exception as e:
-        logger.error(f"Logout failed: {str(e)}")
-        raise
+    """Logout endpoint - invalidates the refresh token by blacklisting it."""
+    await auth_service.blacklist_refresh_token(jti=token_details["jti"])
+    return success(message="Logout successful")
 
 
 @auth_route.get("/refresh-token", tags=["auth"])
-async def get_new_tokens_token(token_details: dict = Depends(RefreshTokenBearer())):
-    # Token rotation: validate old token → issue new pair → blacklist old token
-    jti = token_details["jti"]
-    if await key_exist(key=str(jti)):
-        raise InvalidToken("Refresh token has been revoked")
-
-    expiry_timestamp = token_details["exp"]
-    if datetime.fromtimestamp(expiry_timestamp, tz=timezone.utc) > datetime.now(timezone.utc):
-        access_token = auth_service.create_access_token(user_data=token_details["user"])
-        refresh_token = auth_service.create_access_token(
-            user_data=token_details["user"],
-            refresh=True,
-            expiry=timedelta(days=config.refresh_token_expiry),
-        )
-
-        # Blacklist the old refresh token so it can't be reused if leaked
-        await set_cache(key=str(jti), data="", ttl=config.refresh_token_expiry)
-        logger.info(f"{jti} has been revoked")
-        tokens = {"access_token": access_token, "refresh_token": refresh_token}
-
-        return success(
-            message="Refresh Token Successfully Generated",
-            data=tokens,
-        )
+async def get_new_tokens(token_details: dict = Depends(RefreshTokenBearer())):
+    tokens = await auth_service.rotate_refresh_tokens(token_details)
+    return success(
+        message="Refresh Token Successfully Generated",
+        data=tokens.model_dump(),
+    )

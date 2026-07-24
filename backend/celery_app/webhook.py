@@ -129,6 +129,7 @@ async def _handle_failure(delivery: WebhookDelivery, url: str) -> None:
             "Webhook %s exhausted after %d attempts — %s",
             delivery.id, delivery.attempts, url,
         )
+        #TODO: push to DLQ
         return
 
     delay = BACKOFF_SCHEDULE[delivery.attempts - 1] if delivery.attempts <= len(BACKOFF_SCHEDULE) else BACKOFF_SCHEDULE[-1]

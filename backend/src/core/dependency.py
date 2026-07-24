@@ -1,49 +1,60 @@
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.service.google import GoogleAuthService
-from src.service.user import UserService
-from src.service.api import ApiKeyService
-from src.service.jobs import JobService
-from src.service.upload import UploadService
-from src.service.events import EventService
-from src.service.platform import PlatformService
-from src.service.util import UtilService
+from src.auth.service import AccessTokenBearer
+from src.auth.service import auth_service as auth_service_instance
+from src.core.exception_base import Unauthorized
 from src.model.api import ApiKey
 from src.model.user import User
-from src.core.exception_base import Unauthorized
-from src.utils.config import config
+from src.service.api import ApiKeyService
+from src.service.events import EventService
+from src.service.google import GoogleAuthService
+from src.service.jobs import JobService
+from src.service.platform import PlatformService
+from src.service.upload import UploadService
+from src.service.user import UserService
+from src.service.util import UtilService
 from src.utils.db import get_session
 from src.utils.log import get_logger
-from src.auth.service import AccessTokenBearer
-
 
 logger = get_logger(__name__)
 google_service = GoogleAuthService()
 
 
+def get_auth_service():
+    """Return the singleton AuthService instance."""
+    return auth_service_instance
+
+
 def get_user_service(db: AsyncSession = Depends(get_session)):
     return UserService(db=db)
 
+
 def get_api_key_service(db: AsyncSession = Depends(get_session)):
     return ApiKeyService(db=db)
+
 
 # Wires JobService per request — one DB session, one service instance
 def get_job_service(db: AsyncSession = Depends(get_session)):
     return JobService(db=db)
 
+
 # Wires UploadService per request — same pattern as get_job_service
 def get_upload_service(db: AsyncSession = Depends(get_session)):
     return UploadService(db=db)
 
+
 def get_event_service(db: AsyncSession = Depends(get_session)):
     return EventService(db=db)
+
 
 def get_platform_service(db: AsyncSession = Depends(get_session)):
     return PlatformService(db=db)
 
+
 def get_util_service(db: AsyncSession = Depends(get_session)):
     return UtilService(db=db)
+
 
 # Chains three dependencies: JWT extraction → DB session → user lookup by user_id from token
 async def get_current_user(

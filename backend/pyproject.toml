@@ -38,3 +38,23 @@ dependencies = [
     "scalar-fastapi>=1.1.0",
     "boto3>=1.34.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.0",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
