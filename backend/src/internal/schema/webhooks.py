@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 import uuid
 
-from pydantic import BaseModel
+from pydantic import AnyHttpUrl, BaseModel
 
 from src.schema.event import EventEnvelope
 
@@ -14,14 +14,14 @@ class CreateInternalWebhookRequest(BaseModel):
     """
 
     api_key_id: uuid.UUID
-    url: str
+    url: AnyHttpUrl
     events: list[str] = ["*"]
 
 
 class UpdateInternalWebhookRequest(BaseModel):
     """Partial update for a webhook subscription."""
 
-    url: Optional[str] = None
+    url: Optional[AnyHttpUrl] = None
     events: Optional[list[str]] = None
     is_active: Optional[bool] = None
 

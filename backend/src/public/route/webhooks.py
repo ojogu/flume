@@ -29,7 +29,7 @@ async def create_webhook(
 ):
     sub, secret = await event_service.create_subscription(
         api_key_id=api_key.id,
-        url=body.url,
+        url=str(body.url),
         events=body.events,
     )
     return success(
@@ -75,10 +75,13 @@ async def update_webhook(
     api_key: ApiKey = Depends(get_api_key_from_header),
     event_service: EventService = Depends(get_event_service),
 ):
+    data = body.model_dump(exclude_unset=True)
+    if "url" in data:
+        data["url"] = str(data["url"])
     sub = await event_service.update_subscription(
         subscription_id=subscription_id,
         api_key_id=api_key.id,
-        **body.model_dump(exclude_unset=True),
+        **data,
     )
     return success(
         data=WebhookSubscriptionResponse(**sub.to_dict()).model_dump(),

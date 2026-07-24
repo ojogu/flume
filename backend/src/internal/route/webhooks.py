@@ -45,7 +45,7 @@ async def create_webhook(
     sub, secret = await event_service.create_subscription_by_user(
         user_id=user.id,
         api_key_id=body.api_key_id,
-        url=body.url,
+        url=str(body.url),
         events=body.events,
     )
     enriched = event_service.enrich_subscription(sub)
@@ -79,10 +79,13 @@ async def update_webhook(
     event_service: EventService = Depends(get_event_service),
 ):
     """Update a webhook subscription, verifying user ownership."""
+    data = body.model_dump(exclude_unset=True)
+    if "url" in data:
+        data["url"] = str(data["url"])
     sub = await event_service.update_subscription_by_user(
         user_id=user.id,
         subscription_id=subscription_id,
-        **body.model_dump(exclude_unset=True),
+        **data,
     )
     enriched = event_service.enrich_subscription(sub)
     return success(

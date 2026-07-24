@@ -2,18 +2,18 @@ from datetime import datetime
 from typing import Optional
 import uuid
 
-from pydantic import BaseModel
+from pydantic import AnyHttpUrl, BaseModel
 
 from src.schema.event import EventEnvelope
 
 
 class CreateWebhookSubscription(BaseModel):
-    url: str
+    url: AnyHttpUrl
     events: list[str] = ["*"]
 
 
 class UpdateWebhookSubscription(BaseModel):
-    url: Optional[str] = None
+    url: Optional[AnyHttpUrl] = None
     events: Optional[list[str]] = None
     is_active: Optional[bool] = None
 

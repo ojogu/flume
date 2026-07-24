@@ -3,7 +3,9 @@ from enum import Enum
 from typing import Any, Optional
 import uuid
 
-from pydantic import BaseModel, Field, model_validator
+from urllib.parse import urlparse
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from src.model.job import SourceType, JobStatus
 from src.schema.download import FormatPreference, PlaylistSelection, AUDIO_SAFE_FORMATS
@@ -23,6 +25,18 @@ class SourceObject(BaseModel):
     selection: PlaylistSelection | None = None
     # download quality preference — "best" by default; resolutions are rejected for audio sources
     format: FormatPreference = FormatPreference.BEST
+
+    @field_validator("uri")
+    @classmethod
+    def _validate_uri(cls, v: str) -> str:
+        if v.startswith("uploads/"):
+            return v
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError(
+                f"Invalid source URI: {v!r}. Must be a valid HTTP/HTTPS URL or an uploads/ path."
+            )
+        return v
 
     @model_validator(mode="after")
     def _validate_format_for_source_type(self):

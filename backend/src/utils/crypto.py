@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 
 from cryptography.fernet import Fernet
 import sqlalchemy as sa
@@ -16,6 +17,17 @@ def hash_str(value: str) -> str:
 
 def verify_str(value: str, hashed: str) -> bool:
     return hash_str(value) == hashed
+
+
+def build_signed_headers(body_bytes: bytes, secret: str, event_id: str) -> dict:
+    """Compute HMAC-SHA256 signature and return the standard webhook delivery headers."""
+    signature = hmac.new(secret.encode(), body_bytes, hashlib.sha256).hexdigest()
+    return {
+        "Content-Type": "application/json",
+        "X-Signature-256": f"sha256={signature}",
+        "X-Event-ID": event_id,
+        "User-Agent": "Flume-Webhook/1.0",
+    }
 
 
 def encryption_key():
