@@ -139,14 +139,14 @@ async def _process_job_async(job_id: str):
                     await _handle_single(job_service, job)
         except Exception as e:
             logger.error(f"Orchestration failed for job {job_id}: {e}")
-            await job_service.update_status(job.id, JobStatus.FAILED, error=str(e))
+            await job_service.update_status(job.id, JobStatus.FAILED, error="Processing failed")
             await event_service.emit(
                 event_type=EventType.JOB_FAILED,
                 resource_id=job.id,
                 data={
                     "job_id": str(job.id),
                     "status": JobStatus.FAILED.value,
-                    "error": str(e),
+                    "error": "Processing failed",
                 },
                 api_key_id=job.api_key_id,
             )
