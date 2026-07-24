@@ -4,6 +4,8 @@ import uuid
 
 from pydantic import BaseModel
 
+from src.schema.event import EventEnvelope
+
 
 class CreateWebhookSubscription(BaseModel):
     url: str
@@ -37,7 +39,7 @@ class WebhookDeliveryResponse(BaseModel):
     id: uuid.UUID
     subscription_id: uuid.UUID
     event_type: str
-    payload: dict
+    payload: EventEnvelope
     status: str
     response_code: Optional[int] = None
     response_body: Optional[str] = None
@@ -45,12 +47,3 @@ class WebhookDeliveryResponse(BaseModel):
     next_retry_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-
-
-class EventEnvelope(BaseModel):
-    """The JSON body POSTed to the subscriber webhook endpoint."""
-
-    id: uuid.UUID
-    type: str
-    created_at: datetime
-    data: dict

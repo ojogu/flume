@@ -15,6 +15,7 @@ from src.core.exception_base import NotFoundError
 from src.model.event import DeliveryStatus, EventType, WebhookSubscription, WebhookDelivery
 from src.model.api import ApiKey
 from src.internal.schema.webhooks import InternalWebhookResponse
+from src.schema.event import EventEnvelope, PingEnvelope
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -133,13 +134,12 @@ class EventService:
         """
         sub = await self.get_subscription(subscription_id, api_key_id)
 
-        payload = {
-            "id": f"test_{uuid.uuid4()}",
-            "type": "ping",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "data": {"message": "Webhook test from Flume dashboard"},
-        }
-        body_bytes = json.dumps(payload, separators=(",", ":")).encode()
+        envelope = PingEnvelope(
+            id=f"test_{uuid.uuid4()}",
+            created_at=datetime.now(timezone.utc),
+            data={"message": "Webhook test from Flume dashboard"},
+        )
+        body_bytes = json.dumps(envelope.model_dump(mode="json"), separators=(",", ":")).encode()
         signature = hmac.new(
             sub.secret.encode(), body_bytes, hashlib.sha256,
         ).hexdigest()
@@ -147,7 +147,7 @@ class EventService:
         headers = {
             "Content-Type": "application/json",
             "X-Signature-256": f"sha256={signature}",
-            "X-Event-ID": payload["id"],
+            "X-Event-ID": envelope.id,
             "User-Agent": "Flume-Webhook/1.0",
         }
 
@@ -281,13 +281,12 @@ class EventService:
         """Send a test ping to a subscription, verifying user ownership."""
         sub = await self._verify_subscription_ownership(user_id, subscription_id)
 
-        payload = {
-            "id": f"test_{uuid.uuid4()}",
-            "type": "ping",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "data": {"message": "Webhook test from Flume dashboard"},
-        }
-        body_bytes = json.dumps(payload, separators=(",", ":")).encode()
+        envelope = PingEnvelope(
+            id=f"test_{uuid.uuid4()}",
+            created_at=datetime.now(timezone.utc),
+            data={"message": "Webhook test from Flume dashboard"},
+        )
+        body_bytes = json.dumps(envelope.model_dump(mode="json"), separators=(",", ":")).encode()
         signature = hmac.new(
             sub.secret.encode(), body_bytes, hashlib.sha256,
         ).hexdigest()
@@ -295,7 +294,7 @@ class EventService:
         headers = {
             "Content-Type": "application/json",
             "X-Signature-256": f"sha256={signature}",
-            "X-Event-ID": payload["id"],
+            "X-Event-ID": envelope.id,
             "User-Agent": "Flume-Webhook/1.0",
         }
 
@@ -340,24 +339,26 @@ class EventService:
 
         deliveries: list[WebhookDelivery] = []
         for sub in subscriptions:
+            envelope = EventEnvelope(
+                id=str(resource_id),
+                type=event_type,
+                created_at=datetime.now(timezone.utc),
+                data=data,
+            )
             delivery = WebhookDelivery(
                 subscription_id=sub.id,
                 event_type=event_type,
-                payload={
-                    "id": str(resource_id),
-                    "type": event_type,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "data": data,
-                },
+                payload=envelope.model_dump(mode="json"),
                 status=DeliveryStatus.PENDING.value,
             )
-            self.db.add(delivery)
+            self.db.add(delivery) #stage rows, no commit
             deliveries.append(delivery)
 
-        await self.db.flush()
+        await self.db.flush() #write rows to db (not committed) but python object still has stale data
+        
         for d in deliveries:
-            await self.db.refresh(d)
-        await self.db.commit()
+            await self.db.refresh(d) # for each row, read updated data from db so python object have fresh data to work with
+        await self.db.commit()#commit
 
         logger.info(
             "Emitted %s — %d delivery(s) created",
@@ -374,6 +375,8 @@ class EventService:
         self, event_type: EventType, api_key_id: uuid.UUID,
     ) -> list[WebhookSubscription]:
         """Return active subscriptions that match the event type (exact match or wildcard)."""
+        
+        #fetch all active subscription scoped to an API key
         result = await self.db.execute(
             select(WebhookSubscription)
             .where(WebhookSubscription.is_active.is_(True))
@@ -381,6 +384,7 @@ class EventService:
         )
         subs = list(result.scalars().all())
 
+        #filter the records to match the event in the parameter (or wildcard)
         matching = []
         for sub in subs:
             events = sub.events or []
