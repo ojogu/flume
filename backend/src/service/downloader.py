@@ -83,10 +83,8 @@ def assert_size_under_limit(path: str) -> None:
     if size > config.max_download_size_bytes:
         limit_mb = config.max_download_size_bytes / (1024 * 1024)
         actual_mb = size / (1024 * 1024)
-        raise ValueError(
-            f"Downloaded file ({actual_mb:.1f} MB) exceeds the "
-            f"configured limit of {limit_mb:.1f} MB"
-        )
+        logger.warning(f"File size {actual_mb:.1f} MB exceeds limit {limit_mb:.1f} MB")
+        raise ValueError("Downloaded file exceeds size limit")
 
 
 def guess_container(path: str) -> str:
@@ -232,9 +230,8 @@ def download(
         if files:
             local_path = str(files[0])
         else:
-            raise FileNotFoundError(
-                f"No file found in workspace after download: {workspace_dir}"
-            )
+            logger.error(f"No file found in workspace: {workspace_dir}")
+            raise FileNotFoundError("Downloaded file not found")
 
     assert_size_under_limit(local_path)
 

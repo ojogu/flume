@@ -13,7 +13,6 @@ import hmac
 import json
 from datetime import datetime, timezone, timedelta
 
-import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -21,6 +20,7 @@ from src.model.event import DeliveryStatus, WebhookDelivery
 
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
+from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -39,8 +39,7 @@ MAX_ATTEMPTS = 5
 def deliver_webhook(delivery_id: str):
     """Deliver a pending webhook event to the subscriber.
 
-    Performs the HTTP POST, handles response, and manages retry lifecycle
-    through the database (not Celery's built-in retry mechanism).
+    Performs the HTTP POST, handles response, and manages retry lifecycle through the database (not Celery's built-in retry mechanism).
     """
     run_async_in_sync(_deliver_webhook_async(delivery_id))
 
@@ -50,6 +49,7 @@ async def _deliver_webhook_async(delivery_id: str):
     from src.utils.db import get_async_db_session
 
     async with get_async_db_session() as db:
+        #fetch the event delivery record
         result = await db.execute(
             select(WebhookDelivery)
             .options(selectinload(WebhookDelivery.subscription))
@@ -59,7 +59,8 @@ async def _deliver_webhook_async(delivery_id: str):
         if not delivery:
             logger.error(f"WebhookDelivery {delivery_id} not found")
             return
-
+        
+        #check if its pending
         if delivery.status != DeliveryStatus.PENDING.value:
             logger.warning(
                 f"WebhookDelivery {delivery_id} already {delivery.status} — skipping"
@@ -73,7 +74,10 @@ async def _deliver_webhook_async(delivery_id: str):
             )
             return
 
+        #emoves all whitespace (no spaces after colons or commas). This ensures the signature is consistent and deterministic 
         body_bytes = json.dumps(delivery.payload, separators=(",", ":")).encode()
+        
+        #payload signature
         signature = hmac.new(
             subscription.secret.encode(), body_bytes, hashlib.sha256
         ).hexdigest()
@@ -86,7 +90,7 @@ async def _deliver_webhook_async(delivery_id: str):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with get_http_client() as client:
                 response = await client.post(
                     subscription.url,
                     content=body_bytes,

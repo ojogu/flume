@@ -89,7 +89,7 @@ class ApiKeyService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Error updating API key: {e}")
-            raise DatabaseError() from e
+            raise DatabaseError()
 
     async def revoke_key(self, key_id: uuid.UUID, user_id: uuid.UUID) -> ApiKey:
         api_key = await self.get_key(key_id, user_id)
@@ -105,7 +105,7 @@ class ApiKeyService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Error revoking API key: {e}")
-            raise DatabaseError() from e
+            raise DatabaseError()
 
     # Hash the raw key, look up by hash (constant-ish time), check expiry, touch last_used_at
     async def verify_key(self, raw_key: str) -> Optional[ApiKey]:
@@ -131,6 +131,6 @@ class ApiKeyService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Error updating last_used_at: {e}")
-            raise DatabaseError() from e
+            raise DatabaseError()
 
         return api_key

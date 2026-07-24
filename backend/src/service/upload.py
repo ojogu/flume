@@ -93,21 +93,14 @@ class UploadService:
         upload = await self.get_upload(upload_id, api_key_id)
 
         if upload.status != UploadStatus.PENDING.value:
-            raise BadRequest(
-                f"Upload {upload_id} is in status '{upload.status}', "
-                f"expected 'pending'"
-            )
+            logger.warning(f"Upload {upload_id} has status '{upload.status}', expected 'pending'")
+            raise BadRequest("Upload is not in a processable state")
 
         # ── Verify in R2 ──────────────────────────────────────────────
         metadata = await storage.head_object(upload.uri)
         if metadata is None:
-            # The presigned URL was issued but the PUT never arrived (or the file was uploaded to a different key). The client should retry from Phase 1.
-            raise BadRequest(
-                f"Upload {upload_id}: object not found in R2 at key "
-                f"'{upload.uri}'. The upload may have failed or the "
-                f"presigned URL may have expired. Request a new presigned "
-                f"URL and try again."
-            )
+            logger.warning(f"Upload {upload_id}: object not found at key {upload.uri}")
+            raise BadRequest("Upload not found or no longer available")
 
         # ── Update DB record ──────────────────────────────────────────
         upload.status = UploadStatus.UNATTACHED.value

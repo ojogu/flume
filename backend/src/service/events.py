@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 import uuid
 
-import httpx
+from httpx import TimeoutException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -16,6 +16,7 @@ from src.model.event import DeliveryStatus, EventType, WebhookSubscription, Webh
 from src.model.api import ApiKey
 from src.internal.schema.webhooks import InternalWebhookResponse
 from src.schema.event import EventEnvelope, PingEnvelope
+from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -50,6 +51,7 @@ class EventService:
         await self.db.flush()
         await self.db.refresh(sub)
         await self.db.commit()
+        await self.db.refresh(sub, ["api_key"])
         logger.info(f"WebhookSubscription {sub.id} created for API key {api_key_id}")
         return sub, secret
 
@@ -75,7 +77,8 @@ class EventService:
         )
         sub = result.scalar_one_or_none()
         if not sub:
-            raise NotFoundError(f"WebhookSubscription {subscription_id} not found")
+            logger.warning(f"Webhook subscription {subscription_id} not found")
+            raise NotFoundError("Webhook subscription not found")
         return sub
 
     async def update_subscription(
@@ -93,7 +96,7 @@ class EventService:
 
         await self.db.flush()
         await self.db.commit()
-        await self.db.refresh(sub)
+        await self.db.refresh(sub, ["api_key"])
         logger.info(f"WebhookSubscription {subscription_id} updated")
         return sub
 
@@ -128,8 +131,7 @@ class EventService:
     ) -> dict:
         """Send a synchronous test ping to the subscriber URL.
 
-        Validates ownership, builds a real HMAC-signed payload, POSTs with
-        actual delivery headers, and returns the result immediately.
+        Validates ownership, builds a real HMAC-signed payload, POSTs with actual delivery headers, and returns the result immediately.
         No delivery record is created.
         """
         sub = await self.get_subscription(subscription_id, api_key_id)
@@ -152,25 +154,33 @@ class EventService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with get_http_client(timeout=10.0) as client:
                 response = await client.post(sub.url, content=body_bytes, headers=headers)
 
+            success = 200 <= response.status_code < 300
+            if success:
+                logger.info("Test ping to %s succeeded (status=%d)", sub.url, response.status_code)
+            else:
+                logger.warning("Test ping to %s failed (status=%d)", sub.url, response.status_code)
+
             return {
-                "success": 200 <= response.status_code < 300,
+                "success": success,
                 "status_code": response.status_code,
                 "response_body": response.text[:4096],
             }
-        except httpx.TimeoutException:
+        except TimeoutException:
+            logger.warning("Test ping to %s timed out", sub.url)
             return {
                 "success": False,
                 "status_code": None,
                 "response_body": "Connection timeout after 10s",
             }
         except Exception as e:
+            logger.warning(f"Test ping to {sub.url} failed: {e}")
             return {
                 "success": False,
                 "status_code": None,
-                "response_body": str(e)[:4096],
+                "response_body": "Request to subscriber URL failed",
             }
 
     # ── User-scoped queries (for internal/dashboard API) ────────────────────────
@@ -188,7 +198,8 @@ class EventService:
         )
         sub = result.scalar_one_or_none()
         if not sub:
-            raise NotFoundError(f"WebhookSubscription {subscription_id} not found")
+            logger.warning(f"Webhook subscription {subscription_id} not found")
+            raise NotFoundError("Webhook subscription not found")
         return sub
 
     async def list_subscriptions_by_user(
@@ -230,7 +241,8 @@ class EventService:
         )
         api_key = result.scalar_one_or_none()
         if not api_key:
-            raise NotFoundError(f"API key {api_key_id} not found")
+            logger.warning(f"API key {api_key_id} not found for user")
+            raise NotFoundError("API key not found")
 
         return await self.create_subscription(
             api_key_id=api_key_id, url=url, events=events, is_active=is_active,
@@ -299,17 +311,34 @@ class EventService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with get_http_client(timeout=10.0) as client:
                 response = await client.post(sub.url, content=body_bytes, headers=headers)
+
+            success = 200 <= response.status_code < 300
+            if success:
+                logger.info("Test ping to %s succeeded (status=%d)", sub.url, response.status_code)
+            else:
+                logger.warning("Test ping to %s failed (status=%d)", sub.url, response.status_code)
+
             return {
-                "success": 200 <= response.status_code < 300,
+                "success": success,
                 "status_code": response.status_code,
                 "response_body": response.text[:4096],
             }
-        except httpx.TimeoutException:
-            return {"success": False, "status_code": None, "response_body": "Connection timeout after 10s"}
+        except TimeoutException:
+            logger.warning("Test ping to %s timed out", sub.url)
+            return {
+                "success": False,
+                "status_code": None,
+                "response_body": "Connection timeout after 10s",
+            }
         except Exception as e:
-            return {"success": False, "status_code": None, "response_body": str(e)[:4096]}
+            logger.warning(f"Test ping to {sub.url} failed: {e}")
+            return {
+                "success": False,
+                "status_code": None,
+                "response_body": "Request to subscriber URL failed",
+            }
 
     # ── Response enrichment ──────────────────────────────────────────────
 

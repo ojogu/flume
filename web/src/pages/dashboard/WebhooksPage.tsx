@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Webhook, Trash2, AlertCircle, Check, Copy, Play, Loader2, Info, Pencil } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Webhook, Trash2, AlertCircle, AlertTriangle, Check, Copy, Play, Loader2, Pencil } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -396,10 +396,13 @@ function EventSelector({ selectedEvents, onChange }: { selectedEvents: string[],
 function CreateWebhookDialog({ open, onOpenChange, url, setUrl, onSave, loading, secret }: any) {
   const [copied, setCopied] = useState(false)
   const [selectedEvents, setSelectedEvents] = useState<string[]>(['*'])
+  const [acknowledged, setAcknowledged] = useState(false)
+
+  useEffect(() => { setAcknowledged(false) }, [secret])
 
   if (secret) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} disablePointerDismissal={!acknowledged} onOpenChange={(val: boolean, details: { reason: string }) => { if (!acknowledged && (details.reason === 'escapeKey' || details.reason === 'outsidePress')) return; onOpenChange(val) }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-display text-2xl">Webhook Secret</DialogTitle>
@@ -425,16 +428,28 @@ function CreateWebhookDialog({ open, onOpenChange, url, setUrl, onSave, loading,
                 {copied ? <Check className="h-4 w-4 text-brand" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            
+
             <div className="flex items-start gap-3 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
-              <Info className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+              <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
               <p className="text-[11px] text-orange-600 dark:text-orange-400 font-semibold leading-relaxed">
-                You must verify the <code className="font-mono">X-Signature-256</code> header in every request to ensure it came from Flume.
+                Once you close this dialog, you will never be able to see this secret again. Please store it securely.
               </p>
             </div>
-            
+
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="webhook-secret-ack"
+                checked={acknowledged}
+                onCheckedChange={(checked: boolean) => setAcknowledged(checked)}
+                className="mt-0.5"
+              />
+              <label htmlFor="webhook-secret-ack" className="text-sm text-[var(--text-secondary)] cursor-pointer select-none leading-relaxed">
+                I have saved this secret in a secure place
+              </label>
+            </div>
+
             <DialogFooter>
-              <Button className="w-full" onClick={() => onOpenChange(false)}>I've saved this secret</Button>
+              <Button className="w-full" disabled={!acknowledged} onClick={() => onOpenChange(false)}>Done</Button>
             </DialogFooter>
           </div>
         </DialogContent>

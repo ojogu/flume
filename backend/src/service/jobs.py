@@ -184,7 +184,8 @@ class JobService:
         """
         job = await self.get_job(job_id)
         if not job:
-            raise NotFoundError(f"Job {job_id} not found")
+            logger.warning(f"Job {job_id} not found")
+            raise NotFoundError("Job not found")
 
         job.status = status.value
 
@@ -203,7 +204,8 @@ class JobService:
         """Store the ``SourceInfo + MediaInfo`` dict after download completes."""
         job = await self.get_job(job_id)
         if not job:
-            raise NotFoundError(f"Job {job_id} not found")
+            logger.warning(f"Job {job_id} not found")
+            raise NotFoundError("Job not found")
 
         job.source_metadata = metadata
         await self.db.flush()
@@ -243,7 +245,8 @@ class JobService:
         result = await self.db.execute(select(JobStep).where(JobStep.id == step_id))
         step = result.scalar_one_or_none()
         if not step:
-            raise NotFoundError(f"JobStep {step_id} not found")
+            logger.warning(f"Job step {step_id} not found")
+            raise NotFoundError("Job step not found")
 
         step.status = status.value
 

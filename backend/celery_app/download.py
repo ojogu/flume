@@ -12,8 +12,6 @@ import os
 import uuid
 from pathlib import Path
 
-import httpx
-
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
@@ -21,6 +19,7 @@ from src.model.job import JobStatus, StepStatus
 from src.service.downloader import download, build_artifact_from_local, assert_size_under_limit, guess_container
 from src.service.storage import storage
 from src.utils.config import config
+from src.utils.http_client import get_http_client
 from src.schema.download import FormatPreference, DownloadResult
 from src.utils.log import get_logger
 
@@ -154,10 +153,10 @@ async def _download_task_async(job_id: str):
         except Exception as e:
             logger.error(f"Download failed for job {job_id}: {e}")
             await job_service.update_job_step(
-                step.id, StepStatus.FAILED, error=str(e),
+                step.id, StepStatus.FAILED, error="Download failed",
             )
             await job_service.update_status(
-                job_uuid, JobStatus.FAILED, error=f"Download failed: {e}",
+                job_uuid, JobStatus.FAILED, error="Download failed",
             )
 
             await event_service.emit(
@@ -168,7 +167,7 @@ async def _download_task_async(job_id: str):
                     "job_id": job_id,
                     "operation": step.operation,
                     "step_index": step.step_index,
-                    "error": str(e),
+                    "error": "Download failed",
                 },
                 api_key_id=job.api_key_id,
             )
@@ -179,7 +178,7 @@ async def _download_task_async(job_id: str):
                 data={
                     "job_id": job_id,
                     "status": JobStatus.FAILED.value,
-                    "error": f"Download failed: {e}",
+                    "error": "Download failed",
                 },
                 api_key_id=job.api_key_id,
             )
@@ -215,7 +214,7 @@ async def _download_upload_source(job, workspace: Path) -> "DownloadResult":
     ext = guess_container(job.source_uri)
     local_path = str(workspace / f"input.{ext}")
 
-    async with httpx.AsyncClient() as client:
+    async with get_http_client(timeout=300.0) as client:
         async with client.stream("GET", presigned_url) as response:
             response.raise_for_status()
             with open(local_path, "wb") as f:
