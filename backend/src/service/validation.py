@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 
 # ── Gate 1: Schema validation ──────────────────────────────────────────
 # Handled entirely by Pydantic on CreateJobRequest:
-#   - source is an HttpUrl (rejects invalid URLs at 422)
+#   - source URI validated as HTTP/HTTPS URL or uploads/ path (field_validator)
 #   - pipeline is list[PipelineOperation] with min_length=1
 # If the body is malformed, FastAPI rejects it before any gate runs.
 # No additional code needed here.
