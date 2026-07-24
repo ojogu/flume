@@ -60,11 +60,11 @@ class UserService:
                 raise AlreadyExistsError()
             else:
                 logger.error(f"Error creating user: {e}")
-                raise DatabaseError() from e
+                raise DatabaseError()
         except SQLAlchemyError as e:
             logger.error(f"Error creating user: {e}")
             await self.db.rollback()
-            raise DatabaseError() from e
+            raise DatabaseError()
 
     async def update_user(self, email: str, update_data: dict) -> Optional[User]:
         """Update a user by email."""
@@ -87,7 +87,7 @@ class UserService:
         except SQLAlchemyError as e:
             await self.db.rollback()
             logger.error(f"Error updating user: {e}")
-            raise DatabaseError() from e
+            raise DatabaseError()
     
 
     @staticmethod

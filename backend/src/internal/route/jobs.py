@@ -5,6 +5,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
 from src.core.dependency import get_current_user, get_job_service
+from src.utils.log import get_logger
+
+logger = get_logger(__name__)
 from src.model.user import User
 from src.internal.schema.jobs import (
     InternalJobResponse,
@@ -92,7 +95,8 @@ async def get_job(
     job = await job_service.get_job_detail_by_user(user_id=user.id, job_id=job_id)
     if not job:
         from src.core.exception_base import NotFoundError
-        raise NotFoundError(f"Job {job_id} not found")
+        logger.warning(f"Job {job_id} not found")
+        raise NotFoundError("Job not found")
 
     # Fetch API key name
     from sqlalchemy import select

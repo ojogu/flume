@@ -265,4 +265,5 @@ def validate_and_build_pipeline(
     except BadRequest:
         raise
     except Exception as e:
-        raise BadRequest(f"Unexpected validation error: {e}") from e
+        logger.error(f"Unexpected validation error: {e}")
+        raise BadRequest("Unexpected validation error")

@@ -56,7 +56,8 @@ class PlatformService:
         )
         platform = result.scalar_one_or_none()
         if not platform:
-            raise NotFoundError(f"Platform {platform_id} not found")
+            logger.warning(f"Platform {platform_id} not found")
+            raise NotFoundError("Platform not found")
         return platform
 
     async def get_platform_by_slug(self, slug: str) -> Platform | None:
