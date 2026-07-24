@@ -4,6 +4,8 @@ import uuid
 
 from pydantic import BaseModel
 
+from src.schema.event import EventEnvelope
+
 
 class CreateInternalWebhookRequest(BaseModel):
     """Request to create a webhook subscription via the internal API.
@@ -53,7 +55,7 @@ class InternalWebhookDeliveryResponse(BaseModel):
     id: uuid.UUID
     subscription_id: uuid.UUID
     event_type: str
-    payload: dict
+    payload: EventEnvelope
     status: str
     response_code: Optional[int] = None
     response_body: Optional[str] = None

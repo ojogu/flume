@@ -25,6 +25,7 @@ class EventType(str, enum.Enum):
     STEP_STARTED = "step.started"
     STEP_COMPLETED = "step.completed"
     STEP_FAILED = "step.failed"
+    PING = "ping" #for test webhook test request
 
 
 ALL_EVENT_TYPES = {e.value for e in EventType}
