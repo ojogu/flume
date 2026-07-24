@@ -39,7 +39,7 @@ class CreateUser(BaseModel):
     email_verified: bool = False
     oauth_verified: bool = False
     onboarded: bool = False
-    password: Optional[str] = None
+    password_hash: Optional[str] = None
     is_admin: bool = False
     name: Optional[str] = None
     picture: Optional[str] = None
