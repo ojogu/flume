@@ -34,6 +34,7 @@ port.txt
 
 #app level
 todo.md
+backlog.md
 agent.md
 deploy.sh
 migrate.sh
