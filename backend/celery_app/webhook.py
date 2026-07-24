@@ -8,8 +8,6 @@
 # Runs on the **webhook** queue (dedicated workers).
 # ──────────────────────────────────────────────────────────────────────────
 
-import hashlib
-import hmac
 import json
 from datetime import datetime, timezone, timedelta
 
@@ -20,6 +18,7 @@ from src.model.event import DeliveryStatus, WebhookDelivery
 
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
+from src.utils.crypto import build_signed_headers
 from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
 
@@ -76,18 +75,8 @@ async def _deliver_webhook_async(delivery_id: str):
 
         #emoves all whitespace (no spaces after colons or commas). This ensures the signature is consistent and deterministic 
         body_bytes = json.dumps(delivery.payload, separators=(",", ":")).encode()
-        
-        #payload signature
-        signature = hmac.new(
-            subscription.secret.encode(), body_bytes, hashlib.sha256
-        ).hexdigest()
 
-        headers = {
-            "Content-Type": "application/json",
-            "X-Signature-256": f"sha256={signature}",
-            "X-Event-ID": str(delivery.id),
-            "User-Agent": "Flume-Webhook/1.0",
-        }
+        headers = build_signed_headers(body_bytes, subscription.secret, str(delivery.id))
 
         try:
             async with get_http_client() as client:
@@ -132,6 +121,7 @@ async def _handle_failure(delivery: WebhookDelivery, url: str) -> None:
         #TODO: push to DLQ
         return
 
+# Map attempt count to delay: attempt 1→10s, 2→60s, 3→10min, 4→1hr (attempts already incremented above; index = attempts - 1. Falls back to last delay if somehow beyond schedule length.
     delay = BACKOFF_SCHEDULE[delivery.attempts - 1] if delivery.attempts <= len(BACKOFF_SCHEDULE) else BACKOFF_SCHEDULE[-1]
     delivery.next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
 

@@ -1,5 +1,3 @@
-import hashlib
-import hmac
 import json
 import secrets
 from datetime import datetime, timezone
@@ -16,6 +14,7 @@ from src.model.event import DeliveryStatus, EventType, WebhookSubscription, Webh
 from src.model.api import ApiKey
 from src.internal.schema.webhooks import InternalWebhookResponse
 from src.schema.event import EventEnvelope, PingEnvelope
+from src.utils.crypto import build_signed_headers
 from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
 
@@ -142,16 +141,7 @@ class EventService:
             data={"message": "Webhook test from Flume dashboard"},
         )
         body_bytes = json.dumps(envelope.model_dump(mode="json"), separators=(",", ":")).encode()
-        signature = hmac.new(
-            sub.secret.encode(), body_bytes, hashlib.sha256,
-        ).hexdigest()
-
-        headers = {
-            "Content-Type": "application/json",
-            "X-Signature-256": f"sha256={signature}",
-            "X-Event-ID": envelope.id,
-            "User-Agent": "Flume-Webhook/1.0",
-        }
+        headers = build_signed_headers(body_bytes, sub.secret, envelope.id)
 
         try:
             async with get_http_client(timeout=10.0) as client:
@@ -299,16 +289,7 @@ class EventService:
             data={"message": "Webhook test from Flume dashboard"},
         )
         body_bytes = json.dumps(envelope.model_dump(mode="json"), separators=(",", ":")).encode()
-        signature = hmac.new(
-            sub.secret.encode(), body_bytes, hashlib.sha256,
-        ).hexdigest()
-
-        headers = {
-            "Content-Type": "application/json",
-            "X-Signature-256": f"sha256={signature}",
-            "X-Event-ID": envelope.id,
-            "User-Agent": "Flume-Webhook/1.0",
-        }
+        headers = build_signed_headers(body_bytes, sub.secret, envelope.id)
 
         try:
             async with get_http_client(timeout=10.0) as client:
@@ -404,23 +385,16 @@ class EventService:
         self, event_type: EventType, api_key_id: uuid.UUID,
     ) -> list[WebhookSubscription]:
         """Return active subscriptions that match the event type (exact match or wildcard)."""
-        
-        #fetch all active subscription scoped to an API key
         result = await self.db.execute(
             select(WebhookSubscription)
             .where(WebhookSubscription.is_active.is_(True))
             .where(WebhookSubscription.api_key_id == api_key_id)
+            .where(
+                WebhookSubscription.events.contains("*")
+                | WebhookSubscription.events.contains(event_type.value)
+            )
         )
-        subs = list(result.scalars().all())
-
-        #filter the records to match the event in the parameter (or wildcard)
-        matching = []
-        for sub in subs:
-            events = sub.events or []
-            if "*" in events or event_type in events:
-                matching.append(sub)
-
-        return matching
+        return list(result.scalars().all())
 
     def _dispatch_delivery(self, delivery_id: uuid.UUID) -> None:
         """Enqueue the Celery task for this delivery."""
