@@ -1,8 +1,78 @@
 ---
 title: Delivery & Retries
-description: At-least-once, idempotency
+description: At-least-once semantics and retry policy
 ---
 
-# Delivery & Retries
+## Delivery Model
 
-Placeholder — delivery & retries (at-least-once, idempotency).
+Flume uses **at-least-once** delivery. Each event is guaranteed to be delivered at least once, but may be delivered multiple times in rare cases (e.g., network timeouts after processing).
+
+Your endpoint should be **idempotent** — use the `X-Event-ID` header to deduplicate.
+
+## Retry Schedule
+
+Failed deliveries retry with exponential backoff:
+
+| Attempt | Delay |
+|---|---|
+| 1 | 10 seconds |
+| 2 | 1 minute |
+| 3 | 10 minutes |
+| 4 | 1 hour |
+| 5 | — (exhausted) |
+
+After 5 failed attempts, the delivery status becomes `exhausted` and no further retries occur.
+
+## Delivery Statuses
+
+| Status | Description |
+|---|---|
+| `pending` | Awaiting delivery or retry |
+| `delivered` | Successfully delivered (2xx response) |
+| `exhausted` | All retry attempts failed |
+
+## Success Criteria
+
+Your endpoint must return a **2xx status code** (200-299) to acknowledge receipt.
+
+| Response | Result |
+|---|---|
+| 200-299 | Marked as `delivered` |
+| 3xx | Treated as failure (redirects not followed) |
+| 4xx/5xx | Treated as failure, will retry |
+| Timeout | Treated as failure, will retry |
+| Network error | Treated as failure, will retry |
+
+## Response Handling
+
+Your response is stored for debugging:
+
+| Field | Limit |
+|---|---|
+| `response_code` | HTTP status code |
+| `response_body` | Truncated to 4096 characters |
+
+## Monitoring Deliveries
+
+**GET** `/webhooks/{id}/deliveries`
+
+Track delivery status, response codes, and retry attempts:
+
+```json
+{
+  "id": "660e8400-e29b-41d4-a716-446655440001",
+  "event_type": "job.completed",
+  "status": "delivered",
+  "response_code": 200,
+  "attempts": 1,
+  "created_at": "2026-06-27T12:00:00Z",
+  "completed_at": "2026-06-27T12:00:01Z"
+}
+```
+
+## Best Practices
+
+1. **Respond quickly** — Return 2xx within 10 seconds
+2. **Process async** — Acknowledge receipt, then process in background
+3. **Handle retries** — Use `X-Event-ID` for idempotency
+4. **Verify signatures** — Always validate `X-Signature-256` before processing

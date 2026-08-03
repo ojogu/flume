@@ -1,8 +1,229 @@
 ---
 title: Subscriptions
-description: Registering & managing endpoints
+description: Creating and managing webhook endpoints
 ---
 
-# Subscriptions
+## Endpoints
 
-Placeholder — registering & managing endpoints.
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/webhooks` | Create subscription |
+| `GET` | `/webhooks` | List all subscriptions |
+| `GET` | `/webhooks/{id}` | Get subscription details |
+| `PATCH` | `/webhooks/{id}` | Update subscription |
+| `DELETE` | `/webhooks/{id}` | Delete subscription |
+| `POST` | `/webhooks/{id}/test` | Send test ping |
+| `GET` | `/webhooks/{id}/deliveries` | List delivery history |
+
+All endpoints require `X-API-Key` header.
+
+---
+
+## Create Subscription
+
+**POST** `/webhooks`
+
+Creates a new webhook subscription. Returns the HMAC secret **once** — store it securely.
+
+### Request
+
+```json
+{
+  "url": "https://your-server.com/webhooks/flume",
+  "events": ["job.completed", "job.failed"]
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `url` | string (URL) | Yes | Your webhook endpoint |
+| `events` | array | No | Event types to subscribe to. Default: `["*"]` |
+
+### Response (201)
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "url": "https://your-server.com/webhooks/flume",
+  "events": ["job.completed", "job.failed"],
+  "is_active": true,
+  "created_at": "2026-06-27T12:00:00Z",
+  "secret": "whsec_abc123..."
+}
+```
+
+> **Important:** The `secret` is only shown once. Store it securely for signature verification.
+
+---
+
+## List Subscriptions
+
+**GET** `/webhooks`
+
+Returns all webhook subscriptions for your API key.
+
+### Response (200)
+
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "url": "https://your-server.com/webhooks/flume",
+    "events": ["job.completed", "job.failed"],
+    "is_active": true,
+    "created_at": "2026-06-27T12:00:00Z"
+  }
+]
+```
+
+---
+
+## Get Subscription
+
+**GET** `/webhooks/{id}`
+
+Returns a single subscription by ID.
+
+### Response (200)
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "url": "https://your-server.com/webhooks/flume",
+  "events": ["job.completed", "job.failed"],
+  "is_active": true,
+  "created_at": "2026-06-27T12:00:00Z",
+  "updated_at": "2026-06-28T12:00:00Z"
+}
+```
+
+---
+
+## Update Subscription
+
+**PATCH** `/webhooks/{id}`
+
+Updates a subscription. All fields are optional.
+
+### Request
+
+```json
+{
+  "url": "https://new-server.com/webhooks/flume",
+  "events": ["*"],
+  "is_active": false
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `url` | string (URL) | New endpoint URL |
+| `events` | array | New event filter |
+| `is_active` | boolean | Enable/disable subscription |
+
+### Response (200)
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "url": "https://new-server.com/webhooks/flume",
+  "events": ["*"],
+  "is_active": false,
+  "created_at": "2026-06-27T12:00:00Z",
+  "updated_at": "2026-06-28T12:00:00Z"
+}
+```
+
+---
+
+## Delete Subscription
+
+**DELETE** `/webhooks/{id}`
+
+Deletes a subscription. This action is irreversible.
+
+### Response (204)
+
+No content.
+
+---
+
+## Test Subscription
+
+**POST** `/webhooks/{id}/test`
+
+Sends a synchronous `ping` event to verify connectivity.
+
+### Response (200)
+
+```json
+{
+  "success": true,
+  "status_code": 200,
+  "response_body": "{\"received\": true}"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `success` | boolean | Whether the test was successful |
+| `status_code` | integer | HTTP status from your endpoint |
+| `response_body` | string | Response body from your endpoint (truncated to 4KB) |
+
+---
+
+## List Deliveries
+
+**GET** `/webhooks/{id}/deliveries`
+
+Returns delivery history for a subscription.
+
+### Response (200)
+
+```json
+[
+  {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "subscription_id": "550e8400-e29b-41d4-a716-446655440000",
+    "event_type": "job.completed",
+    "payload": { ... },
+    "status": "delivered",
+    "response_code": 200,
+    "response_body": "{\"received\": true}",
+    "attempts": 1,
+    "next_retry_at": null,
+    "created_at": "2026-06-27T12:00:00Z",
+    "completed_at": "2026-06-27T12:00:01Z"
+  }
+]
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | string | `pending`, `delivered`, or `exhausted` |
+| `response_code` | integer | HTTP status from your endpoint |
+| `response_body` | string | Response body (truncated to 4KB) |
+| `attempts` | integer | Number of delivery attempts |
+| `next_retry_at` | string (ISO 8601) | Scheduled retry time (if pending) |
+| `completed_at` | string (ISO 8601) | When delivery succeeded or exhausted |
+
+---
+
+## Event Filtering
+
+### Wildcard Patterns
+
+| Pattern | Matches |
+|---|---|
+| `["*"]` | All events |
+| `["job.*"]` | All job events |
+| `["step.*"]` | All step events |
+| `["job.completed"]` | Only job.completed |
+| `["job.*", "step.failed"]` | Job events + step.failed |
+
+### Behavior
+
+- Events are matched against the subscription's `events` list
+- If any pattern matches, the event is delivered
+- `*` matches everything — use with caution for high-volume pipelines
+- Updates to `events` take effect immediately for new events

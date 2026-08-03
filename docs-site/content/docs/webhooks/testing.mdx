@@ -1,8 +1,79 @@
 ---
 title: Testing
-description: Test events & local tooling
+description: Verifying your webhook endpoint
 ---
 
-# Testing
+## Test Endpoint
 
-Placeholder — test events & local tooling.
+**POST** `/webhooks/{id}/test`
+
+Sends a synchronous `ping` event to your endpoint immediately.
+
+### Response (200)
+
+```json
+{
+  "success": true,
+  "status_code": 200,
+  "response_body": "{\"received\": true}"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `success` | boolean | `true` if 2xx response received |
+| `status_code` | integer | HTTP status from your endpoint |
+| `response_body` | string | Response body (truncated to 4KB) |
+
+## Test Payload
+
+The test event has this structure:
+
+```json
+{
+  "id": "770e8400-e29b-41d4-a716-446655440002",
+  "created_at": "2026-06-27T12:00:00Z",
+  "type": "ping",
+  "data": {
+    "message": "Test ping from Flume"
+  }
+}
+```
+
+## Example Request
+
+```bash
+curl -X POST https://api.flume.example.com/webhooks/550e8400-e29b-41d4-a716-446655440000/test \
+  -H "X-API-Key: your-api-key"
+```
+
+## Interpreting Results
+
+| Result | Meaning |
+|---|---|
+| `success: true`, `status_code: 200` | Endpoint is reachable and responding correctly |
+| `success: true`, `status_code: 201` | Endpoint accepted the test |
+| `success: false`, `status_code: 404` | Endpoint URL not found |
+| `success: false`, `status_code: 500` | Server error on your endpoint |
+| `success: false`, `status_code: null` | Connection failed or timeout |
+
+## Local Development
+
+For local testing, use a tunneling service:
+
+```bash
+# Example with ngrok
+ngrok http 3000
+
+# Use the ngrok URL in your subscription
+https://abc123.ngrok.io/webhooks/flume
+```
+
+## Checklist
+
+Before going live:
+
+- [ ] Endpoint returns 2xx for test ping
+- [ ] Signature verification passes
+- [ ] Endpoint handles retries gracefully (idempotent)
+- [ ] Endpoint responds within 10 seconds

@@ -1,8 +1,105 @@
 ---
 title: Webhooks
-description: Delivery model and verification.
+description: Delivery model and infrastructure
 ---
 
-# Webhooks
+## Purpose
 
-Receive real-time notifications about your processing jobs.
+Webhooks deliver real-time notifications about job lifecycle events. This document covers the internal architecture and delivery infrastructure.
+
+## Delivery Flow
+
+```
+Job Event
+    │
+    ▼
+EventService.emit()
+    │
+    ▼
+Create WebhookDelivery record (status: pending)
+    │
+    ▼
+Dispatch Celery task → webhook queue
+    │
+    ▼
+Webhook Worker
+    │
+    ├─ Fetch delivery + subscription
+    ├─ Sign payload with HMAC-SHA256
+    ├─ POST to subscriber URL
+    │
+    ├─ 2xx → mark delivered
+    └─ failure → schedule retry (exponential backoff)
+```
+
+## Components
+
+| Component | Location | Responsibility |
+|---|---|---|
+| Event emission | `backend/src/service/events.py` | Match subscriptions, create deliveries |
+| Delivery task | `backend/celery_app/webhook.py` | HTTP POST, retry logic |
+| Event types | `backend/src/model/event.py` | EventType enum, ORM models |
+| Payload schemas | `backend/src/schema/event.py` | Pydantic models for event data |
+| Public API | `backend/src/public/route/webhooks.py` | Subscription CRUD endpoints |
+| Crypto utils | `backend/src/utils/crypto.py` | HMAC signing |
+
+## Queue Architecture
+
+Webhook deliveries run on a dedicated **webhook queue** (separate from job processing):
+
+- **Concurrency:** Multiple workers can process deliveries in parallel
+- **Isolation:** Webhook failures don't affect job processing
+- **Retries:** Managed via database-backed scheduling, not Celery retries
+
+## Retry Policy
+
+| Attempt | Delay |
+|---|---|
+| 1 | 10 seconds |
+| 2 | 1 minute |
+| 3 | 10 minutes |
+| 4 | 1 hour |
+| 5 | Exhausted (no more retries) |
+
+Retries are scheduled by updating `next_retry_at` and re-enqueueing the Celery task.
+
+## Data Model
+
+### WebhookSubscription
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `api_key_id` | UUID | Owning API key |
+| `url` | Text | Subscriber endpoint |
+| `events` | JSONB | Event filter array |
+| `secret` | EncryptedText | HMAC secret (encrypted at rest) |
+| `is_active` | Boolean | Enable/disable |
+
+### WebhookDelivery
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `subscription_id` | UUID | Parent subscription |
+| `event_type` | Text | Event type string |
+| `payload` | JSONB | Full event envelope |
+| `status` | String | `pending`, `delivered`, `exhausted` |
+| `response_code` | Integer | HTTP status from subscriber |
+| `response_body` | Text | Response body (4KB limit) |
+| `attempts` | Integer | Delivery attempt count |
+| `next_retry_at` | DateTime | Scheduled retry time |
+| `completed_at` | DateTime | Success/exhausted timestamp |
+
+## Security
+
+- Secrets encrypted at rest using `EncryptedText` column type
+- HMAC-SHA256 signatures for all deliveries
+- `X-Event-ID` header for idempotency and replay protection
+
+## Related Documentation
+
+- [Webhooks Overview](/docs/webhooks) — User-facing webhook guide
+- [Event Catalog](/docs/webhooks/event-catalog) — Available event types
+- [Payload Structure](/docs/webhooks/payload) — Event schemas
+- [Security](/docs/webhooks/security) — Signature verification
