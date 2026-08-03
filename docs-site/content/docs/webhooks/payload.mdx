@@ -1,8 +1,133 @@
 ---
-title: Shared Payload Shape
-description: Shared event envelope shape
+title: Payload Structure
+description: Event envelope and data schemas
 ---
 
-# Shared Payload Shape
+## Envelope Format
 
-Placeholder — shared event envelope shape.
+All webhook payloads follow a consistent envelope structure:
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "created_at": "2026-06-27T12:00:00Z",
+  "type": "job.completed",
+  "data": { ... }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string (UUID) | Unique event identifier |
+| `created_at` | string (ISO 8601) | When the event occurred |
+| `type` | string | Event type (see [Event Catalog](/docs/webhooks/event-catalog)) |
+| `data` | object | Event-specific payload (varies by type) |
+
+## Job Event Schemas
+
+### job.created / job.processing
+
+```json
+{
+  "job_id": "string",
+  "status": "string",
+  "source_uri": "string",
+  "source_type": "string"
+}
+```
+
+### job.completed
+
+```json
+{
+  "job_id": "string",
+  "status": "string",
+  "source_uri": "string",
+  "source_type": "string",
+  "source_metadata": { ... } | null,
+  "error": null
+}
+```
+
+### job.failed
+
+```json
+{
+  "job_id": "string",
+  "status": "string",
+  "error": "string"
+}
+```
+
+### job.cancelled
+
+```json
+{
+  "job_id": "string",
+  "status": "string",
+  "error": "string" | null
+}
+```
+
+## Step Event Schemas
+
+### step.started
+
+```json
+{
+  "step_id": "string",
+  "job_id": "string",
+  "operation": "string",
+  "step_index": 0
+}
+```
+
+### step.completed
+
+```json
+{
+  "step_id": "string",
+  "job_id": "string",
+  "operation": "string",
+  "step_index": 0,
+  "output_artifact": { ... }
+}
+```
+
+### step.failed
+
+```json
+{
+  "step_id": "string",
+  "job_id": "string",
+  "operation": "string",
+  "step_index": 0,
+  "error": "string"
+}
+```
+
+## Test Event Schema
+
+### ping
+
+```json
+{
+  "message": "string"
+}
+```
+
+## Field Reference
+
+| Field | Type | Description |
+|---|---|---|
+| `job_id` | string | Unique job identifier |
+| `step_id` | string | Unique step identifier |
+| `status` | string | Job status at time of event |
+| `source_uri` | string | Original source URL or upload key |
+| `source_type` | string | Type of source (`video`, `audio`, etc.) |
+| `source_metadata` | object | Additional metadata about the source |
+| `operation` | string | Pipeline operation (`trim`, `compress`, etc.) |
+| `step_index` | integer | Zero-based step position in pipeline |
+| `output_artifact` | object | Output file reference from completed step |
+| `error` | string | Error message if failed/cancelled |
+| `message` | string | Test message for ping events |

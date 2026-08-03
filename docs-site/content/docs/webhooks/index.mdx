@@ -1,8 +1,45 @@
 ---
 title: Webhooks
-description: Event-driven model overview
+description: Event-driven notifications for job lifecycle
 ---
 
-# Webhooks
+## Purpose
 
-Placeholder — event-driven model overview.
+Webhooks let you receive real-time HTTP notifications when events occur in Flume — job status changes, step completions, and failures. Instead of polling the API, subscribe to events and get notified instantly.
+
+## How It Works
+
+```
+Your Server ←────────── Flume
+     ↑                      │
+     │  1. Subscribe        │
+     │  POST /webhooks      │
+     │                      │
+     │  2. Event occurs     │
+     │  (job.completed)     │
+     │                      │
+     │  3. Receive POST     │
+     │  signed payload      │
+     │                      │
+     └──────────────────────┘
+```
+
+1. **Subscribe** — Create a webhook subscription with your endpoint URL and event filter
+2. **Receive** — Flume POSTs signed JSON payloads to your endpoint when matching events occur
+3. **Verify** — Validate the HMAC-SHA256 signature to ensure authenticity
+
+## Key Features
+
+| Feature | Description |
+|---|---|
+| Event filtering | Subscribe to all events (`*`) or specific types (`job.completed`) |
+| Signed payloads | HMAC-SHA256 signature in `X-Signature-256` header |
+| Automatic retries | Exponential backoff (10s → 1m → 10m → 1h), max 5 attempts |
+| Delivery history | Track status, response codes, and retry attempts |
+
+## Next Steps
+
+- [Event Catalog](/docs/webhooks/event-catalog) — All available event types
+- [Payload Structure](/docs/webhooks/payload) — Envelope and data schemas
+- [Subscriptions](/docs/webhooks/subscriptions) — Create and manage endpoints
+- [Security](/docs/webhooks/security) — Verify signatures and prevent replay attacks
