@@ -20,6 +20,7 @@ bg_task = Celery(
         "celery_app.download",
         "celery_app.orchestrator",
         "celery_app.webhook",
+        "celery_app.operations",
     ],
 )
 

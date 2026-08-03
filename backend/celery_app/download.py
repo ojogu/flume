@@ -1,11 +1,11 @@
-# ── Download task (op.download queue) ──────────────────────────────────────
+# ── Download task (download_queue) ────────────────────────────────────────
 # Responsibilities:
 #   1. Execute the actual media download (yt-dlp external URL / R2 presigned GET)
 #   2. Set ``source_metadata`` on the Job
 #   3. Mark the download JobStep COMPLETED
 #   4. Notify parent job for aggregate state computation
 #
-# Runs on the **op.download** queue (many workers, I/O-bound).
+# Runs on the **download_queue** (many workers, I/O-bound).
 # ─────────────────────────────────────────────────────
 
 import os
@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 
 @bg_task.task(
     name="jobs.download.execute",
-    queue="op.download",
+    queue="download_queue",
     max_retries=3,
     default_retry_delay=60,
     acks_late=True,
@@ -127,26 +127,41 @@ async def _download_task_async(job_id: str):
                 api_key_id=job.api_key_id,
             )
 
-            # if this job has a parent, notify for aggregate computation
-            await job_service.notify_child_complete(job_uuid)
+            pipeline_steps = job.pipeline_steps or []
+            if len(pipeline_steps) > 1:
+                # More steps to run: chain to the first operation step(step_index=1). The job stays PROCESSING; final status is set by the last operation task. We do NOT notify the parent yet because this child is not terminal.
+                
+                from celery_app.operations import execute_operation_task
+                next_index = 1
+                next_op = pipeline_steps[next_index].get("operation", "unknown")
+                logger.info(
+                    f"Job {job_id} step 0 (download) complete — chaining to step {next_index} ({next_op})"
+                )
+                execute_operation_task.apply_async(
+                    args=[job_id, next_index],
+                    task_id=f"{job_id}-step-{next_index}",
+                )
+            else:
+                # Download was the only step — finalize the job now. The status update is required before notify_child_complete so the parent's aggregate query counts this child as terminal.
+                await job_service.update_status(job_uuid, JobStatus.SUCCEEDED)
+                await job_service.notify_child_complete(job_uuid)
 
-            # determine final status after parent aggregation
-            updated_job = await job_service.get_job(job_uuid)
-            final_status = updated_job.status if updated_job else JobStatus.SUCCEEDED.value
+                updated_job = await job_service.get_job(job_uuid)
+                final_status = updated_job.status if updated_job else JobStatus.SUCCEEDED.value
 
-            await event_service.emit(
-                event_type=EventType.JOB_COMPLETED,
-                resource_id=job_uuid,
-                data={
-                    "job_id": job_id,
-                    "status": final_status,
-                    "source_uri": job.source_uri,
-                    "source_type": job.source_type,
-                    "source_metadata": source_meta,
-                    "error": None,
-                },
-                api_key_id=job.api_key_id,
-            )
+                await event_service.emit(
+                    event_type=EventType.JOB_COMPLETED,
+                    resource_id=job_uuid,
+                    data={
+                        "job_id": job_id,
+                        "status": final_status,
+                        "source_uri": job.source_uri,
+                        "source_type": job.source_type,
+                        "source_metadata": source_meta,
+                        "error": None,
+                    },
+                    api_key_id=job.api_key_id,
+                )
 
             logger.info(f"Download complete for job {job_id} — {result.local_path}")
 

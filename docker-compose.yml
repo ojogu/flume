@@ -85,7 +85,7 @@ services:
   worker:
     build:
       context: ./backend
-    command: celery -A celery_app.celery.bg_task worker -l info -Q default,email
+    command: celery -A celery_app.celery.bg_task worker -l info -Q default_queue,email_queue
     env_file:
       - ./backend/.env
     environment:

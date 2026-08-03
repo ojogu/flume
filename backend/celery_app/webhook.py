@@ -31,7 +31,7 @@ MAX_ATTEMPTS = 5
 
 @bg_task.task(
     name="jobs.webhook.deliver",
-    queue="webhook",
+    queue="webhook_queue",
     max_retries=0,
     acks_late=True,
 )

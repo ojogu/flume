@@ -29,23 +29,25 @@ class CeleryConfig:
     # --------------------------
     # Queue Definitions
     # --------------------------
-    task_default_queue = "default"
+    task_default_queue = "default_queue"
     task_queues = (
-        Queue("default", routing_key="default"),
-        Queue("email", routing_key="email"),
-        Queue("orchestrator", routing_key="orchestrator"),
-        Queue("op.download", routing_key="op.download"),
-        Queue("webhook", routing_key="webhook"),
+        Queue("default_queue", routing_key="default_queue"),
+        Queue("email_queue", routing_key="email_queue"),
+        Queue("orchestrator_queue", routing_key="orchestrator_queue"),
+        Queue("download_queue", routing_key="download_queue"),
+        Queue("webhook_queue", routing_key="webhook_queue"),
+        Queue("media_queue", routing_key="media_queue"),
     )
 
     # --------------------------
     # Task Routing
     # --------------------------
     task_routes = {
-        "jobs.email.send":         {"queue": "email"},
-        "jobs.orchestrator.process": {"queue": "orchestrator"},
-        "jobs.download.execute":   {"queue": "op.download"},
-        "jobs.webhook.deliver":    {"queue": "webhook"},
+        "jobs.email.send":           {"queue": "email_queue"},
+        "jobs.orchestrator.process": {"queue": "orchestrator_queue"},
+        "jobs.download.execute":     {"queue": "download_queue"},
+        "jobs.webhook.deliver":      {"queue": "webhook_queue"},
+        "jobs.media.execute":        {"queue": "media_queue"},
     }
 
 
@@ -95,7 +97,7 @@ docker run -d --name redis -p 6379:6379 redis:alpine
 pip install celery[redis] flower
 
 # Start Celery worker (in one terminal)
-celery -A celery_app.celery.bg_task worker -l info -Q default,email
+celery -A celery_app.celery.bg_task worker -l info -Q default_queue,email_queue
 
 -A celery_app.celery.bg_task → celery_app/celery.py file, bg_task is the Celery() instance you defined
 
