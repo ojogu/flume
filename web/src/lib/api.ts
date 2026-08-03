@@ -79,6 +79,10 @@ export async function apiClient<T>(
     throw new ApiClientError(errorData.message, res.status, errorData.error_code)
   }
 
+  if (res.status === 204) {
+    return undefined as T
+  }
+
   return res.json() as Promise<T>
 }
 
