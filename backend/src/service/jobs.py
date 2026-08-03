@@ -275,6 +275,15 @@ class JobService:
         )
         return result.scalar_one_or_none()
 
+    async def get_step(self, job_id: uuid.UUID, step_index: int) -> JobStep | None:
+        """Fetch a specific JobStep by job_id and step_index."""
+        result = await self.db.execute(
+            select(JobStep)
+            .where(JobStep.job_id == job_id)
+            .where(JobStep.step_index == step_index)
+        )
+        return result.scalar_one_or_none()
+
     # ── Playlist children ──────────────────────────────────────────────────────
 
     async def create_child_jobs(

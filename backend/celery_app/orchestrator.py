@@ -4,7 +4,7 @@
 #   2. Validate platform against supported platforms catalog
 #   3. Detect playlist → fan out child jobs / single → dispatch download
 #   4. Create JobStep records for the implicit download step + user pipeline
-#   5. Route the actual download to the op.download queue
+#   5. Route the actual download to the download_queue
 #
 # Runs on the **orchestrator** queue (few workers, lightweight tasks).
 # ──────────────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 @bg_task.task(
     name="jobs.orchestrator.process",
-    queue="orchestrator",
+    queue="orchestrator_queue",
     max_retries=3,
     default_retry_delay=60,
     acks_late=True,
