@@ -32,23 +32,23 @@ All CSS variables must be defined in `tokens.css` for both `:root` (light) and `
 | Brand | `--brand` | `text-brand` `bg-brand` | `#1D9E75` | CTAs, eyebrow labels, icon tints, active states |
 | Brand Mid | `--brand-mid` | `text-brand-mid` | `#9FE1CB` | Step connectors, focus rings, dashed borders |
 | Brand Hover | `--brand-hover` | `text-brand-hover` | `#085041` | Button hover/pressed background |
-| Brand Light | `--brand-light` | `bg-[var(--brand-light)]` | `rgba(29,158,117,0.10)` | Icon container fills, card accent backgrounds, gradient base |
+| Brand Light | `--brand-light` | `bg-(--brand-light)` | `rgba(29, 158, 117, 0.10)` | Icon container fills, card accent backgrounds, gradient base |
 
 ### 2.2 Surface Colors
 
 | Token | CSS Variable | Tailwind Utility | Light | Dark | Usage |
 |---|---|---|---|---|---|
 | Page background | `--background` | `bg-background` | `#F8F9FA` | `#0C0C0E` | Base page background |
-| Card | `--card` | `bg-card` / `bg-[var(--bg-card)]` | `#FFFFFF` | `#131318` | Card / surface backgrounds |
-| Subtle | `--bg-subtle` | `bg-[var(--bg-subtle)]` | `#F1F3F4` | `#1A1A22` | Alternate section backgrounds, input fills |
+| Card | `--card` | `bg-card` / `bg-(--bg-card)` | `#FFFFFF` | `#131318` | Card / surface backgrounds |
+| Subtle | `--bg-subtle` | `bg-(--bg-subtle)` | `#F1F3F4` | `#1A1A22` | Alternate section backgrounds, input fills |
 
 ### 2.3 Text Colors
 
 | Token | CSS Variable | Tailwind Utility | Light | Dark | Usage |
 |---|---|---|---|---|---|
-| Primary text | `--foreground` | `text-foreground` `text-[var(--text-primary)]` | `#1A1A22` | `#F0F0F4` | All headings and primary body text |
-| Secondary text | `--muted-foreground` | `text-muted-foreground` `text-[var(--text-secondary)]` | `#5A5A72` | `#9090A8` | Descriptions, card body, nav links |
-| Muted text | `--text-muted` | `text-[var(--text-muted)]` | `#9090A8` | `#5A5A72` | Timestamps, footer fine print, placeholders |
+| Primary text | `--foreground` | `text-foreground` / `text-(--text-primary)` | `#1A1A22` | `#F0F0F4` | All headings and primary body text |
+| Secondary text | `--muted-foreground` | `text-muted-foreground` / `text-(--text-secondary)` | `#5A5A72` | `#9090A8` | Descriptions, card body, nav links |
+| Muted text | `--text-muted` | `text-(--text-muted)` | `#9090A8` | `#5A5A72` | Timestamps, footer fine print, placeholders |
 
 ### 2.4 Border Colors
 
@@ -57,7 +57,7 @@ All CSS variables must be defined in `tokens.css` for both `:root` (light) and `
 | Subtle border | `--border` | `rgba(0,0,0,0.07)` | `rgba(255,255,255,0.07)` | Default card / section borders |
 | Strong border | `--border-strong` | `rgba(0,0,0,0.14)` | `rgba(255,255,255,0.14)` | Hover state border on cards |
 
-Use: `border-border` or `border-[var(--border-subtle)]` for default, `border-[var(--border-strong)]` on hover.
+Use: `border-border` or `border-(--border-subtle)` for default, `border-(--border-strong)` on hover. Use `border-brand/20` only for brand feedback and `border-destructive/20` only for destructive feedback.
 
 ### 2.5 shadcn Semantic Tokens
 
@@ -134,7 +134,7 @@ Eyebrow:        .text-label    text-brand  mb-3
 
 ### 4.1 The Standard Container
 
-**Every section uses exactly this container. No exceptions. No `max-w-4xl`, no `max-w-5xl` on sections.**
+**Every public marketing section uses exactly this container.** Dashboard and admin surfaces use the shell containers documented in §15; detail pages may use a narrower reading column inside that shell.
 
 ```jsx
 <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -184,9 +184,9 @@ Sections alternate between the two surface backgrounds. The pattern for each pag
 
 ---
 
-## 5 — Section Anatomy
+## 5 — Marketing Section Anatomy
 
-Every section on every page follows this exact structure. This is non-negotiable.
+Every public marketing section follows this exact structure. Dashboard and admin pages use the application-page anatomy in §16 instead.
 
 ```jsx
 <section id="section-id" className="py-20 sm:py-24 [optional: bg-[var(--bg-subtle)]]">
@@ -212,9 +212,10 @@ Every section on every page follows this exact structure. This is non-negotiable
 ```
 
 **Rules:**
-- Never omit the eyebrow label. Every section has one.
+- Marketing sections use an eyebrow label unless the section is an explicitly documented hero or utility section.
 - Never use `text-display` for the eyebrow — only `.text-label`.
-- `mb-14` on the header block is fixed. Do not change it to `mb-12` or `mb-16`.
+- `mb-14` on the standard marketing header block is fixed. Do not change it to `mb-12` or `mb-16` without documenting the exception.
+- Dashboard page headers do not need an eyebrow when the page title already provides sufficient context. Never add a redundant kicker to an empty state.
 
 ---
 
@@ -577,7 +578,7 @@ Defined in `web/src/index.css`. Follow Tailwind v4 rules — custom utilities go
 
 ## 8 — Icons
 
-**Library:** `lucide-react` (pinned at `^0.577` — pre-v1, retains brand/logo icons)
+**Library:** `lucide-react` (currently `^0.400.0`; use the installed version and do not assume brand/logo icons exist)
 
 ### Sizing convention
 
@@ -632,7 +633,8 @@ These are defined in: `BotHeroSection.tsx`, `PlatformsSection.tsx`, `CTASection.
 
 **Rules:**
 - Every CSS variable in `tokens.css` under `:root` must have a counterpart in `.dark`.
-- Never use hardcoded hex colors in component files. Always use a CSS variable that has a dark mode value.
+- Never use hardcoded Flume palette colors in product components. Always use a CSS variable that has a dark mode value.
+- Documented external brand surfaces, such as Telegram and WhatsApp in §8, are the only component-scoped color exceptions.
 - Tailwind `dark:` prefix works with this setup. Use it for one-off dark overrides when a CSS variable isn't warranted.
 - The `Wordmark` component is a pure inline SVG (no PNG assets). It accepts a `variant` prop (`'light' | 'dark' | 'auto'`). Default is `'auto'`, which reads `resolvedTheme` internally — no prop required in most contexts. Pass `variant={resolvedTheme}` explicitly only when the parent already has `resolvedTheme` in scope and wants to force a specific palette (e.g. Navbar).
 
@@ -652,48 +654,56 @@ These are defined in: `BotHeroSection.tsx`, `PlatformsSection.tsx`, `CTASection.
 
 ## 11 — File Structure
 
+The repository has public marketing pages, an authenticated dashboard, and an admin surface. Keep feature-specific data logic near `lib/` and keep shared visual primitives in `components/`.
+
 ```
 web/src/
 ├── components/
-│   ├── common/
-│   │   ├── Navbar.tsx            ← shared header (sticky, mobile sheet, theme toggle)
-│   │   ├── Footer.tsx            ← shared footer (4-column grid)
-│   │   └── Wordmark.tsx          ← SVG logo, accepts variant="light"|"dark"
-│   │
-│   ├── landing/                  ← Landing page sections (in render order)
-│   │   ├── HeroSection.tsx
-│   │   ├── FeaturesSection.tsx
-│   │   ├── HowItWorksSection.tsx
-│   │   ├── PricingSection.tsx
-│   │   ├── TwoSurfacesSection.tsx
-│   │   └── CTASection.tsx
-│   │
-│   ├── bot/                      ← Bot page sections (in render order)
-│   │   ├── BotHeroSection.tsx
-│   │   ├── DemoPlaceholderSection.tsx  ← Telegram-simulated animated chat demo (Framer Motion)
-│   │   ├── HowItWorksSection.tsx
-│   │   ├── CapabilitiesSection.tsx
-│   │   ├── PlatformsSection.tsx
-│   │   └── CTASection.tsx            ← includes sticky mobile CTA bar
-│   │
-│   └── pricing/                  ← Pricing page sections (in render order)
-│       ├── PricingHero.tsx       ← hero + billing toggle + 3-tier card grid
-│       ├── ComparisonTable.tsx   ← full feature comparison table
-│       └── PricingFAQ.tsx        ← accordion FAQ
-│
-├── lib/
-│   ├── tokens.css    ← ALL CSS variables. Source of truth.
-│   └── utils.ts      ← cn() helper (clsx + tailwind-merge)
+│   ├── common/       ← Wordmark, Navbar, Footer, shared public chrome
+│   ├── landing/      ← public landing sections in render order
+│   ├── bot/          ← bot page sections and Telegram simulation
+│   ├── pricing/      ← pricing sections, comparison table, FAQ
+│   ├── dashboard/    ← dashboard-only shared controls such as ApiKeySelector
+│   └── ui/           ← Base UI/shadcn primitives; Button, Dialog, Table, etc.
 │
 ├── pages/
-│   ├── LandingPage.tsx   ← composes landing sections + Navbar + Footer
-│   └── BotPage.tsx       ← composes bot sections + Navbar + Footer (pb-20 md:pb-0 for sticky bar)
+│   ├── LandingPage.tsx
+│   ├── BotPage.tsx
+│   ├── PricingPage.tsx
+│   ├── DocsPage.tsx
+│   ├── dashboard/
+│   │   ├── DashboardShell.tsx
+│   │   ├── JobsPage.tsx
+│   │   ├── JobDetailPage.tsx
+│   │   ├── ApiKeysPage.tsx
+│   │   ├── WebhooksPage.tsx
+│   │   └── PlatformsPage.tsx
+│   └── admin/        ← admin shell, login, and management pages
 │
-├── hooks/
-│   └── useTheme.ts   ← returns { resolvedTheme, toggleTheme }
+├── lib/
+│   ├── tokens.css    ← all CSS variable values
+│   ├── api.ts        ← authenticated HTTP client and refresh behavior
+│   ├── jobs.ts       ← jobs API/types
+│   ├── api-keys.ts   ← API key API/types
+│   ├── webhooks.ts   ← webhook API/types
+│   ├── platforms.ts  ← platform helpers/types
+│   └── utils.ts      ← cn(), formatting helpers
 │
-└── index.css         ← @import chain, @theme inline, @layer base/components, utilities
+├── hooks/            ← cross-page React hooks such as useTheme
+├── stores/           ← Zustand global state such as auth and active API key
+├── router/           ← React Router route tree
+├── assets/           ← imported source assets
+└── index.css         ← imports, @theme inline, layers, and custom utilities
 ```
+
+Rules:
+
+- Pages compose data and feature components; they should not become a second component library.
+- Keep API request functions and response types in `lib/`, not inside JSX files.
+- Keep global state minimal. Prefer component state for local dialogs, filters, and transient feedback.
+- Add shared UI primitives to `components/ui/` only when at least two features need the same behavior or when the primitive is part of the shadcn/Base UI surface.
+- Avoid importing a page-specific component into an unrelated feature solely to save lines.
+- Update this tree when a new top-level architectural folder becomes part of the supported frontend pattern.
 
 ---
 
@@ -711,9 +721,9 @@ web/src/
 
 ---
 
-## 13 — Adding a New Section (Checklist)
+## 13 — Adding a New Marketing Section (Checklist)
 
-When adding any new section to any page, verify every item:
+When adding a new public marketing section, verify every item:
 
 - [ ] Section uses `py-20 sm:py-24` vertical padding (or `py-20 sm:py-28 lg:py-32` for hero)
 - [ ] Container is exactly `mx-auto max-w-6xl px-4 sm:px-6 lg:px-8`
@@ -728,6 +738,19 @@ When adding any new section to any page, verify every item:
 - [ ] Any new Tailwind utility is added to `@theme inline` in `index.css`
 - [ ] No hardcoded hex color values in the component file
 - [ ] Component has no `aria` accessibility regressions (labels on icon buttons, no nested `<button>`)
+
+### 13.1 Dashboard feature checklist
+
+- [ ] Page uses the dashboard shell and does not introduce a second sidebar/header model.
+- [ ] Page header has one `h1`, concrete copy, and one clear primary action when needed.
+- [ ] Every query has loading, populated, empty, and recoverable error states.
+- [ ] Loading skeletons mirror the final table/list/card anatomy.
+- [ ] Mutations disable only the affected control and communicate pending/success/failure.
+- [ ] Destructive actions use `AlertDialog` and identify the affected resource.
+- [ ] Forms use shared primitives, associated labels, helper/error text, and keyboard-safe focus behavior.
+- [ ] Technical values truncate or wrap without horizontal page overflow.
+- [ ] Icon-only actions have labels, tooltips where useful, and application-size hit areas.
+- [ ] Light mode, dark mode, narrow viewport, keyboard navigation, and reduced motion have been considered.
 
 ---
 
@@ -851,3 +874,403 @@ The `Accordion` in `web/src/components/ui/accordion.tsx` wraps `@base-ui/react/a
 Each `AccordionItem` uses: `rounded-xl border border-(--border-subtle) bg-(--bg-card) px-6 not-last:border-b data-open:border-(--border-strong) transition-colors duration-200`.
 
 > ⚠️ `// [PLACEHOLDER]` — FAQ copy reflects current policy assumptions and is not final.
+
+---
+
+## 15 — System Architecture & Sources of Truth
+
+This document defines the product language and implementation rules. Keep the following ownership boundaries intact:
+
+| Concern | Source of truth | Rule |
+|---|---|---|
+| Product visual language | `docs/design/design-system.md` | Document decisions and exceptions here before spreading them across pages. |
+| CSS variable values | `web/src/lib/tokens.css` | Every custom token must have a light value in `:root` and a dark value in `.dark`. |
+| Tailwind exposure and utilities | `web/src/index.css` | Expose tokens in `@theme inline`; put resets in `@layer base` and reusable classes in `@layer components` or `@utility`. |
+| Component primitive configuration | `web/components.json` | Current configuration is `base-nova`, Base UI, Tailwind v4, Lucide, CSS variables, and `@/*` aliases. |
+| Shared behavior primitives | `web/src/components/ui/` | Extend or compose existing primitives before creating a new local primitive. |
+| Page composition | `web/src/pages/` and `web/src/components/` | Pages own data orchestration; shared components own reusable visual/interaction behavior. |
+| API and query functions | `web/src/lib/` | Keep HTTP calls and response types out of presentational components. |
+| Global client state | `web/src/stores/` | Use Zustand only for cross-route state such as auth and the active API key. |
+| Server state | TanStack Query | Use query keys, mutations, invalidation, loading, error, and empty states consistently. |
+
+### 15.1 Compatibility baseline
+
+The current frontend baseline is:
+
+- React `^19.0.0` with TypeScript `^5.6.0`.
+- Vite `^6.0.0` with Tailwind CSS `^4.2.0` and `@tailwindcss/vite`.
+- `shadcn` `^4.7.0` using `@base-ui/react` `^1.4.1`.
+- TanStack Query `^5.60.0`, Zustand `^5.0.14`, Sonner `^1.7.0`, Framer Motion `^12.40.0`.
+- `lucide-react` `^0.400.0`; use icons available in the installed version.
+- `DM Sans` and `Instrument Serif` from `@fontsource` packages.
+
+Do not add a package for a one-off visual need. If a package is required, check `web/package.json`, confirm Tailwind/Base UI compatibility, and update this section when the baseline changes.
+
+### 15.2 Component selection order
+
+1. Reuse an existing component from `web/src/components/`.
+2. Compose the closest Base UI/shadcn primitive from `web/src/components/ui/`.
+3. Add a new shared primitive only when the interaction model is genuinely missing.
+4. Keep page-specific composition local when reuse would create an unrelated dependency.
+
+Use the Base UI `render` prop for composition. Do not introduce Radix-specific APIs such as `asChild` into Base UI components.
+
+---
+
+## 16 — Application Shell & Page Anatomy
+
+The dashboard is an operational application, not a marketing page. It follows a denser page pattern than §5.
+
+### 16.1 Dashboard shell
+
+`DashboardShell.tsx` is the shared shell for `/dashboard/*` routes:
+
+```text
+Desktop (md+)
+┌────────────── 256px sidebar ──────────────┬────────────── main ──────────────┐
+│ wordmark                                   │ main p-4 / p-6 / p-8              │
+│ Development                               │ max-w-7xl mx-auto                  │
+│ API-key selector                           │ page content                       │
+│ Jobs / API Keys / Webhooks / Platforms     │                                     │
+│ user + sign out                            │                                     │
+└───────────────────────────────────────────┴─────────────────────────────────────┘
+
+Mobile
+┌──────────────────────── h-16 mobile header ────────────────────────┐
+│ wordmark                                                   menu     │
+└─────────────────────────────────────────────────────────────────────┘
+│ page content with responsive padding                                  │
+```
+
+Rules:
+
+- Desktop sidebar: `w-64`, sticky, full viewport height, card surface, subtle right border.
+- Main content: `min-w-0`, responsive padding `p-4 sm:p-6 lg:p-8`, inner `max-w-7xl mx-auto`.
+- Mobile header: `h-16`, sticky, card surface, subtle bottom border, Base UI `Sheet` for navigation.
+- Navigation uses `Link` for internal routes and `<a>` for external routes.
+- Active navigation uses `bg-brand/10 text-brand`; inactive navigation uses secondary text and subtle hover fill.
+- Keep the sidebar structure stable. New dashboard work should not introduce a second navigation model.
+
+### 16.2 Dashboard page header
+
+Use a compact, left-aligned header. A typical page header is:
+
+```tsx
+<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <h1 className="text-display text-3xl text-(--text-primary)">Page title</h1>
+    <p className="mt-1 text-sm leading-relaxed text-(--text-secondary)">Specific supporting description.</p>
+  </div>
+  <Button>Primary action</Button>
+</div>
+```
+
+Rules:
+
+- Dashboard pages may omit an eyebrow. Do not add one only to satisfy marketing-section rules.
+- Use `space-y-6` for compact tables and `space-y-8` for richer operational cards.
+- Put page-level filters and actions in the header or an adjacent control row, not inside every data item.
+- Use a single primary action per page header. Secondary actions use `outline`, `secondary`, or `ghost`.
+- Keep titles concrete: `Webhooks`, `Jobs`, `API Keys`, `Supported Platforms`.
+
+### 16.3 Narrow detail columns
+
+Detail pages may use `max-w-4xl` or another narrower inner column when reading order benefits from it. This is an application-page exception, not a marketing-section container rule.
+
+---
+
+## 17 — Data, Query & State Patterns
+
+Every async surface must define the full state model before implementation:
+
+```text
+loading → populated
+        ↘ empty
+        ↘ recoverable error → retry
+
+mutation → pending → success toast + query invalidation
+                 ↘ error toast + preserved user input
+```
+
+### 17.1 TanStack Query conventions
+
+- Query keys include every filter, route parameter, and active API-key scope used by the request.
+- Keep query functions in `web/src/lib/` and pass them to `useQuery` from the page.
+- Use `isLoading` for first-load skeletons and `isFetching` for background refresh indicators.
+- Use `queryClient.invalidateQueries` after mutations that affect a list or detail view.
+- Preserve user input on mutation errors; do not silently reset a failed form.
+- Display recoverable errors with a clear retry action whenever the query exposes `refetch`.
+- Keep empty state copy specific to the current scope and give the next useful action.
+
+### 17.2 Required states
+
+| State | Visual treatment | Required behavior |
+|---|---|---|
+| Loading | Skeletons matching the final anatomy, not generic page-sized blocks | Keep layout stable and avoid content jumps. |
+| Empty | One semantic Lucide icon in a brand-light container, short explanation, next action | Explain whether there is no data or no scope selected. |
+| Error | Destructive/semantic callout with concise reason and retry | Do not expose raw stack traces or leave a dead end. |
+| Populated | Use the appropriate table, list, timeline, or operational card pattern | Support truncation, wrapping, and long real-world values. |
+| Mutating | Disable only the affected action and show an inline spinner or progress label | Keep unrelated page controls usable. |
+| Success | Sonner toast plus updated local/query state | Use outcome-oriented copy such as `Endpoint added`. |
+
+### 17.3 Status semantics
+
+Use the existing semantic palette consistently:
+
+- **Positive / active / succeeded:** `default` Badge or `text-brand` with `bg-brand/10`.
+- **Neutral / pending / processing:** `secondary` or `outline` Badge.
+- **Negative / failed / destructive:** `destructive` Badge or destructive callout.
+- **Disabled / revoked:** `secondary`, muted text, and reduced emphasis without removing meaning.
+
+Do not introduce orange, red, blue, or purple utility colors in product components. If a warning role is needed, add a named semantic token to `tokens.css` in both themes before using it.
+
+---
+
+## 18 — Tables, Lists & Operational Cards
+
+### 18.1 Data tables
+
+Use the shared `Table` primitives for comparable records such as jobs, API keys, and platforms:
+
+```tsx
+<div className="overflow-hidden rounded-xl border border-(--border-subtle) bg-(--bg-card)">
+  <Table>
+    <TableHeader>...</TableHeader>
+    <TableBody>...</TableBody>
+  </Table>
+</div>
+```
+
+Rules:
+
+- The shared `Table` provides horizontal overflow; do not use manual width arithmetic.
+- Keep tables readable at mobile widths with overflow rather than collapsing unrelated columns into ambiguous labels.
+- Table headers use concise sentence-case labels; monospace is appropriate for technical column names and identifiers.
+- Use `TableRow` hover only for row-level scan feedback. Do not imply a row is clickable unless it is a link or has a clear action.
+- Use skeleton rows with the same column count and rough widths as the populated table.
+- Empty and error states should occupy a table row with the correct `colSpan`.
+- Copy actions require an accessible label and visible copied feedback; do not use an unlabeled raw `<button>`.
+
+### 18.2 Lists and delivery logs
+
+Use a separator-based list when items are sequential activity or delivery attempts. Reserve nested bordered surfaces for meaningful callouts, not every row.
+
+Each operational row should answer, in order:
+
+1. What happened? — event, job, or resource name.
+2. When? — relative time, with an absolute value available to a tooltip/title if needed.
+3. What was the result? — status and response code.
+4. What can I do? — a clear row action if one exists.
+
+Use monospace for URLs, IDs, event types, HTTP codes, and response bodies. Use `truncate`, `break-all`, or responsive wrapping so long technical values never expand the page horizontally.
+
+### 18.3 Cards and nesting
+
+- Use a card when it creates a meaningful surface boundary or groups a coherent operational object.
+- Prefer borders, separators, and whitespace for subregions inside a card.
+- Avoid card-inside-card repetition. A status callout, form section, or empty activity panel may use a distinct surface only when its semantics justify it.
+- Do not add hover elevation to a static container. Hover depth is reserved for a card that is itself interactive or contains a clearly interactive surface.
+- Interactive cards use `hover:border-(--border-strong) hover:shadow-sm transition-all duration-200`.
+
+---
+
+## 19 — Forms, Dialogs & Destructive Actions
+
+### 19.1 Form fields
+
+Use the shared `Label`, `Input`, `Select`, `Checkbox`, `Switch`, and `Textarea` primitives. Every field must have:
+
+- A visible label associated with its control using `htmlFor`/`id` or a documented Base UI field relationship.
+- Helper text when format, security, or side effects need explanation.
+- `aria-describedby` for helper or error text.
+- A stable focus ring and a logical keyboard order.
+- A clear disabled/loading state during submission.
+- Validation on blur and submit by default; errors should be adjacent to the affected field.
+
+Do not use placeholder text as the only label. Do not use a raw HTML checkbox, select, or button when an existing primitive provides the interaction.
+
+### 19.2 Dialog anatomy
+
+```tsx
+<Dialog open={open} onOpenChange={setOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle className="text-display text-2xl">Outcome-oriented title</DialogTitle>
+      <DialogDescription>What the form changes and any important constraint.</DialogDescription>
+    </DialogHeader>
+    <div className="space-y-6 py-2">Form fields</div>
+    <DialogFooter>
+      <Button variant="outline">Cancel</Button>
+      <Button>Save changes</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+Rules:
+
+- Dialogs use `max-w-[calc(100%-2rem)]` through the shared primitive and remain usable on narrow screens.
+- Use sentence-case titles and outcome-oriented actions: `Add endpoint`, `Save changes`, `Delete endpoint`, `Keep endpoint`.
+- Keep the primary action disabled only when the required data is invalid or the mutation is pending.
+- Use `AlertDialog` for irreversible actions. State exactly what will be deleted/revoked and name the affected resource.
+- One-time secrets/keys must use a deliberate acknowledgement gate, copy feedback, and a warning that the value cannot be recovered.
+- Never nest interactive buttons. Compose triggers with Base UI `render` instead.
+
+### 19.3 Toggle controls
+
+Use `Switch` for an immediate boolean setting such as endpoint enablement. The switch must have:
+
+- A stable `id`.
+- An associated visible `Label` when adjacent text describes the setting.
+- A descriptive `aria-label` when there is no visible label.
+- A pending state that prevents duplicate mutations.
+- A success/error toast or inline feedback after the server response.
+
+---
+
+## 20 — Responsive & Accessibility Contract
+
+Responsive behavior is part of the component contract, not a final polish pass.
+
+### 20.1 Responsive rules
+
+- Use mobile-first classes and allow controls to wrap; do not force a desktop action cluster into a narrow row.
+- Give non-full-width containers a sensible `min-width`/`max-width` relationship and keep `min-w-0` on flex children containing technical text.
+- Use horizontal overflow for wide data tables and wrapping/truncation for URLs, IDs, and source URIs.
+- Maintain at least a 44px visual or hit-area target for icon-only actions on application surfaces. The shared Button `icon` size is 32px, so use an explicit `size-11` hit area when the control is exposed to touch.
+- Dialog footers stack on small screens through the shared `DialogFooter`; do not create fixed-width actions that overflow.
+- Use `min-h-[100dvh]` for full-screen page designs; avoid `h-screen` when building new viewport layouts.
+
+### 20.2 Accessibility rules
+
+- Use semantic headings in order. A page has one `h1`; empty/error/detail sections use the next appropriate heading level.
+- Icon-only controls require `aria-label`; decorative icons require `aria-hidden="true"`.
+- Tooltips supplement labels; they never replace accessible names.
+- Use `role="status"` and `aria-live="polite"` for async test/result feedback when appropriate.
+- Keep destructive actions keyboard reachable and confirmation dialogs focus-managed by the Base UI primitive.
+- Never rely on color alone for status. Pair color with text, an icon, or a status label.
+- Respect reduced-motion preferences for new Framer Motion or CSS animations. Do not animate layout properties such as `width`, `height`, `top`, or `left`.
+- Test keyboard focus, Escape dismissal, outside-click behavior, and focus return for every new dialog, sheet, menu, select, and tooltip.
+
+---
+
+## 21 — Motion & Feedback
+
+Motion should clarify state changes, not decorate a dashboard.
+
+- Use the existing Base UI open/close data attributes for dialogs, sheets, accordions, selects, and tooltips.
+- Use short `transition-colors`, `transition-opacity`, or `transition-transform` transitions for local feedback.
+- Use Framer Motion only for intentional sequences or product demonstrations, such as the Telegram demo documented in §6.8.
+- Prefer spring or deliberate cubic-bezier easing over linear motion.
+- Never animate a data table row's layout while data is loading; use stable skeletons instead.
+- Every mutation should communicate pending, success, and failure without requiring the user to infer what happened.
+
+---
+
+## 22 — Content & Copy System
+
+- Use sentence case for normal UI labels, buttons, descriptions, table headers, and empty/error copy.
+- Reserve uppercase tracked text for short atomic labels, status badges, or the `.text-label` eyebrow utility.
+- Use concrete verbs and objects: `Add endpoint`, `Send test event`, `Save changes`, `Delete endpoint`.
+- Keep technical values exact and monospace: URLs, API-key prefixes, job IDs, event names, HTTP codes, and response bodies.
+- Empty states answer what is missing and what the user can do next.
+- Error states explain recovery without exposing implementation details.
+- Success toasts describe the completed outcome, not the internal mutation name.
+- Do not use placeholder names, invented metrics, or vague marketing filler in application surfaces.
+
+---
+
+## 23 — Token & Component Contribution Workflow
+
+Before adding a token:
+
+1. Check whether an existing semantic token already expresses the role.
+2. If not, add a descriptive CSS variable to both `:root` and `.dark` in `web/src/lib/tokens.css`.
+3. Add the corresponding `--color-*` or font/radius mapping to `@theme inline` in `web/src/index.css` when a Tailwind utility needs it.
+4. Document the token's role, contrast intent, and allowed contexts in §2.
+5. Replace hardcoded usages in the affected component rather than adding a parallel one-off value.
+
+Before adding a component:
+
+1. Search `web/src/components/ui/` and `web/src/components/` for an existing match.
+2. Read the primitive's actual props and composition API; Base UI is not Radix.
+3. Define loading, empty, error, disabled, hover, focus, active, and destructive states where applicable.
+4. Add labels, descriptions, keyboard behavior, responsive behavior, and dark-mode behavior before considering visual polish complete.
+5. Update this document only for reusable patterns, not for incidental page copy.
+
+Before merging a UI change:
+
+- [ ] `npm run lint` passes in `web/`.
+- [ ] `npm run build` passes in `web/`.
+- [ ] `git diff --check` passes.
+- [ ] Light and dark token values were reviewed.
+- [ ] Desktop, narrow/mobile, keyboard, and reduced-motion behavior were considered.
+- [ ] All async states and destructive flows were exercised or deliberately documented.
+- [ ] Any exception to this document is recorded next to the component and summarized here if it becomes reusable.
+
+---
+
+## 24 — Canonical Operational Feature Patterns
+
+The webhook page is the reference implementation for a resource that combines a server-backed collection, inline operations, a form, a one-time secret, and activity history.
+
+### 24.1 Endpoint/resource card
+
+Use this anatomy for callback endpoints, integrations, and similar operational resources:
+
+```text
+Resource surface
+├── Identity: semantic icon + technical name/URL + scope/context
+├── State: text status badge + immediate toggle when supported
+├── Actions: primary test/sync action, edit, destructive action
+├── Scope: event/type/tag chips with a readable all-items treatment
+├── Feedback: inline success/failure result with status code/body when relevant
+└── Activity: expandable separator-based recent history
+```
+
+Rules:
+
+- Keep resource identity visually stronger than secondary metadata.
+- Use `Webhook`, `Send`, `ShieldCheck`, `CheckCircle2`, `CircleX`, `Pencil`, and `Trash2`-style semantic Lucide icons where the installed version supports them; do not use a decorative icon without a product meaning.
+- A status toggle is an immediate mutation. Disable only that control while pending and invalidate the scoped query after success.
+- Test/sync actions show inline pending feedback and a result with both a human-readable outcome and technical detail.
+- Destructive actions use `AlertDialog` and include the exact affected URL/name in the description.
+- Activity history uses `formatRelativeTime` for scanability and preserves response/status/attempt metadata for debugging.
+
+### 24.2 Empty, error, and loading examples
+
+```tsx
+// Loading: mirror the final resource anatomy.
+<WebhookCardSkeleton />
+
+// Empty: explain scope + next step.
+<EmptyState icon={<Webhook />} title="No endpoints configured" action="Add endpoint" />
+
+// Error: explain recovery.
+<ErrorState title="Endpoints could not be loaded" action="Try again" />
+```
+
+Do not reuse this exact copy blindly. Keep the structure and write copy for the resource being managed.
+
+### 24.3 One-time secret pattern
+
+A secret/key reveal flow must:
+
+1. Show the value in a selectable, wrapping monospace block.
+2. Provide a labeled copy action with copied feedback.
+3. State that the value will not be shown again.
+4. Require explicit acknowledgement before dismissal when loss is irreversible.
+5. Use a semantic warning treatment without introducing a new untracked accent color.
+
+## 25 — Known Design-System Debt
+
+The current repository still has implementation drift that should be addressed in future focused passes:
+
+- Several older dashboard/admin pages use raw `<button>` elements for copy actions and the deprecated `icon-sm` size instead of the 44px application hit-area convention.
+- Some existing pages use arbitrary `orange-*`, `red-*`, `black/*`, or `white/*` utilities for status and warning colors instead of semantic tokens.
+- `ApiKeysPage.tsx` and parts of the admin UI use raw labels/checkboxes and have older one-time-secret styling that should converge on the shared dialog/form pattern.
+- `PlatformsPage.tsx` and `JobsPage.tsx` use highly compressed 9–10px uppercase table metadata; use the table rules in §18 when those pages are next refined.
+- The design system currently documents both legacy bracket-style variable utilities and Tailwind v4 parenthesis syntax in older examples. New code must use parenthesis syntax; migrate examples opportunistically.
+- Browser-level visual regression coverage is not yet automated. Until it exists, final UI review should include light/dark and narrow viewport screenshots.
+
+These are tracked follow-up items, not reasons to introduce exceptions in new work.
