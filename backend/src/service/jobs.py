@@ -1,16 +1,15 @@
 import uuid
 from datetime import datetime, timezone
 
-
-from sqlalchemy import select, func
-from sqlalchemy.orm import selectinload
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from src.model.job import Job, JobStatus, TERMINAL_JOB_STATUSES, JobStep, StepStatus
+from src.core.exception_base import BadRequest, DatabaseError, NotFoundError
 from src.model.api import ApiKey
+from src.model.job import TERMINAL_JOB_STATUSES, Job, JobStatus, JobStep, StepStatus
 from src.schema.download import _ExtractedInfo
 from src.service.downloader import build_source_meta
-from src.core.exception_base import DatabaseError, NotFoundError
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -391,3 +390,58 @@ class JobService:
                 "Parent %s → %s (succeeded=%d, failed=%d / total=%d)",
                 parent_id, aggregate.value, succeeded or 0, failed or 0, total_count,
             )
+
+    async def generate_download_url(self, job_id: uuid.UUID, api_key_id: uuid.UUID) -> str:
+        """Generate a presigned R2 URL for the job's final output.
+
+        Finds the last completed step, constructs the R2 object key from the
+        step index and container, generates a fresh presigned URL, and returns it.
+
+        Args:
+            job_id: The job to generate a download URL for.
+            api_key_id: The owning API key (used for key scoping).
+
+        Returns:
+            A presigned R2 download URL.
+
+        Raises:
+            NotFoundError: If the job or a completed step is not found.
+            BadRequest: If the job has no completed steps or is not in a terminal state.
+        """
+        from src.model.job import JobStatus
+        from src.service.storage import storage
+
+        job = await self.get_job_detail(job_id, api_key_id)
+        if not job:
+            raise NotFoundError("Job not found")
+
+        if job.status not in (JobStatus.SUCCEEDED.value, JobStatus.PARTIAL_SUCCESS.value):
+            raise BadRequest(
+                f"Job is not complete (status={job.status}). "
+                "Download requires a terminal job state."
+            )
+
+        completed_steps = [s for s in job.job_steps if s.status == "complete"]
+        if not completed_steps:
+            raise NotFoundError("No completed steps found for this job")
+
+        last_step = max(completed_steps, key=lambda s: s.step_index)
+        artifact = last_step.output_artifact
+        if not artifact:
+            raise NotFoundError(
+                f"Step {last_step.step_index} has no output artifact"
+            )
+
+        container = artifact.get("file", {}).get("container", "mp4")
+        api_key_short = str(job.api_key_id).split("-")[0]
+        job_short = str(job.id).split("-")[0]
+
+        if last_step.step_index == 0:
+            object_key = f"outputs/{api_key_short}/{job_short}/input.{container}"
+        else:
+            object_key = (
+                f"outputs/{api_key_short}/{job_short}/"
+                f"step_{last_step.step_index}_output.{container}"
+            )
+
+        return await storage.generate_presigned_download_url(object_key)

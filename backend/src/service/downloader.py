@@ -2,7 +2,7 @@
 # Three responsibilities:
 #   extract_info   — pull metadata from a URL without downloading
 #   download       — fetch media to an isolated job workspace
-#   build_artifact — transform extracted info into the Artifact schema that the FFmpeg pipeline consumes (never runs ffprobe)
+#   build_artifact — transform extracted info into the Artifact schema that the FFmpeg pipeline consumes
 
 # This module is synchronous — it calls yt-dlp's Python API directly.
 # Celery tasks invoke it from worker processes; it is never called from the FastAPI event loop.
@@ -15,9 +15,16 @@ from pathlib import Path
 
 import yt_dlp
 
-from src.schema.artifact import Artifact, _ArtifactStatus, _SourceInfo, _FileInfo, _MediaInfo
-from src.schema.download import _FormatPreference, DownloadResult, _ExtractedInfo
+from src.schema.artifact import (
+    Artifact,
+    _ArtifactStatus,
+    _FileInfo,
+    _MediaInfo,
+    _SourceInfo,
+)
+from src.schema.download import DownloadResult, _ExtractedInfo, _FormatPreference
 from src.utils.config import config
+from src.utils.ffprobe import probe_media
 
 logger = logging.getLogger(__name__)
 
@@ -103,9 +110,9 @@ def _safe_float(value: object) -> float | None:
 
 
 def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
-    """Convert a raw yt-dlp info dict into a clean ExtractedInfo.
+    """Pull just the fields we need from yt-dlp's response.
 
-    Strips away subtitles, chapters, format lists, HTTP headers, and every other yt-dlp field that isn't needed by the FFmpeg pipeline or playlist dispatch logic.
+    yt-dlp returns ~100+ fields; we only keep the ~15 that the pipeline actually uses.
     """
     is_playlist = raw.get("_type") == "playlist"
 
@@ -142,11 +149,9 @@ def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
 
 
 def build_source_meta(info: _ExtractedInfo) -> dict:
-    """Build the ``source_metadata`` dict shape from extracted info.
+    """Pre-populate Job.source_metadata before download starts.
 
-    Matches the ``Artifact.source + Artifact.media`` subset that
-    ``download_task`` stores via ``set_source_metadata``, allowing metadata
-    to be pre-populated at orchestration time.
+    Allows the API to return media metadata without waiting for download to complete.
     """
     return {
         "source": {
@@ -173,8 +178,7 @@ def build_source_meta(info: _ExtractedInfo) -> dict:
 def extract_info(url: str) -> _ExtractedInfo:
     """Pull metadata from *url* without downloading any media.
 
-    Returns a clean ``ExtractedInfo`` — no raw yt-dlp dicts, no subtitles,
-    no format lists, no HTTP metadata.  Use ``.is_playlist`` and ``.entries`` for playlist detection.
+    Returns a clean ``ExtractedInfo`` — no raw yt-dlp dicts, no subtitles, no format lists, no HTTP metadata.  Use ``.is_playlist`` and ``.entries`` for playlist detection.
 
     Raises ``yt_dlp.utils.DownloadError`` (or subclasses) on failure.
     """
@@ -301,7 +305,7 @@ def build_artifact_from_local(
 ) -> Artifact:
     """Build an artifact from a local file without yt-dlp metadata.
 
-    Used for upload-sourced jobs (R2 → workspace). MediaInfo fields are left at defaults — the FFmpeg pipeline fills gaps via ffprobe when it encounters missing metadata.
+    Used for upload-sourced jobs (R2 → workspace). MediaInfo fields are populated by probing the file with ffprobe so the Artifact accurately reflects the media on disk.
     """
     try:
         size_bytes = _get_file_size(local_path)
@@ -320,7 +324,7 @@ def build_artifact_from_local(
         size_bytes=size_bytes,
         container=container,
     )
-    media = _MediaInfo(duration_seconds=0.0)
+    media = probe_media(local_path)
 
     return Artifact(
         id=f"art_{Path(source_uri).stem}",

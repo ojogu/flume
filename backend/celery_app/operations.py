@@ -163,6 +163,8 @@ async def _handle_success(
     job_uuid = job.id
     job_id = str(job_uuid)
 
+    # Emit STEP_COMPLETED — output_artifact without output_url for intermediate steps.
+    # output_url is only set and attached when this is the final step.
     await job_service.update_job_step(
         step.id,
         StepStatus.COMPLETE,
@@ -194,7 +196,31 @@ async def _handle_success(
             task_id=f"{job_id}-step-{next_index}",
         )
     else:
-        logger.info(f"Job {job_id} — final step {step_index} complete, marking SUCCEEDED")
+        # Last step — upload to R2 and attach CDN URL to artifact.
+        from src.service.storage import storage
+        from src.utils.config import config
+        ext = Path(result.output_path).suffix.lstrip(".") or "mp4"
+        api_key_short = str(job.api_key_id).split("-")[0]
+        job_short = str(job_uuid).split("-")[0]
+        object_key = (
+            f"outputs/{api_key_short}/{job_short}/"
+            f"step_{step_index}_output.{ext}"
+        )
+        await storage.upload_file(result.output_path, object_key)
+        result.artifact.output_url = (
+            f"{config.cdn_base_url}/job/{job_id}/step/{step_index}/download"
+        )
+
+        # Re-persist the step with the enriched artifact (output_url now set)
+        await job_service.update_job_step(
+            step.id,
+            StepStatus.COMPLETE,
+            output_artifact=result.artifact.model_dump(exclude_none=True),
+        )
+
+        logger.info(
+            f"Job {job_id} — final step {step_index} complete, marking SUCCEEDED"
+        )
         await job_service.update_status(job_uuid, JobStatus.SUCCEEDED)
         await event_service.emit(
             event_type=EventType.JOB_COMPLETED,
@@ -205,6 +231,7 @@ async def _handle_success(
                 "source_uri": job.source_uri,
                 "source_type": job.source_type,
                 "error": None,
+                "output_url": result.artifact.output_url,
             },
             api_key_id=job.api_key_id,
         )

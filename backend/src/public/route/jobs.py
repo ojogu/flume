@@ -1,8 +1,8 @@
-from datetime import datetime
-from typing import Optional
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import RedirectResponse
 
 from src.core.dependency import (
     get_api_key_from_header,
@@ -12,7 +12,7 @@ from src.core.dependency import (
 )
 from src.model.api import ApiKey
 from src.model.event import EventType
-from src.model.job import JobStatus
+from src.model.upload import UploadStatus
 from src.public.schema.jobs import (
     CreateJobRequest,
     JobDetailResponse,
@@ -20,13 +20,12 @@ from src.public.schema.jobs import (
     JobResponse,
     StepResponse,
 )
-from src.model.upload import UploadStatus
 from src.service.events import EventService
 from src.service.jobs import JobService
 from src.service.upload import UploadService
 from src.service.validation import validate_and_build_pipeline
-from src.utils.response import success
 from src.utils.log import get_logger
+from src.utils.response import success
 
 logger = get_logger(__name__)
 
@@ -123,8 +122,8 @@ async def create_job(
 async def list_jobs(
     api_key: ApiKey = Depends(get_api_key_from_header),
     job_service: JobService = Depends(get_job_service),
-    status_filter: Optional[str] = Query(None, alias="status"),
-    created_after: Optional[datetime] = Query(None, alias="created_after"),
+    status_filter: str | None = Query(None, alias="status"),
+    created_after: datetime | None = Query(None, alias="created_after"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
@@ -144,6 +143,16 @@ async def list_jobs(
             jobs=[JobResponse(**j.to_dict()) for j in jobs],
         ).model_dump(),
     )
+
+@job_route.get("/{job_id}/download")
+async def download_job(
+    job_id: uuid.UUID,
+    api_key: ApiKey = Depends(get_api_key_from_header),
+    job_service: JobService = Depends(get_job_service),
+):
+    """Redirect to a presigned R2 URL for the job's final output."""
+    presigned_url = await job_service.generate_download_url(job_id, api_key.id)
+    return RedirectResponse(presigned_url, status_code=302)
 
 
 @job_route.get("/{job_id}")

@@ -8,7 +8,6 @@
 # Runs on the **download_queue** (many workers, I/O-bound).
 # ─────────────────────────────────────────────────────
 
-import os
 import uuid
 from pathlib import Path
 
@@ -16,11 +15,16 @@ from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
 from src.model.job import JobStatus, StepStatus
-from src.service.downloader import download, build_artifact_from_local, assert_size_under_limit, guess_container
+from src.schema.download import DownloadResult, _FormatPreference
+from src.service.downloader import (
+    assert_size_under_limit,
+    build_artifact_from_local,
+    download,
+    guess_container,
+)
 from src.service.storage import storage
 from src.utils.config import config
 from src.utils.http_client import get_http_client
-from src.schema.download import _FormatPreference, DownloadResult
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -45,9 +49,9 @@ def download_task(job_id: str):
 
 
 async def _download_task_async(job_id: str):
-    from src.utils.db import get_async_db_session
-    from src.service.jobs import JobService
     from src.service.events import EventService
+    from src.service.jobs import JobService
+    from src.utils.db import get_async_db_session
 
     async with get_async_db_session() as db:
         job_service = JobService(db)
@@ -130,9 +134,8 @@ async def _download_task_async(job_id: str):
 
             pipeline_steps = job.pipeline_steps or []
             if len(pipeline_steps) > 1:
-                # More steps to run: chain to the first operation step(step_index=1). 
-                # The job stays PROCESSING; final status is set by the last operation task. We do NOT notify the parent yet because this child is not terminal.
-                
+                # More steps to run: chain to the first operation step (step_index=1).
+                # The job stays PROCESSING; final upload and status are set by the last operation task.
                 from celery_app.operations import execute_operation_task
                 next_index = 1
                 next_op = pipeline_steps[next_index].get("operation", "unknown")
@@ -144,7 +147,23 @@ async def _download_task_async(job_id: str):
                     task_id=f"{job_id}-step-{next_index}",
                 )
             else:
-                # Download was the only step — finalize the job now. The status update is required before notify_child_complete so the parent's aggregate query counts this child as terminal.
+                # Download was the only step — upload to R2, finalize the job.
+                ext = guess_container(result.local_path)
+                api_key_short = str(job.api_key_id).split("-")[0]
+                job_short = str(job_uuid).split("-")[0]
+                object_key = f"outputs/{api_key_short}/{job_short}/input.{ext}"
+                await storage.upload_file(result.local_path, object_key)
+                result.artifact.output_url = (
+                    f"{config.cdn_base_url}/job/{job_id}/download"
+                )
+
+                # Re-persist the step with the enriched artifact (output_url now set)
+                await job_service.update_job_step(
+                    step.id,
+                    StepStatus.COMPLETE,
+                    output_artifact=result.artifact.model_dump(exclude_none=True),
+                )
+
                 await job_service.update_status(job_uuid, JobStatus.SUCCEEDED)
                 await job_service.notify_child_complete(job_uuid)
 
@@ -161,6 +180,7 @@ async def _download_task_async(job_id: str):
                         "source_type": job.source_type,
                         "source_metadata": source_meta,
                         "error": None,
+                        "output_url": result.artifact.output_url,
                     },
                     api_key_id=job.api_key_id,
                 )

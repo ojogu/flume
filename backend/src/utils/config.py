@@ -41,6 +41,11 @@ class Config(BaseSettings):
     # default: 2 GB
     max_download_size_bytes: int = 2_147_483_648
 
+    # ── CDN / output delivery ───────────────────────────────────────────────
+    # Base URL for user-facing CDN endpoints (no trailing slash).
+    # Used to construct output_url on artifacts and to redirect download requests.
+    cdn_base_url: str = "https://flume.ojogulabs.xyz"
+
     model_config = SettingsConfigDict(
         case_sensitive=False,
         env_file=Path(__file__).resolve().parent.parent.parent / ".env",  # Adjusted to point to the root directory
