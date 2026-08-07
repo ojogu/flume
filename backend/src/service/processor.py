@@ -22,10 +22,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.schema.artifact import (
     Artifact,
-    ArtifactStatus,
-    FileInfo,
-    MediaInfo,
-    SourceInfo,
+    _ArtifactStatus,
+    _FileInfo,
+    _MediaInfo,
+    _SourceInfo,
 )
 from src.schema.processor import ProcessError, ProcessResult
 from src.service.llm_error_summarizer import summarize_ffmpeg_error
@@ -250,17 +250,17 @@ class ProcessorService:
         container = Path(output_path).suffix.lstrip(".") or "unknown"
 
         short_job = str(job_id).split("-")[0]
-        source = SourceInfo(
+        source = _SourceInfo(
             platform="pipeline",
             video_id=f"{short_job}_step_{step_index}",
             url=output_path,
         )
-        file_info = FileInfo(
+        file_info = _FileInfo(
             path=output_path,
             size_bytes=size_bytes,
             container=container,
         )
-        media = MediaInfo(duration_seconds=duration_seconds)
+        media = _MediaInfo(duration_seconds=duration_seconds)
 
         return Artifact(
             id=f"art_{short_job}_step_{step_index}",
@@ -268,6 +268,6 @@ class ProcessorService:
             source=source,
             file=file_info,
             media=media,
-            status=ArtifactStatus.COMPLETED,
+            status=_ArtifactStatus.COMPLETED,
             created_at=datetime.now(timezone.utc),
         )

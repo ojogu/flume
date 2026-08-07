@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.model.job import Job, JobStatus, TERMINAL_JOB_STATUSES, JobStep, StepStatus
 from src.model.api import ApiKey
-from src.schema.download import ExtractedInfo
+from src.schema.download import _ExtractedInfo
 from src.service.downloader import build_source_meta
 from src.core.exception_base import DatabaseError, NotFoundError
 from src.utils.log import get_logger
@@ -289,7 +289,7 @@ class JobService:
     async def create_child_jobs(
         self,
         parent_job: Job,
-        entry_metas: list[tuple[str, ExtractedInfo]],
+        entry_metas: list[tuple[str, _ExtractedInfo]],
         pipeline_steps: list[dict],
         outputs: list[dict],
     ) -> list[Job]:
