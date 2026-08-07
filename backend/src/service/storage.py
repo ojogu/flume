@@ -1,15 +1,16 @@
-# ── R2 storage layer (boto3 S3-compatible client for Cloudflare R2) 
+# ── R2 storage layer (boto3 S3-compatible client for Cloudflare R2)
 # This module handles:
-# • Presigned upload URL generation (Phase 1 — client uploads directly)
-# • head_object verification(Phase 2 — confirm upload landed)
-# • Presigned download URLs (for internal pipeline workers)
-#  • Object deletion       (for the cleanup sweep)
+# • Presigned upload URL generation (client uploads directly)
+# • head_object verification (confirm upload landed)
+# • Presigned download URLs (internal pipeline workers + user download redirects)
+# • File upload from local worker filesystem to R2 (pipeline outputs)
+# • Object deletion (cleanup sweep)
 #
 # boto3 is synchronous, so all public methods run the R2 call inside asyncio.to_thread() to avoid blocking the event loop.
 
 import asyncio
+import os
 import uuid
-from datetime import datetime, timezone, timedelta
 
 import boto3
 from botocore.config import Config as BotoConfig
@@ -151,6 +152,39 @@ class R2Storage:
             ExpiresIn=expires_in,
         )
         return url
+
+    async def upload_file(self, local_path: str, object_key: str) -> str:
+        """Upload a local file to R2.
+
+        Streams the file into R2 using put_object. The file is read in
+        chunks to avoid loading the entire file into memory.
+
+        Args:
+            local_path: Absolute path to the local file to upload.
+            object_key: The R2 object key under which to store the file.
+
+        Returns:
+            The object key on success (same as the input ``object_key``).
+
+        Raises:
+            FileNotFoundError: If the local file does not exist.
+            ClientError: If the R2 upload fails.
+        """
+        logger.info(f"Uploading local file to R2: {local_path} → {object_key}")
+
+        with open(local_path, "rb") as f:
+            file_size = os.fstat(f.fileno()).st_size
+            await self._run(
+                "put_object",
+                Bucket=config.r2_bucket_name,
+                Key=object_key,
+                Body=f,
+            )
+
+        logger.info(
+            f"R2 upload complete: {object_key} ({file_size} bytes)"
+        )
+        return object_key
 
     async def delete_object(self, object_key: str) -> None:
         """Remove an object from R2 — used by the cleanup sweep for orphaned uploads.

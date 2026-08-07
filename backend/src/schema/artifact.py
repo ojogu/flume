@@ -1,5 +1,5 @@
-from datetime import datetime
 import enum
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -46,7 +46,8 @@ class Artifact(BaseModel):
     job_id: str #owning job identifier
     source: _SourceInfo # source metadata from the download/extraction phase
     file: _FileInfo # physical file properties
-    media: _MediaInfo # media stream properties — FFmpeg reads this, never runs ffprobe
+    media: _MediaInfo # media stream properties — populated by ffprobe for local files
     status: _ArtifactStatus = _ArtifactStatus.COMPLETED
     created_at: datetime #when the artifact was created
+    output_url: str | None = None # CDN/R2 URL set after step output is uploaded to R2
     

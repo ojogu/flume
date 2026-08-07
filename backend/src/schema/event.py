@@ -38,6 +38,7 @@ class JobCompletedData(BaseModel):
     source_type: str
     source_metadata: dict[str, Any] | None = None
     error: str | None = None
+    output_url: str | None = None  # URL of the final step's output on R2
 
 
 class JobFailedData(BaseModel):
