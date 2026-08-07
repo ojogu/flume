@@ -16,7 +16,10 @@ from pathlib import Path
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
-from src.model.job import JobStatus, StepStatus
+from src.model.job import Job, JobStatus, JobStep, StepStatus
+from src.schema.processor import ProcessResult
+from src.service.events import EventService
+from src.service.jobs import JobService
 from src.utils.config import config
 from src.utils.log import get_logger
 
@@ -71,7 +74,10 @@ async def _execute_operation_async(job_id: str, step_index: int):
             )
             return
 
-        step_spec = job.pipeline_steps[step_index] if step_index < len(job.pipeline_steps or []) else None
+        if step_index < len(job.pipeline_steps or []):
+            step_spec = job.pipeline_steps[step_index]
+        else:
+            step_spec = None
         if not step_spec:
             logger.error(
                 f"No pipeline_steps entry at index {step_index} for job {job_id}"
@@ -116,8 +122,7 @@ async def _execute_operation_async(job_id: str, step_index: int):
 
             if result.success:
                 if result.artifact is None:
-                    # Processor returned success without an artifact — treat as
-                    # a contract violation and route through the failure path.
+                    # Processor returned success without an artifact — treat as a contract violation and route through the failure path.
                     raise RuntimeError(
                         f"[{operation}] Processor returned success but no artifact"
                     )
@@ -146,8 +151,14 @@ async def _execute_operation_async(job_id: str, step_index: int):
 
 
 async def _handle_success(
-    job_service, event_service, job, step, step_index, operation, result,
-):
+    job_service: JobService,
+    event_service: EventService,
+    job: Job,
+    step: JobStep,
+    step_index: int,
+    operation: str,
+    result: ProcessResult,
+) -> None:
     """Persist step COMPLETED, emit STEP_COMPLETED, chain to next or finish job."""
     job_uuid = job.id
     job_id = str(job_uuid)
@@ -202,8 +213,14 @@ async def _handle_success(
 
 
 async def _handle_failure(
-    job_service, event_service, job, step, step_index, operation, error_summary,
-):
+    job_service: JobService,
+    event_service: EventService,
+    job: Job,
+    step: JobStep,
+    step_index: int,
+    operation: str,
+    error_summary: str,
+) -> None:
     """Persist step FAILED, emit STEP_FAILED + JOB_FAILED, notify parent."""
     job_uuid = job.id
     job_id = str(job_uuid)
@@ -242,17 +259,19 @@ async def _handle_failure(
     await job_service.notify_child_complete(job_uuid)
 
 
-async def _resolve_input_path(job_service, job_uuid, step_index) -> str | None:
-    """Resolve the input file for ``step_index`` from the previous step.
+async def _resolve_input_path(job_service: JobService, job_uuid: uuid.UUID, step_index: int) -> str | None:
+    """Resolve the input file for ``step_index`` from the previous step's output artifact.
 
-    Step 1 reads from the download step's output_artifact.file.path.
-    Step N (>=2) reads from step N-1's output_artifact.file.path.
+    Each step N (>= 1) reads its input from step N-1's output_artifact.file.path.
+    Step 0 has no predecessor and is not handled by this function.
 
-    Returns None if the previous step is not COMPLETE or has no output artifact (chain was broken).
+    Returns None if the previous step is not COMPLETE or has no output artifact.
     """
+    # step_index 0 has no predecessor — input is the original download artifact
     if step_index <= 0:
         return None
 
+    # Fetch the completed predecessor step
     prev_step = await job_service.get_step(job_uuid, step_index - 1)
     if not prev_step:
         logger.error(
@@ -260,6 +279,7 @@ async def _resolve_input_path(job_service, job_uuid, step_index) -> str | None:
         )
         return None
 
+    # Previous step must have completed successfully — a failed step breaks the chain
     if prev_step.status != StepStatus.COMPLETE.value:
         logger.error(
             f"Previous step {step_index - 1} is {prev_step.status} (not complete) "
@@ -267,6 +287,7 @@ async def _resolve_input_path(job_service, job_uuid, step_index) -> str | None:
         )
         return None
 
+    # Unpack the output artifact from the previous step
     artifact = prev_step.output_artifact
     if not artifact:
         logger.error(
@@ -274,6 +295,7 @@ async def _resolve_input_path(job_service, job_uuid, step_index) -> str | None:
         )
         return None
 
+    # Extract the file path from the artifact's file object
     file_path = artifact.get("file", {}).get("path")
     if not file_path:
         logger.error(

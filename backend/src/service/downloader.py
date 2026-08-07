@@ -3,7 +3,7 @@
 #   extract_info   — pull metadata from a URL without downloading
 #   download       — fetch media to an isolated job workspace
 #   build_artifact — transform extracted info into the Artifact schema that the FFmpeg pipeline consumes (never runs ffprobe)
-#
+
 # This module is synchronous — it calls yt-dlp's Python API directly.
 # Celery tasks invoke it from worker processes; it is never called from the FastAPI event loop.
 
@@ -15,33 +15,33 @@ from pathlib import Path
 
 import yt_dlp
 
-from src.schema.artifact import Artifact, ArtifactStatus, SourceInfo, FileInfo, MediaInfo
-from src.schema.download import FormatPreference, DownloadResult, ExtractedInfo
+from src.schema.artifact import Artifact, _ArtifactStatus, _SourceInfo, _FileInfo, _MediaInfo
+from src.schema.download import _FormatPreference, DownloadResult, _ExtractedInfo
 from src.utils.config import config
 
 logger = logging.getLogger(__name__)
 
 # format preference → yt-dlp format string lookup for video sources
-_VIDEO_FORMAT_MAP: dict[FormatPreference, str] = {
-    FormatPreference.BEST:      "bestvideo+bestaudio/best",
-    FormatPreference.SMALLEST:  "worstvideo+worstaudio/worst",
-    FormatPreference.RES_480P:  "bestvideo[height<=480]+bestaudio/best[height<=480]",
-    FormatPreference.RES_720P:  "bestvideo[height<=720]+bestaudio/best[height<=720]",
-    FormatPreference.RES_1080P: "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
-    FormatPreference.RES_4K:    "bestvideo[height<=2160]+bestaudio/best[height<=2160]",
+_VIDEO_FORMAT_MAP: dict[_FormatPreference, str] = {
+    _FormatPreference.BEST:      "bestvideo+bestaudio/best",
+    _FormatPreference.SMALLEST:  "worstvideo+worstaudio/worst",
+    _FormatPreference.RES_480P:  "bestvideo[height<=480]+bestaudio/best[height<=480]",
+    _FormatPreference.RES_720P:  "bestvideo[height<=720]+bestaudio/best[height<=720]",
+    _FormatPreference.RES_1080P: "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
+    _FormatPreference.RES_4K:    "bestvideo[height<=2160]+bestaudio/best[height<=2160]",
 }
 
 # format preference → yt-dlp format string lookup for audio sources
-_AUDIO_FORMAT_MAP: dict[FormatPreference, str] = {
-    FormatPreference.BEST:     "bestaudio/best",
-    FormatPreference.SMALLEST: "worstaudio/worst",
+_AUDIO_FORMAT_MAP: dict[_FormatPreference, str] = {
+    _FormatPreference.BEST:     "bestaudio/best",
+    _FormatPreference.SMALLEST: "worstaudio/worst",
 }
 
 
-# ── Private helpers ──────────────────────────────────────────────────────────
+# ── Private helpers───────────────
 
 
-def _resolve_format_string(fmt: FormatPreference, source_type: str) -> str:
+def _resolve_format_string(fmt: _FormatPreference, source_type: str) -> str:
     """Translate a FormatPreference + source_type into a yt-dlp format string."""
     if source_type == "audio":
         return _AUDIO_FORMAT_MAP[fmt]
@@ -102,7 +102,7 @@ def _safe_float(value: object) -> float | None:
         return None
 
 
-def _raw_to_extracted_info(raw: dict) -> ExtractedInfo:
+def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
     """Convert a raw yt-dlp info dict into a clean ExtractedInfo.
 
     Strips away subtitles, chapters, format lists, HTTP headers, and every other yt-dlp field that isn't needed by the FFmpeg pipeline or playlist dispatch logic.
@@ -113,7 +113,7 @@ def _raw_to_extracted_info(raw: dict) -> ExtractedInfo:
         raw_entries: list[dict] = raw.get("entries") or []
         entries = [_raw_to_extracted_info(e) for e in raw_entries if e is not None]
 
-        return ExtractedInfo(
+        return _ExtractedInfo(
             platform=(raw.get("extractor_key") or "unknown").lower(),
             video_id=raw.get("id") or "playlist",
             url=raw.get("webpage_url") or "",
@@ -124,7 +124,7 @@ def _raw_to_extracted_info(raw: dict) -> ExtractedInfo:
             entries=entries or None,
         )
 
-    return ExtractedInfo(
+    return _ExtractedInfo(
         platform=(raw.get("extractor_key") or "unknown").lower(),
         video_id=raw.get("id") or "unknown",
         url=raw.get("webpage_url") or "",
@@ -141,7 +141,7 @@ def _raw_to_extracted_info(raw: dict) -> ExtractedInfo:
     )
 
 
-def build_source_meta(info: ExtractedInfo) -> dict:
+def build_source_meta(info: _ExtractedInfo) -> dict:
     """Build the ``source_metadata`` dict shape from extracted info.
 
     Matches the ``Artifact.source + Artifact.media`` subset that
@@ -170,7 +170,7 @@ def build_source_meta(info: ExtractedInfo) -> dict:
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
-def extract_info(url: str) -> ExtractedInfo:
+def extract_info(url: str) -> _ExtractedInfo:
     """Pull metadata from *url* without downloading any media.
 
     Returns a clean ``ExtractedInfo`` — no raw yt-dlp dicts, no subtitles,
@@ -195,30 +195,30 @@ def download(
     url: str,
     workspace_dir: str,
     *,
-    fmt: FormatPreference = FormatPreference.BEST,
+    fmt: _FormatPreference = _FormatPreference.BEST,
     source_type: str = "video",
 ) -> DownloadResult:
     """Download media from *url* into *workspace_dir*.
 
     Args:
-        url:            The media URL to download.
-        workspace_dir:  Absolute path to the job's isolated workspace directory. Must already exist (caller creates it).
-        fmt:            Quality preference — default BEST.
-        source_type:    ``"video"`` or ``"audio"`` — affects format-string selection.
+        url: The media URL to download.
+        workspace_dir: Absolute path to the job's isolated workspace directory. Must already exist (caller creates it).
+        fmt: Quality preference — default BEST.
+        source_type: ``"video"`` or ``"audio"`` — affects format-string selection.
 
     Returns:
-        A ``DownloadResult`` with the local file path, stripped-down metadata,
-        and pre-built ``Artifact`` schema ready for the FFmpeg pipeline.
+        A ``DownloadResult`` with the local file path, stripped-down metadata, and pre-built ``Artifact`` schema ready for the FFmpeg pipeline.
 
     Raises:
         yt_dlp.utils.DownloadError:  Download or extraction failure.
-        ValueError:       File exceeds ``max_download_size_bytes``.
+        ValueError: File exceeds ``max_download_size_bytes``.
     """
     format_string = _resolve_format_string(fmt, source_type)
     opts = _build_ydl_opts(workspace_dir, format_string, download=True)
 
     with yt_dlp.YoutubeDL(opts) as ydl:
         logger.info(f"Downloading {url}  (format={fmt.value}, type={source_type})")
+        #download and extract media info in one call
         raw = ydl.extract_info(url, download=True)
         logger.info(f"Download complete — title={raw.get('title', 'unknown')}")
 
@@ -245,7 +245,7 @@ def download(
     )
 
 
-def build_artifact(info: ExtractedInfo, local_path: str, job_id: str = "unknown") -> Artifact:
+def build_artifact(info: _ExtractedInfo, local_path: str, job_id: str = "unknown") -> Artifact:
     """Transform extracted info into a canonical ``Artifact`` schema.
 
     This is a pure data transformation — no I/O, no side effects.
@@ -253,7 +253,7 @@ def build_artifact(info: ExtractedInfo, local_path: str, job_id: str = "unknown"
 
     *job_id* is bound after the artifact is created (the Celery task knows the job ID; the downloader itself doesn't).
     """
-    source = SourceInfo(
+    source = _SourceInfo(
         platform=info.platform,
         video_id=info.video_id,
         url=info.url,
@@ -266,13 +266,13 @@ def build_artifact(info: ExtractedInfo, local_path: str, job_id: str = "unknown"
 
     container = guess_container(local_path)
 
-    file_info = FileInfo(
+    file_info = _FileInfo(
         path=local_path,
         size_bytes=size_bytes,
         container=container,
     )
 
-    media = MediaInfo(
+    media = _MediaInfo(
         duration_seconds=info.duration_seconds or 0.0,
         width=info.width,
         height=info.height,
@@ -289,7 +289,7 @@ def build_artifact(info: ExtractedInfo, local_path: str, job_id: str = "unknown"
         source=source,
         file=file_info,
         media=media,
-        status=ArtifactStatus.COMPLETED,
+        status=_ArtifactStatus.COMPLETED,
         created_at=datetime.now(timezone.utc),
     )
 
@@ -301,9 +301,7 @@ def build_artifact_from_local(
 ) -> Artifact:
     """Build an artifact from a local file without yt-dlp metadata.
 
-    Used for upload-sourced jobs (R2 → workspace). MediaInfo fields
-    are left at defaults — the FFmpeg pipeline fills gaps via ffprobe
-    when it encounters missing metadata.
+    Used for upload-sourced jobs (R2 → workspace). MediaInfo fields are left at defaults — the FFmpeg pipeline fills gaps via ffprobe when it encounters missing metadata.
     """
     try:
         size_bytes = _get_file_size(local_path)
@@ -312,17 +310,17 @@ def build_artifact_from_local(
 
     container = guess_container(local_path)
 
-    source = SourceInfo(
+    source = _SourceInfo(
         platform="upload",
         video_id=Path(source_uri).stem,
         url=source_uri,
     )
-    file_info = FileInfo(
+    file_info = _FileInfo(
         path=local_path,
         size_bytes=size_bytes,
         container=container,
     )
-    media = MediaInfo(duration_seconds=0.0)
+    media = _MediaInfo(duration_seconds=0.0)
 
     return Artifact(
         id=f"art_{Path(source_uri).stem}",
@@ -330,6 +328,6 @@ def build_artifact_from_local(
         source=source,
         file=file_info,
         media=media,
-        status=ArtifactStatus.COMPLETED,
+        status=_ArtifactStatus.COMPLETED,
         created_at=datetime.now(timezone.utc),
     )

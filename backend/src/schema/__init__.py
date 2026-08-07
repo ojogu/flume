@@ -15,6 +15,18 @@ from .event import (
     StepFailedData,
     PingData,
 )
+from .artifact import (
+    _ArtifactStatus,
+    _FileInfo,
+    _MediaInfo,
+    _SourceInfo,
+)
+from .download import (
+    _AUDIO_SAFE_FORMATS,
+    _ExtractedInfo,
+    _FormatPreference,
+    _PlaylistSelection,
+)
 
 __all__ = [
     "CreateUser",
@@ -32,4 +44,12 @@ __all__ = [
     "StepCompletedData",
     "StepFailedData",
     "PingData",
+    "_ArtifactStatus",
+    "_FileInfo",
+    "_MediaInfo",
+    "_SourceInfo",
+    "_AUDIO_SAFE_FORMATS",
+    "_ExtractedInfo",
+    "_FormatPreference",
+    "_PlaylistSelection",
 ]

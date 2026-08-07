@@ -53,9 +53,8 @@ class Job(BaseModel):
     outputs: Mapped[dict | None] = sa.Column(JSONB, nullable=True)
     # user's playlist entry selection (1-based ints); null = process all entries
     selection: Mapped[dict | None] = sa.Column(JSONB, nullable=True)
-    # SourceInfo + MediaInfo stored after download; FFmpeg pipeline reads this
-    # instead of running ffprobe on the downloaded file.  Null until the worker
-    # completes the download/extraction phase.
+    # SourceInfo + MediaInfo stored after download: FFmpeg pipeline reads this instead of running ffprobe on the downloaded file. 
+    # Null until the worker completes the download/extraction phase.
     source_metadata: Mapped[dict | None] = sa.Column(JSONB, nullable=True)
     error: Mapped[str | None] = sa.Column(sa.Text, nullable=True)
     completed_at: Mapped[datetime | None] = sa.Column(sa.DateTime(timezone=True), nullable=True)

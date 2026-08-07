@@ -31,11 +31,12 @@ class Config(BaseSettings):
     r2_bucket_name: str = "flume-uploads"
 
     # ── yt-dlp / workspace configuration ──────────────────────────────────
-    # base directory for per-job workspaces; each job gets its own subdirectory
-    # e.g. /var/lib/flume/workspaces/job_<short_uuid>/
+    # base directory for per-job workspaces; each job gets its own subdirectory e.g. /var/lib/flume/workspaces job_<short_uuid>/
     workspaces_dir: str = "/var/lib/flume/workspaces"
+    
     # optional cookies file for yt-dlp (authenticated downloads — private content, age-restricted, etc.)
     ytdlp_cookie_file: str | None = None
+    
     # hard limit on downloaded file size (bytes); jobs exceeding this are failed.
     # default: 2 GB
     max_download_size_bytes: int = 2_147_483_648

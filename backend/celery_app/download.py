@@ -20,7 +20,7 @@ from src.service.downloader import download, build_artifact_from_local, assert_s
 from src.service.storage import storage
 from src.utils.config import config
 from src.utils.http_client import get_http_client
-from src.schema.download import FormatPreference, DownloadResult
+from src.schema.download import _FormatPreference, DownloadResult
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -90,7 +90,8 @@ async def _download_task_async(job_id: str):
             if is_upload:
                 result = await _download_upload_source(job, workspace)
             else:
-                fmt = FormatPreference(
+                #get the format from the client, or default to best
+                fmt = _FormatPreference(
                     job.pipeline_steps[0].get("params", {}).get("format", "best")
                 )
                 result = download(
@@ -129,7 +130,8 @@ async def _download_task_async(job_id: str):
 
             pipeline_steps = job.pipeline_steps or []
             if len(pipeline_steps) > 1:
-                # More steps to run: chain to the first operation step(step_index=1). The job stays PROCESSING; final status is set by the last operation task. We do NOT notify the parent yet because this child is not terminal.
+                # More steps to run: chain to the first operation step(step_index=1). 
+                # The job stays PROCESSING; final status is set by the last operation task. We do NOT notify the parent yet because this child is not terminal.
                 
                 from celery_app.operations import execute_operation_task
                 next_index = 1
