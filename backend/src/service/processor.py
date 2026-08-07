@@ -24,11 +24,11 @@ from src.schema.artifact import (
     Artifact,
     _ArtifactStatus,
     _FileInfo,
-    _MediaInfo,
     _SourceInfo,
 )
 from src.schema.processor import ProcessError, ProcessResult
 from src.service.llm_error_summarizer import summarize_ffmpeg_error
+from src.utils.ffprobe import probe_media
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -149,7 +149,6 @@ class ProcessorService:
             job_id=job_id,
             step_index=step_index,
             operation="trim",
-            duration_seconds=end - start,
         )
         return ProcessResult(
             success=True,
@@ -169,9 +168,9 @@ class ProcessorService:
     ) -> ProcessResult:
         """Execute an FFmpeg command list and capture the result.
 
-        Returns a ``ProcessResult``:
-          success → ``output_path`` populated, no artifact (caller attaches).
-          failure → ``error`` populated via the LLM summarizer.
+        Returns a ProcessResult:
+          success → `output_path` populated, no artifact (caller attaches).
+          failure → `error` populated via the LLM summarizer.
         """
         logger.debug(f"FFmpeg cmd: {' '.join(cmd)}")
         try:
@@ -235,12 +234,11 @@ class ProcessorService:
         job_id: uuid.UUID,
         step_index: int,
         operation: str,
-        duration_seconds: float = 0.0,
     ) -> Artifact:
         """Build an ``Artifact`` for an operation's output file.
 
-        ``SourceInfo`` is pipeline-flavored: platform="pipeline" signals that this artifact was derived by FFmpeg, not downloaded. 
-        Media info is best-effort — callers pass known values (e.g. trim's end-start) and other fields are left unset for later ffprobe enrichment.
+        ``SourceInfo`` is pipeline-flavored: platform="pipeline" signals that this artifact was derived by FFmpeg, not downloaded. Media info is populated by probing the output file with ffprobe so the Artifact accurately reflects
+        the media on disk.
         """
         try:
             size_bytes = os.stat(output_path, follow_symlinks=True).st_size
@@ -260,7 +258,7 @@ class ProcessorService:
             size_bytes=size_bytes,
             container=container,
         )
-        media = _MediaInfo(duration_seconds=duration_seconds)
+        media = probe_media(output_path)
 
         return Artifact(
             id=f"art_{short_job}_step_{step_index}",
