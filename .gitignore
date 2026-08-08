@@ -46,8 +46,14 @@ backend/seed_admin.py
 # Test media files
 backend/vids/
 
+# Cookies for yt-dlp authenticated downloads
+backend/cookies/
+
 # Generated posts
 posts/
 
 # AI design-to-code artifacts
 .kombai/
+
+# Deno lockfile (created by deno installer in containers)
+deno.lock
