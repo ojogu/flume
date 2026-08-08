@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ChevronLeft, Copy, Check, AlertCircle, Clock, CheckCircle2, Circle } from 'lucide-react'
+import { ChevronLeft, Copy, Check, AlertCircle, Clock, CheckCircle2, Circle, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
@@ -150,12 +150,30 @@ export function JobDetailPage() {
                 )}>
                   {step.operation}
                 </h3>
-                {step.started_at && step.completed_at && (
-                  <span className="text-xs font-mono text-[var(--text-muted)] font-medium">
-                    {formatDuration(new Date(step.completed_at).getTime() - new Date(step.started_at).getTime())}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {step.started_at && step.completed_at && (
+                    <span className="text-xs font-mono text-[var(--text-muted)] font-medium">
+                      {formatDuration(new Date(step.completed_at).getTime() - new Date(step.started_at).getTime())}
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {index === (job.steps?.length ?? 0) - 1 && step.output_url && (
+                <a
+                  href={step.output_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={step.output_url}
+                  className="rounded-xl border border-brand/20 bg-brand/5 p-4 flex items-start gap-3 text-brand hover:bg-brand/10 transition-colors"
+                >
+                  <ExternalLink className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold uppercase tracking-wider">View Output</p>
+                    <p className="text-sm opacity-90 leading-relaxed truncate">{step.output_url}</p>
+                  </div>
+                </a>
+              )}
 
               {step.error && (
                 <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">

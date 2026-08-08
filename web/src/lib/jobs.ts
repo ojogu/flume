@@ -11,6 +11,7 @@ export interface JobStep {
   operation: string
   input_artifact: any
   output_artifact: any
+  output_url?: string | null
   error: string | null
   status: JobStepStatus
   started_at: string | null

@@ -42,6 +42,7 @@ class InternalStepResponse(BaseModel):
     status: str
     input_artifact: Optional[dict] = None
     output_artifact: Optional[dict] = None
+    output_url: Optional[str] = None
     error: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
