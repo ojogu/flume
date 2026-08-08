@@ -1,5 +1,7 @@
 from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Config(BaseSettings):
     database_url: str
@@ -35,7 +37,7 @@ class Config(BaseSettings):
     workspaces_dir: str = "/var/lib/flume/workspaces"
     
     # optional cookies file for yt-dlp (authenticated downloads — private content, age-restricted, etc.)
-    ytdlp_cookie_file: str | None = None
+    ytdlp_cookie_file: str = "/app/cookies/cookies.txt"
     
     # hard limit on downloaded file size (bytes); jobs exceeding this are failed.
     # default: 2 GB
@@ -44,7 +46,7 @@ class Config(BaseSettings):
     # ── CDN / output delivery ───────────────────────────────────────────────
     # Base URL for user-facing CDN endpoints (no trailing slash).
     # Used to construct output_url on artifacts and to redirect download requests.
-    cdn_base_url: str = "https://flume.ojogulabs.xyz"
+    cdn_base_url: str = "https://flume.ojogulabs.xyz/v1"
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

@@ -168,7 +168,7 @@ async def _handle_success(
     await job_service.update_job_step(
         step.id,
         StepStatus.COMPLETE,
-        output_artifact=result.artifact.model_dump(exclude_none=True),
+        output_artifact=result.artifact.model_dump(mode="json", exclude_none=True),
     )
     await event_service.emit(
         event_type=EventType.STEP_COMPLETED,
@@ -178,7 +178,7 @@ async def _handle_success(
             "job_id": job_id,
             "operation": operation,
             "step_index": step_index,
-            "output_artifact": result.artifact.model_dump(exclude_none=True),
+            "output_artifact": result.artifact.model_dump(mode="json", exclude_none=True),
         },
         api_key_id=job.api_key_id,
     )
@@ -208,14 +208,14 @@ async def _handle_success(
         )
         await storage.upload_file(result.output_path, object_key)
         result.artifact.output_url = (
-            f"{config.cdn_base_url}/job/{job_id}/step/{step_index}/download"
+            f"{config.cdn_base_url}/job/{job_id}/download"
         )
 
         # Re-persist the step with the enriched artifact (output_url now set)
         await job_service.update_job_step(
             step.id,
             StepStatus.COMPLETE,
-            output_artifact=result.artifact.model_dump(exclude_none=True),
+            output_artifact=result.artifact.model_dump(mode="json", exclude_none=True),
         )
 
         logger.info(

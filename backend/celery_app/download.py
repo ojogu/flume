@@ -116,7 +116,7 @@ async def _download_task_async(job_id: str):
             await job_service.update_job_step(
                 step.id,
                 StepStatus.COMPLETE,
-                output_artifact=result.artifact.model_dump(exclude_none=True),
+                output_artifact=result.artifact.model_dump(mode="json", exclude_none=True),
             )
 
             await event_service.emit(
@@ -127,7 +127,7 @@ async def _download_task_async(job_id: str):
                     "job_id": job_id,
                     "operation": step.operation,
                     "step_index": step.step_index,
-                    "output_artifact": result.artifact.model_dump(exclude_none=True),
+                    "output_artifact": result.artifact.model_dump(mode="json", exclude_none=True),
                 },
                 api_key_id=job.api_key_id,
             )
@@ -161,7 +161,7 @@ async def _download_task_async(job_id: str):
                 await job_service.update_job_step(
                     step.id,
                     StepStatus.COMPLETE,
-                    output_artifact=result.artifact.model_dump(exclude_none=True),
+                    output_artifact=result.artifact.model_dump(mode="json", exclude_none=True),
                 )
 
                 await job_service.update_status(job_uuid, JobStatus.SUCCEEDED)

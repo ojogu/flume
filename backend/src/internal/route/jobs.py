@@ -108,7 +108,10 @@ async def get_job(
     api_key_name = result.scalar_one_or_none()
 
     steps = [
-        InternalStepResponse(**s.to_dict()).model_dump()
+        {
+            **s.to_dict(),
+            "output_url": s.output_artifact.get("output_url") if s.output_artifact else None,
+        }
         for s in (job.job_steps or [])
     ]
 

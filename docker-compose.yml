@@ -22,9 +22,6 @@ services:
       target: prod
     ports:
       - "127.0.0.1:5174:80"
-    volumes:
-      - ./web:/app
-      - /app/node_modules
     depends_on:
       - backend
     networks:
@@ -77,6 +74,7 @@ services:
       - ./backend/logs:/app/logs
       - ./backend/src:/app/src
       - ./backend/celery_app:/app/celery_app
+      - ./backend/cookies:/app/cookies:rw
     command: uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload 
     networks:
       - observability
@@ -85,12 +83,13 @@ services:
   worker:
     build:
       context: ./backend
-    command: celery -A celery_app.celery.bg_task worker -l info -Q default_queue,email_queue
+    command: celery -A celery_app.celery.bg_task worker -l info -Q default_queue,email_queue,orchestrator_queue,download_queue,webhook_queue,media_queue
     env_file:
       - ./backend/.env
     environment:
       - CELERY_WORKER=true
       - CELERYD_CONCURRENCY=2
+      - GRPC_ENABLE_FORK_SUPPORT=false
     deploy:
       resources:
         limits:
@@ -107,6 +106,7 @@ services:
     volumes:
       - ./backend/logs:/app/logs
       - ./backend/src:/app/src
+      - ./backend/cookies:/app/cookies:rw
     networks:
       - observability
 

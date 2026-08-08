@@ -13,12 +13,34 @@ from src.core.exception_base import NotFoundError
 from src.model.event import DeliveryStatus, EventType, WebhookSubscription, WebhookDelivery
 from src.model.api import ApiKey
 from src.internal.schema.webhooks import InternalWebhookResponse
-from src.schema.event import EventEnvelope, PingEnvelope
+from src.schema.event import (
+    JobCreatedEnvelope,
+    JobProcessingEnvelope,
+    JobCompletedEnvelope,
+    JobFailedEnvelope,
+    JobCancelledEnvelope,
+    StepStartedEnvelope,
+    StepCompletedEnvelope,
+    StepFailedEnvelope,
+    PingEnvelope,
+)
 from src.utils.crypto import build_signed_headers
 from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
+
+_EVENT_TYPE_TO_ENVELOPE: dict[EventType, type] = {
+    EventType.JOB_CREATED: JobCreatedEnvelope,
+    EventType.JOB_PROCESSING: JobProcessingEnvelope,
+    EventType.JOB_COMPLETED: JobCompletedEnvelope,
+    EventType.JOB_FAILED: JobFailedEnvelope,
+    EventType.JOB_CANCELLED: JobCancelledEnvelope,
+    EventType.STEP_STARTED: StepStartedEnvelope,
+    EventType.STEP_COMPLETED: StepCompletedEnvelope,
+    EventType.STEP_FAILED: StepFailedEnvelope,
+    EventType.PING: PingEnvelope,
+}
 
 
 class EventService:
@@ -349,7 +371,8 @@ class EventService:
 
         deliveries: list[WebhookDelivery] = []
         for sub in subscriptions:
-            envelope = EventEnvelope(
+            envelope_class = _EVENT_TYPE_TO_ENVELOPE[event_type]
+            envelope = envelope_class(
                 id=str(resource_id),
                 type=event_type,
                 created_at=datetime.now(timezone.utc),
@@ -390,8 +413,8 @@ class EventService:
             .where(WebhookSubscription.is_active.is_(True))
             .where(WebhookSubscription.api_key_id == api_key_id)
             .where(
-                WebhookSubscription.events.contains("*")
-                | WebhookSubscription.events.contains(event_type.value)
+                WebhookSubscription.events.contains(["*"])
+                | WebhookSubscription.events.contains([event_type.value])
             )
         )
         return list(result.scalars().all())

@@ -67,6 +67,8 @@ def _build_ydl_opts(
         "quiet": True,
         "no_warnings": True,
         "merge_output_format": "mp4",
+        "js_runtimes": {"deno": {}},
+        "remote_components": ["ejs:github"],
     }
 
     if not download:
