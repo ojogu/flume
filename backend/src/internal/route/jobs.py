@@ -12,6 +12,7 @@ from src.internal.schema.jobs import (
     InternalJobDetailResponse,
     InternalJobListResponse,
     InternalJobResponse,
+    RetryJobRequest,
 )
 from src.model.user import User
 from src.service.jobs import JobService
@@ -142,3 +143,44 @@ async def download_job(
 
     presigned_url = await job_service.generate_download_url(job_id, job.api_key_id)
     return success(data={"url": presigned_url})
+
+
+@internal_job_route.patch("/{job_id}/status")
+async def update_job_status(
+    job_id: uuid.UUID,
+    body: RetryJobRequest,
+    user: User = Depends(get_current_user),
+    job_service: JobService = Depends(get_job_service),
+):
+    """Update a job's status — supports retry action.
+
+    Retry resets the job to PENDING, increments retry_count, clears error,
+    and deletes existing steps so the orchestrator recreates them.
+    If max retries are exceeded, job goes to DEAD state.
+    """
+    if body.action != "retry":
+        from src.core.exception_base import BadRequest
+        raise BadRequest(f"Unknown action: {body.action}")
+
+    job = await job_service.retry_job(job_id, user.id)
+
+    result = await job_service.db.execute(
+        select(ApiKey.name).where(ApiKey.id == job.api_key_id)
+    )
+    api_key_name = result.scalar_one_or_none()
+
+    steps = [
+        {
+            **s.to_dict(),
+            "output_url": s.output_artifact.get("output_url") if s.output_artifact else None,
+        }
+        for s in (job.job_steps or [])
+    ]
+
+    data = InternalJobDetailResponse(
+        **job.to_dict(),
+        api_key_name=api_key_name,
+        steps=steps,
+    )
+
+    return success(data=data.model_dump())

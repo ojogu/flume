@@ -13,14 +13,15 @@ class JobStatus(str, enum.Enum):
     # non-terminal
     PENDING = "pending" #Job created, queued, not picked up by a worker yet
     PROCESSING = "processing" #	Worker is actively downloading/processing
-    
+
     # terminal
     SUCCEEDED = "succeeded" #Everything completed successfully — all pipeline steps/download passed
     PARTIAL_SUCCESS = "partial_success" #Some entries in a playlist failed but at least one succeeded
     FAILED = "failed" #Job could not complete (download error, FFmpeg failure, size limit exceeded, etc.)
+    DEAD = "dead" #Job exceeded max retries — no further processing will occur
 
 
-TERMINAL_JOB_STATUSES = {JobStatus.SUCCEEDED, JobStatus.PARTIAL_SUCCESS, JobStatus.FAILED} #once a job reaches any of these, no further processing occurs.
+TERMINAL_JOB_STATUSES = {JobStatus.SUCCEEDED, JobStatus.PARTIAL_SUCCESS, JobStatus.FAILED, JobStatus.DEAD} #once a job reaches any of these, no further processing occurs.
 
 
 class SourceType(str, enum.Enum):
@@ -69,6 +70,10 @@ class Job(BaseModel):
         nullable=True,
         index=True,
     )
+
+    # retry tracking — incremented on each user-initiated retry
+    retry_count: Mapped[int] = sa.Column(sa.Integer, nullable=False, default=0)
+    max_retries: Mapped[int] = sa.Column(sa.Integer, nullable=False, default=3)
 
     api_key: Mapped["ApiKey"] = relationship("ApiKey", back_populates="jobs")
     job_steps: Mapped[list["JobStep"]] = relationship("JobStep", back_populates="job")

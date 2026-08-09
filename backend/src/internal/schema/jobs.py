@@ -7,6 +7,10 @@ from pydantic import BaseModel
 from src.model.job import JobStatus, SourceType
 
 
+class RetryJobRequest(BaseModel):
+    action: str = "retry"
+
+
 class InternalJobResponse(BaseModel):
     """Job response for the internal/dashboard API — includes api_key_name."""
 
@@ -25,6 +29,8 @@ class InternalJobResponse(BaseModel):
     error: Optional[str] = None
     parent_job_id: Optional[uuid.UUID] = None
     playlist_entry_index: Optional[int] = None
+    retry_count: int = 0
+    max_retries: int = 3
     completed_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

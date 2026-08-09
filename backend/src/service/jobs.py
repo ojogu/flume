@@ -195,6 +195,45 @@ class JobService:
         await self.db.commit()
         logger.info(f"Job {job_id} status → {status.value}")
 
+    async def retry_job(self, job_id: uuid.UUID, user_id: uuid.UUID) -> Job:
+        """Retry a non-terminal, non-dead job.
+
+        Increments retry_count, resets status to PENDING, clears error, and deletes existing job steps so the orchestrator recreates them.
+        If retry_count >= max_retries after increment, sets status to DEAD.
+        """
+        job = await self.get_job_detail_by_user(user_id, job_id)
+        if not job:
+            raise NotFoundError("Job not found")
+
+        if job.status in (s.value for s in TERMINAL_JOB_STATUSES):
+            raise BadRequest(f"Cannot retry a terminal job (status={job.status})")
+
+        if job.status == JobStatus.DEAD.value:
+            raise BadRequest("Cannot retry a dead job")
+
+        job.retry_count += 1
+
+        if job.retry_count >= job.max_retries:
+            job.status = JobStatus.DEAD.value
+            job.completed_at = datetime.now(timezone.utc)
+            job.error = f"Exceeded max retries ({job.max_retries})"
+            await self.db.flush()
+            await self.db.commit()
+            logger.warning(f"Job {job_id} reached dead state after {job.retry_count} retries")
+            return job
+
+        job.status = JobStatus.PENDING.value
+        job.error = None
+        job.completed_at = None
+
+        for step in job.job_steps or []:
+            await self.db.delete(step)
+
+        await self.db.flush()
+        await self.db.commit()
+        logger.info(f"Job {job_id} retried (attempt {job.retry_count}/{job.max_retries})")
+        return job
+
     async def set_source_metadata(self, job_id: uuid.UUID, metadata: dict) -> None:
         """Store the ``SourceInfo + MediaInfo`` dict after download completes."""
         job = await self.get_job(job_id)
