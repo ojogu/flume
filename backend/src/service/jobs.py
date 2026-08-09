@@ -45,13 +45,10 @@ class JobService:
         if created_after:
             base = base.where(Job.created_at >= created_after)
 
-        total = await self.db.scalar(
-            select(func.count()).select_from(base.subquery())
-        )
+        total = await self.db.scalar(select(func.count()).select_from(base.subquery()))
 
         query = (
-            base
-            .order_by(Job.created_at.desc())
+            base.order_by(Job.created_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
         )
@@ -60,7 +57,9 @@ class JobService:
 
         return jobs, total or 0
 
-    async def get_job_detail(self, job_id: uuid.UUID, api_key_id: uuid.UUID) -> Job | None:
+    async def get_job_detail(
+        self, job_id: uuid.UUID, api_key_id: uuid.UUID
+    ) -> Job | None:
         """Fetch a single job with steps, scoped by API key ownership."""
         result = await self.db.execute(
             select(Job)
@@ -99,13 +98,10 @@ class JobService:
         if created_after:
             base = base.where(Job.created_at >= created_after)
 
-        total = await self.db.scalar(
-            select(func.count()).select_from(base.subquery())
-        )
+        total = await self.db.scalar(select(func.count()).select_from(base.subquery()))
 
         query = (
-            base
-            .order_by(Job.created_at.desc())
+            base.order_by(Job.created_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
         )
@@ -263,7 +259,9 @@ class JobService:
         await self.db.commit()
         logger.info(f"JobStep {step_id} → {status.value}")
 
-    async def get_pending_job_step(self, job_id: uuid.UUID, operation: str) -> JobStep | None:
+    async def get_pending_job_step(
+        self, job_id: uuid.UUID, operation: str
+    ) -> JobStep | None:
         """Find the first PENDING step for a given operation on a job."""
         result = await self.db.execute(
             select(JobStep)
@@ -325,7 +323,7 @@ class JobService:
             )
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Failed to create child jobs for {parent_job.id}: {e}")
+            logger.error(f"Failed to create child jobs for {parent_job.id!s}: {e}")
             raise DatabaseError()
 
         return children
@@ -388,14 +386,19 @@ class JobService:
             await self.db.commit()
             logger.info(
                 "Parent %s → %s (succeeded=%d, failed=%d / total=%d)",
-                parent_id, aggregate.value, succeeded or 0, failed or 0, total_count,
+                parent_id,
+                aggregate.value,
+                succeeded or 0,
+                failed or 0,
+                total_count,
             )
 
-    async def generate_download_url(self, job_id: uuid.UUID, api_key_id: uuid.UUID) -> str:
+    async def generate_download_url(
+        self, job_id: uuid.UUID, api_key_id: uuid.UUID
+    ) -> str:
         """Generate a presigned R2 URL for the job's final output.
 
-        Finds the last completed step, constructs the R2 object key from the
-        step index and container, generates a fresh presigned URL, and returns it.
+        Finds the last completed step, constructs the R2 object key from the step index and container, generates a fresh presigned URL, and returns it.
 
         Args:
             job_id: The job to generate a download URL for.
@@ -415,7 +418,10 @@ class JobService:
         if not job:
             raise NotFoundError("Job not found")
 
-        if job.status not in (JobStatus.SUCCEEDED.value, JobStatus.PARTIAL_SUCCESS.value):
+        if job.status not in (
+            JobStatus.SUCCEEDED.value,
+            JobStatus.PARTIAL_SUCCESS.value,
+        ):
             raise BadRequest(
                 f"Job is not complete (status={job.status}). "
                 "Download requires a terminal job state."
@@ -428,9 +434,7 @@ class JobService:
         last_step = max(completed_steps, key=lambda s: s.step_index)
         artifact = last_step.output_artifact
         if not artifact:
-            raise NotFoundError(
-                f"Step {last_step.step_index} has no output artifact"
-            )
+            raise NotFoundError(f"Step {last_step.step_index} has no output artifact")
 
         container = artifact.get("file", {}).get("container", "mp4")
         api_key_short = str(job.api_key_id).split("-")[0]

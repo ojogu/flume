@@ -121,9 +121,16 @@ async def list_webhook_deliveries(
     subscription_id: uuid.UUID,
     user: User = Depends(get_current_user),
     event_service: EventService = Depends(get_event_service),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
-    """List recent delivery attempts for a subscription."""
-    deliveries = await event_service.list_deliveries_by_user(user.id, subscription_id)
+    """List delivery attempts for a subscription with pagination."""
+    deliveries, total = await event_service.list_deliveries_by_user(
+        user.id, subscription_id, limit=limit, offset=offset,
+    )
     return success(
-        data=[InternalWebhookDeliveryResponse(**d.to_dict()).model_dump() for d in deliveries],
+        data={
+            "data": [InternalWebhookDeliveryResponse(**d.to_dict()).model_dump() for d in deliveries],
+            "total": total,
+        },
     )

@@ -144,8 +144,8 @@ def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
         fps=raw.get("fps"),
         video_codec=raw.get("vcodec"),
         audio_codec=raw.get("acodec"),
-        video_bitrate=raw.get("vbr"),
-        audio_bitrate=raw.get("abr"),
+        video_bitrate=int(round(raw["vbr"])) if raw.get("vbr") else None,
+        audio_bitrate=int(round(raw["abr"])) if raw.get("abr") else None,
         ext=raw.get("ext"),
     )
 
@@ -160,6 +160,7 @@ def build_source_meta(info: _ExtractedInfo) -> dict:
             "platform": info.platform,
             "video_id": info.video_id,
             "url": info.url,
+            "title": info.title,
         },
         "media": {
             "duration_seconds": info.duration_seconds,
@@ -263,6 +264,7 @@ def build_artifact(info: _ExtractedInfo, local_path: str, job_id: str = "unknown
         platform=info.platform,
         video_id=info.video_id,
         url=info.url,
+        title=info.title,
     )
 
     try:

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
+import { Link } from 'react-router-dom'
 import {
   AlertTriangle,
   Check,
@@ -331,123 +332,131 @@ function WebhookCard({
   }
 
   return (
-    <div className="group overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-      <div className="p-5 sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex min-w-0 flex-1 gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-light)]">
-              <Webhook className="h-5 w-5 text-brand" aria-hidden="true" />
+    <>
+      <Link
+        to={`/dashboard/webhooks/${webhook.id}`}
+        className="block overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200"
+      >
+        <div className="p-5 sm:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 flex-1 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-light)]">
+                <Webhook className="h-5 w-5 text-brand" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="min-w-0 max-w-full truncate text-sm font-semibold text-[var(--text-primary)] sm:max-w-xl">
+                    {webhook.url}
+                  </code>
+                  <Badge variant={webhook.is_active ? 'default' : 'secondary'} className="gap-1.5 px-2 text-xs">
+                    <span className={cn('h-1.5 w-1.5 rounded-full', webhook.is_active ? 'bg-primary-foreground/80' : 'bg-[var(--text-muted)]')} />
+                    {webhook.is_active ? 'Active' : 'Disabled'}
+                  </Badge>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
+                  <span>{webhook.api_key_name ? `API key: ${webhook.api_key_name}` : 'API key scope'}</span>
+                  <span>Added {formatRelativeTime(webhook.created_at)}</span>
+                </div>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <code className="min-w-0 max-w-full truncate text-sm font-semibold text-[var(--text-primary)] sm:max-w-xl">
-                  {webhook.url}
-                </code>
-                <Badge variant={webhook.is_active ? 'default' : 'secondary'} className="gap-1.5 px-2 text-xs">
-                  <span className={cn('h-1.5 w-1.5 rounded-full', webhook.is_active ? 'bg-primary-foreground/80' : 'bg-[var(--text-muted)]')} />
-                  {webhook.is_active ? 'Active' : 'Disabled'}
-                </Badge>
+
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end" onClick={(e) => e.stopPropagation()}>
+              <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-3">
+                <Switch
+                  id={`webhook-status-${webhook.id}`}
+                  checked={webhook.is_active}
+                  onCheckedChange={onToggle}
+                  disabled={isStatusPending}
+                  aria-label={`${webhook.is_active ? 'Disable' : 'Enable'} ${webhook.url}`}
+                />
+                <Label htmlFor={`webhook-status-${webhook.id}`} className="cursor-pointer text-xs font-medium text-[var(--text-secondary)]">
+                  {isStatusPending ? 'Updating…' : webhook.is_active ? 'Enabled' : 'Disabled'}
+                </Label>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
-                <span>{webhook.api_key_name ? `API key: ${webhook.api_key_name}` : 'API key scope'}</span>
-                <span>Added {formatRelativeTime(webhook.created_at)}</span>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-2"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleTest()
+                }}
+                disabled={testing}
+                aria-busy={testing}
+              >
+                {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                {testing ? 'Sending…' : 'Send test event'}
+              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button variant="ghost" size="icon" className="size-11 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]" onClick={(e) => { e.stopPropagation(); onEdit() }} aria-label="Edit endpoint">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  }
+                />
+                <TooltipContent>Edit endpoint</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button variant="ghost" size="icon" className="size-11 text-[var(--text-muted)] hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete() }} aria-label="Delete endpoint">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  }
+                />
+                <TooltipContent>Delete endpoint</TooltipContent>
+              </Tooltip>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-3">
-              <Switch
-                id={`webhook-status-${webhook.id}`}
-                checked={webhook.is_active}
-                onCheckedChange={onToggle}
-                disabled={isStatusPending}
-                aria-label={`${webhook.is_active ? 'Disable' : 'Enable'} ${webhook.url}`}
-              />
-              <Label htmlFor={`webhook-status-${webhook.id}`} className="cursor-pointer text-xs font-medium text-[var(--text-secondary)]">
-                {isStatusPending ? 'Updating…' : webhook.is_active ? 'Enabled' : 'Disabled'}
-              </Label>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-2"
-              onClick={handleTest}
-              disabled={testing}
-              aria-busy={testing}
-            >
-              {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              {testing ? 'Sending…' : 'Send test event'}
-            </Button>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button variant="ghost" size="icon" className="size-11 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]" onClick={onEdit} aria-label="Edit endpoint">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                }
-              />
-              <TooltipContent>Edit endpoint</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button variant="ghost" size="icon" className="size-11 text-[var(--text-muted)] hover:bg-destructive/10 hover:text-destructive" onClick={onDelete} aria-label="Delete endpoint">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                }
-              />
-              <TooltipContent>Delete endpoint</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        <div className="mt-6 border-t border-[var(--border-subtle)] pt-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold text-[var(--text-primary)]">Subscribed events</p>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">Choose which pipeline updates this endpoint receives.</p>
-            </div>
-            <div className="flex flex-wrap gap-1.5 sm:justify-end">
-              {webhook.events.includes('*') ? (
-                <span className="rounded-md border border-brand/20 bg-[var(--brand-light)] px-2 py-1 font-mono text-xs font-semibold text-brand">
-                  All events
-                </span>
-              ) : webhook.events.length ? (
-                webhook.events.map((event) => (
-                  <span key={event} className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-2 py-1 font-mono text-xs font-semibold text-[var(--text-secondary)]">
-                    {event}
+          <div className="mt-6 border-t border-[var(--border-subtle)] pt-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--text-primary)]">Subscribed events</p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Choose which pipeline updates this endpoint receives.</p>
+              </div>
+              <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                {webhook.events.includes('*') ? (
+                  <span className="rounded-md border border-brand/20 bg-[var(--brand-light)] px-2 py-1 font-mono text-xs font-semibold text-brand">
+                    All events
                   </span>
-                ))
-              ) : (
-                <span className="text-xs text-[var(--text-muted)]">No events selected</span>
-              )}
+                ) : webhook.events.length ? (
+                  webhook.events.map((event) => (
+                    <span key={event} className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-subtle)] px-2 py-1 font-mono text-xs font-semibold text-[var(--text-secondary)]">
+                      {event}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-[var(--text-muted)]">No events selected</span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {testResult && (
-          <div
-            className={cn(
-              'mt-5 flex gap-3 rounded-lg border p-4',
-              testResult.success ? 'border-brand/20 bg-[var(--brand-light)] text-brand' : 'border-destructive/20 bg-destructive/5 text-destructive'
-            )}
-            role="status"
-            aria-live="polite"
-          >
-            <div className="shrink-0 pt-0.5">
-              {testResult.success ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+          {testResult && (
+            <div
+              className={cn(
+                'mt-5 flex gap-3 rounded-lg border p-4',
+                testResult.success ? 'border-brand/20 bg-[var(--brand-light)] text-brand' : 'border-destructive/20 bg-destructive/5 text-destructive'
+              )}
+              role="status"
+              aria-live="polite"
+            >
+              <div className="shrink-0 pt-0.5">
+                {testResult.success ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">
+                  {testResult.success ? 'Connection succeeded' : 'Connection failed'}
+                  <span className="font-normal text-[var(--text-secondary)]"> · HTTP {testResult.code || 'Timeout'}</span>
+                </p>
+                <p className="mt-1 break-all font-mono text-xs leading-relaxed text-[var(--text-secondary)]">{testResult.body}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">
-                {testResult.success ? 'Connection succeeded' : 'Connection failed'}
-                <span className="font-normal text-[var(--text-secondary)]"> · HTTP {testResult.code || 'Timeout'}</span>
-              </p>
-              <p className="mt-1 break-all font-mono text-xs leading-relaxed text-[var(--text-secondary)]">{testResult.body}</p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </Link>
 
       <Accordion>
         <AccordionItem value="logs" className="border-t border-[var(--border-subtle)]">
@@ -462,15 +471,17 @@ function WebhookCard({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-    </div>
+    </>
   )
 }
 
 function DeliveryLogs({ subscriptionId }: { subscriptionId: string }) {
-  const { data: logs, isLoading } = useQuery({
+  const { data: logsData, isLoading } = useQuery({
     queryKey: ['webhook-logs', subscriptionId],
     queryFn: () => listWebhookDeliveries(subscriptionId),
   })
+
+  const logs = logsData?.data ?? []
 
   if (isLoading) {
     return (

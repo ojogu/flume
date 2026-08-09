@@ -13,7 +13,7 @@ from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
 from src.model.job import Job, JobStatus
-from src.service.downloader import extract_info, build_source_meta
+from src.service.downloader import build_source_meta, extract_info
 from src.service.jobs import JobService
 from src.utils.log import get_logger
 
@@ -38,10 +38,10 @@ def process_job(job_id: str):
 
 
 async def _process_job_async(job_id: str):
-    from src.utils.db import get_async_db_session
-    from src.service.jobs import JobService
     from src.service.events import EventService
+    from src.service.jobs import JobService
     from src.service.platform import PlatformService
+    from src.utils.db import get_async_db_session
 
     async with get_async_db_session() as db:
         job_service = JobService(db)
@@ -54,7 +54,9 @@ async def _process_job_async(job_id: str):
             return
 
         if job.status != JobStatus.PENDING.value:
-            logger.warning(f"Job {job_id} is not PENDING (status={job.status}) — aborting")
+            logger.warning(
+                f"Job {job_id} is not PENDING (status={job.status}) — aborting"
+            )
             return
 
         # mark as processing
@@ -89,11 +91,19 @@ async def _process_job_async(job_id: str):
                         f"This platform has not been added to Flume yet."
                     )
                     logger.error(f"Job {job_id} — {error_msg}")
-                    await job_service.set_source_metadata(job.id, {
-                        "source": {"platform": info.platform, "url": job.source_uri},
-                        "failure": {"reason": "unsupported_platform"},
-                    })
-                    await job_service.update_status(job.id, JobStatus.FAILED, error=error_msg)
+                    await job_service.set_source_metadata(
+                        job.id,
+                        {
+                            "source": {
+                                "platform": info.platform,
+                                "url": job.source_uri,
+                            },
+                            "failure": {"reason": "unsupported_platform"},
+                        },
+                    )
+                    await job_service.update_status(
+                        job.id, JobStatus.FAILED, error=error_msg
+                    )
                     await event_service.emit(
                         event_type=EventType.JOB_FAILED,
                         resource_id=job.id,
@@ -111,14 +121,22 @@ async def _process_job_async(job_id: str):
                     if platform.limitations:
                         error_msg += f" Reason: {platform.limitations}"
                     logger.error(f"Job {job_id} — {error_msg}")
-                    await job_service.set_source_metadata(job.id, {
-                        "source": {"platform": info.platform, "url": job.source_uri},
-                        "failure": {
-                            "reason": "platform_disabled",
-                            "reason_detail": platform.limitations,
+                    await job_service.set_source_metadata(
+                        job.id,
+                        {
+                            "source": {
+                                "platform": info.platform,
+                                "url": job.source_uri,
+                            },
+                            "failure": {
+                                "reason": "platform_disabled",
+                                "reason_detail": platform.limitations,
+                            },
                         },
-                    })
-                    await job_service.update_status(job.id, JobStatus.FAILED, error=error_msg)
+                    )
+                    await job_service.update_status(
+                        job.id, JobStatus.FAILED, error=error_msg
+                    )
                     await event_service.emit(
                         event_type=EventType.JOB_FAILED,
                         resource_id=job.id,
@@ -139,7 +157,9 @@ async def _process_job_async(job_id: str):
                     await _handle_single(job_service, job)
         except Exception as e:
             logger.error(f"Orchestration failed for job {job_id}: {e}")
-            await job_service.update_status(job.id, JobStatus.FAILED, error="Processing failed")
+            await job_service.update_status(
+                job.id, JobStatus.FAILED, error="Processing failed"
+            )
             await event_service.emit(
                 event_type=EventType.JOB_FAILED,
                 resource_id=job.id,
@@ -189,17 +209,21 @@ async def _handle_playlist(job_service: JobService, parent: Job, info):
     )
 
     if not children:
-        await job_service.update_status(parent.id, JobStatus.FAILED, error="No valid playlist entries")
+        await job_service.update_status(
+            parent.id, JobStatus.FAILED, error="No valid playlist entries"
+        )
         return
 
     # create JobSteps + dispatch each child
     for child in children:
         for i, step in enumerate(child.pipeline_steps):
-            await job_service.create_job_step(child.id, i, step.get("operation", "unknown"))
+            await job_service.create_job_step(
+                child.id, i, step.get("operation", "unknown")
+            )
 
         download_task.apply_async(args=[str(child.id)], task_id=str(child.id))
 
-    logger.info(f"Parent {parent.id} — fanned out {len(children)} child jobs")
+    logger.info(f"Parent {parent.id!s} — fanned out {len(children)} child jobs")
 
 
 def _resolve_selection(parent: Job, info) -> list[int] | None:
@@ -211,7 +235,7 @@ def _resolve_selection(parent: Job, info) -> list[int] | None:
     """
     total = info.playlist_count or 0
     if total == 0:
-        logger.error(f"Playlist {parent.id} has no entries")
+        logger.error(f"Playlist {parent.id!s} has no entries")
         return None
 
     if parent.selection:

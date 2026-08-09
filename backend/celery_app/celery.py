@@ -1,9 +1,8 @@
 # ── Celery app factory ────────────────────────────────────────────────────────
 # Configures the Celery instance with broker, result backend, queue routing,
-# and beat schedule. OTel instrumentation is guarded by CELERY_WORKER env var
-# so only the worker process (not the FastAPI server) registers its own tracer.
+# and beat schedule. OTel instrumentation runs in each worker process via
+# worker_process_init signal (after fork), not at module import time.
 
-import os
 # from celery.schedules import crontab
 from src.utils.config import config
 from datetime import timedelta
@@ -11,7 +10,8 @@ from celery import Celery
 from .celery_config import CeleryConfig
 
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
-from src.utils.telemetry import setup_telemetry 
+from src.utils.telemetry import setup_telemetry
+from celery.signals import worker_process_init, worker_process_shutdown 
 
 bg_task = Celery(
     "celery",
@@ -31,12 +31,6 @@ bg_task.conf.broker_connection_retry_on_startup = True
 
 bg_task.config_from_object(CeleryConfig)
 
-# OTel init guarded by env var: celery.py is imported at FastAPI startup too, but we only want the worker process to have its own tracer (service_name="flume-worker")
-if os.getenv("CELERY_WORKER") == "true":
-    setup_telemetry(service_name="flume-worker")
-    from src.utils.log import configure_structlog
-    configure_structlog()
-    CeleryInstrumentor().instrument()
 
 # interval = config.celery_beat_interval
 bg_task.conf.beat_schedule = {
@@ -47,3 +41,18 @@ bg_task.conf.beat_schedule = {
 # Every hour at minute 2,crontab(minute=2),"12:02, 1:02, 2:02..."
 # Every 2 hours,"crontab(hour='*/2', minute=0)","12:00, 2:00, 4:00..."
 # Specific minutes,"crontab(minute='0,15,30,45')",Every quarter hour
+
+
+@worker_process_init.connect
+def on_worker_process_init(**_kwargs):
+    setup_telemetry(service_name="flume-worker")
+    from src.utils.log import configure_structlog
+    configure_structlog()
+    CeleryInstrumentor().instrument()
+
+
+@worker_process_shutdown.connect
+def on_worker_process_shutdown(**_kwargs):
+    from opentelemetry import metrics, trace
+    metrics.get_meter_provider().shutdown()
+    trace.get_tracer_provider().shutdown()

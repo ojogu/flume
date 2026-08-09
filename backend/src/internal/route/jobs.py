@@ -1,20 +1,19 @@
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import RedirectResponse
 
 from src.core.dependency import get_current_user, get_job_service
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
-from src.model.user import User
 from src.internal.schema.jobs import (
-    InternalJobResponse,
     InternalJobDetailResponse,
     InternalJobListResponse,
-    InternalStepResponse,
+    InternalJobResponse,
 )
+from src.model.user import User
 from src.service.jobs import JobService
 from src.utils.response import success
 
@@ -36,9 +35,9 @@ def _enrich_job(job, api_key_name: str | None = None) -> dict:
 async def list_jobs(
     user: User = Depends(get_current_user),
     job_service: JobService = Depends(get_job_service),
-    api_key_id: Optional[uuid.UUID] = Query(None, description="Filter by API key"),
-    status_filter: Optional[str] = Query(None, alias="status"),
-    created_after: Optional[datetime] = Query(None),
+    api_key_id: uuid.UUID | None = Query(None, description="Filter by API key"),
+    status_filter: str | None = Query(None, alias="status"),
+    created_after: datetime | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
@@ -54,8 +53,8 @@ async def list_jobs(
 
     # Enrich jobs with api_key_name
     from sqlalchemy import select
+
     from src.model.api import ApiKey
-    from src.utils.db import get_session
 
     # Batch-load API key names for the jobs in this page
     api_key_ids = list({j.api_key_id for j in jobs})
@@ -100,6 +99,7 @@ async def get_job(
 
     # Fetch API key name
     from sqlalchemy import select
+
     from src.model.api import ApiKey
 
     result = await job_service.db.execute(
@@ -122,3 +122,23 @@ async def get_job(
     )
 
     return success(data=data.model_dump())
+
+
+@internal_job_route.get("/{job_id}/download")
+async def download_job(
+    job_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    job_service: JobService = Depends(get_job_service),
+):
+    """Redirect to a presigned R2 URL for the job's final output.
+
+    The job is verified to belong to the authenticated user via JWT session.
+    The presigned URL is scoped to the job's owning API key.
+    """
+    job = await job_service.get_job_detail_by_user(user_id=user.id, job_id=job_id)
+    if not job:
+        from src.core.exception_base import NotFoundError
+        raise NotFoundError("Job not found")
+
+    presigned_url = await job_service.generate_download_url(job_id, job.api_key_id)
+    return success(data={"url": presigned_url})

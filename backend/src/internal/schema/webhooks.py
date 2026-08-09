@@ -63,3 +63,10 @@ class InternalWebhookDeliveryResponse(BaseModel):
     next_retry_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+
+
+class PaginatedWebhookDeliveriesResponse(BaseModel):
+    """Paginated list of webhook deliveries with total count."""
+
+    data: list[InternalWebhookDeliveryResponse]
+    total: int

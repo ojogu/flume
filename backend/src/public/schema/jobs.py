@@ -65,7 +65,7 @@ class OutputBody(BaseModel):
 class CreateJobRequest(BaseModel):
     """POST /job request body — source media + pipeline of operations + delivery outputs."""
     source: SourceObject
-    pipeline: list[PipelineOperation] = Field(min_length=1)
+    pipeline: list[PipelineOperation] = Field(default_factory=list)
     outputs: list[OutputBody] = Field(
         default_factory=lambda: [OutputBody(type=OutputType.GENERATE_DOWNLOAD_LINK)]
     )
@@ -84,12 +84,24 @@ class JobResponse(BaseModel):
     outputs: Optional[list] = None
     selection: Optional[dict] = None
     source_metadata: Optional[dict] = None
+    title: Optional[str] = None
     error: Optional[str] = None
     parent_job_id: Optional[uuid.UUID] = None
     playlist_entry_index: Optional[int] = None
     completed_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_title_from_metadata(cls, data: Any) -> Any:
+        if isinstance(data, dict) and data.get("title") is None:
+            source_meta = data.get("source_metadata", {})
+            if isinstance(source_meta, dict):
+                source = source_meta.get("source", {})
+                if isinstance(source, dict):
+                    data["title"] = source.get("title")
+        return data
 
 
 class StepResponse(BaseModel):

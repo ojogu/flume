@@ -82,8 +82,25 @@ export async function deleteWebhook(id: string): Promise<void> {
 /**
  * List delivery attempts for a specific subscription.
  */
-export async function listWebhookDeliveries(id: string): Promise<WebhookDelivery[]> {
-  const res = await apiClient<{ status: string; data: WebhookDelivery[] }>(`/webhooks/${id}/deliveries`)
+export async function listWebhookDeliveries(
+  id: string,
+  params?: { limit?: number; offset?: number }
+): Promise<{ data: WebhookDelivery[]; total: number }> {
+  const query = new URLSearchParams()
+  if (params?.limit !== undefined) query.set('limit', String(params.limit))
+  if (params?.offset !== undefined) query.set('offset', String(params.offset))
+  const queryStr = query.toString() ? `?${query.toString()}` : ''
+  const res = await apiClient<{ status: string; data: { data: WebhookDelivery[]; total: number } }>(
+    `/webhooks/${id}/deliveries${queryStr}`
+  )
+  return res.data
+}
+
+/**
+ * Get a single webhook subscription by ID.
+ */
+export async function getWebhook(id: string): Promise<WebhookSubscription> {
+  const res = await apiClient<{ status: string; data: WebhookSubscription }>(`/webhooks/${id}`)
   return res.data
 }
 
