@@ -22,6 +22,7 @@ from src.service.events import EventService
 from src.service.jobs import JobService
 from src.utils.config import config
 from src.utils.log import get_logger
+from src.utils.title import sanitize_title_for_filename
 
 logger = get_logger(__name__)
 
@@ -202,10 +203,10 @@ async def _handle_success(
         ext = Path(result.output_path).suffix.lstrip(".") or "mp4"
         api_key_short = str(job.api_key_id).split("-")[0]
         job_short = str(job_uuid).split("-")[0]
-        object_key = (
-            f"outputs/{api_key_short}/{job_short}/"
-            f"step_{step_index}_output.{ext}"
-        )
+        title = job.source_metadata.get("source", {}).get("title") if job.source_metadata else None
+        sanitized = sanitize_title_for_filename(title)
+        filename = sanitized if sanitized else f"step_{step_index}_output"
+        object_key = f"outputs/{api_key_short}/{job_short}/{filename}.{ext}"
         await storage.upload_file(result.output_path, object_key)
         result.artifact.output_url = (
             f"{config.cdn_base_url}/job/{job_id}/download"

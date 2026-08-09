@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { getJob, Job, JobStep } from '@/lib/jobs'
 import { formatDuration, cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api'
 
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -32,6 +33,14 @@ export function JobDetailPage() {
     navigator.clipboard.writeText(text)
     setCopiedId(true)
     setTimeout(() => setCopiedId(false), 2000)
+  }
+
+  const handleDownload = async (jobId: string) => {
+    const win = window.open('', '_blank')
+    if (!win) return
+
+    const response = await apiClient<{status: string, data: {url: string}}>(`/jobs/${jobId}/download`)
+    win.location.href = response.data.url
   }
 
   if (loading) {
@@ -160,19 +169,19 @@ export function JobDetailPage() {
               </div>
 
               {index === (job.steps?.length ?? 0) - 1 && step.output_url && (
-                <a
-                  href={step.output_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={step.output_url}
-                  className="rounded-xl border border-brand/20 bg-brand/5 p-4 flex items-start gap-3 text-brand hover:bg-brand/10 transition-colors"
+                <button
+                  onClick={() => handleDownload(id!)}
+                  title={`https://api.flume.ojogulabs.xyz/internal/jobs/${id}/download`}
+                  className="rounded-xl border border-brand/20 bg-brand/5 p-4 flex items-start gap-3 text-brand hover:bg-brand/10 active:bg-brand/20 cursor-pointer transition-colors w-full text-left"
                 >
                   <ExternalLink className="h-5 w-5 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="text-sm font-bold uppercase tracking-wider">View Output</p>
-                    <p className="text-sm opacity-90 leading-relaxed truncate">{step.output_url}</p>
+                    <p className="text-sm opacity-90 leading-relaxed truncate">
+                      {`https://api.flume.ojogulabs.xyz/internal/jobs/${id}/download`}
+                    </p>
                   </div>
-                </a>
+                </button>
               )}
 
               {step.error && (

@@ -57,3 +57,6 @@ posts/
 
 # Deno lockfile (created by deno installer in containers)
 deno.lock
+
+# Error output dumps
+error.txt

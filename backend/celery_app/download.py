@@ -26,6 +26,7 @@ from src.service.storage import storage
 from src.utils.config import config
 from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
+from src.utils.title import sanitize_title_for_filename
 
 logger = get_logger(__name__)
 
@@ -94,7 +95,7 @@ async def _download_task_async(job_id: str):
             if is_upload:
                 result = await _download_upload_source(job, workspace)
             else:
-                #get the format from the client, or default to best
+                # get the format from the client, or default to best
                 fmt = _FormatPreference(
                     job.pipeline_steps[0].get("params", {}).get("format", "best")
                 )
@@ -116,7 +117,9 @@ async def _download_task_async(job_id: str):
             await job_service.update_job_step(
                 step.id,
                 StepStatus.COMPLETE,
-                output_artifact=result.artifact.model_dump(mode="json", exclude_none=True),
+                output_artifact=result.artifact.model_dump(
+                    mode="json", exclude_none=True
+                ),
             )
 
             await event_service.emit(
@@ -127,7 +130,9 @@ async def _download_task_async(job_id: str):
                     "job_id": job_id,
                     "operation": step.operation,
                     "step_index": step.step_index,
-                    "output_artifact": result.artifact.model_dump(mode="json", exclude_none=True),
+                    "output_artifact": result.artifact.model_dump(
+                        mode="json", exclude_none=True
+                    ),
                 },
                 api_key_id=job.api_key_id,
             )
@@ -137,6 +142,7 @@ async def _download_task_async(job_id: str):
                 # More steps to run: chain to the first operation step (step_index=1).
                 # The job stays PROCESSING; final upload and status are set by the last operation task.
                 from celery_app.operations import execute_operation_task
+
                 next_index = 1
                 next_op = pipeline_steps[next_index].get("operation", "unknown")
                 logger.info(
@@ -151,7 +157,9 @@ async def _download_task_async(job_id: str):
                 ext = guess_container(result.local_path)
                 api_key_short = str(job.api_key_id).split("-")[0]
                 job_short = str(job_uuid).split("-")[0]
-                object_key = f"outputs/{api_key_short}/{job_short}/input.{ext}"
+                sanitized = sanitize_title_for_filename(result.metadata.title)
+                filename = sanitized if sanitized else "input"
+                object_key = f"outputs/{api_key_short}/{job_short}/{filename}.{ext}"
                 await storage.upload_file(result.local_path, object_key)
                 result.artifact.output_url = (
                     f"{config.cdn_base_url}/job/{job_id}/download"
@@ -161,14 +169,18 @@ async def _download_task_async(job_id: str):
                 await job_service.update_job_step(
                     step.id,
                     StepStatus.COMPLETE,
-                    output_artifact=result.artifact.model_dump(mode="json", exclude_none=True),
+                    output_artifact=result.artifact.model_dump(
+                        mode="json", exclude_none=True
+                    ),
                 )
 
                 await job_service.update_status(job_uuid, JobStatus.SUCCEEDED)
                 await job_service.notify_child_complete(job_uuid)
 
                 updated_job = await job_service.get_job(job_uuid)
-                final_status = updated_job.status if updated_job else JobStatus.SUCCEEDED.value
+                final_status = (
+                    updated_job.status if updated_job else JobStatus.SUCCEEDED.value
+                )
 
                 await event_service.emit(
                     event_type=EventType.JOB_COMPLETED,
@@ -190,10 +202,14 @@ async def _download_task_async(job_id: str):
         except Exception as e:
             logger.error(f"Download failed for job {job_id}: {e}")
             await job_service.update_job_step(
-                step.id, StepStatus.FAILED, error="Download failed",
+                step.id,
+                StepStatus.FAILED,
+                error="Download failed",
             )
             await job_service.update_status(
-                job_uuid, JobStatus.FAILED, error="Download failed",
+                job_uuid,
+                JobStatus.FAILED,
+                error="Download failed",
             )
 
             await event_service.emit(
@@ -243,7 +259,6 @@ async def _download_upload_source(job, workspace: Path) -> "DownloadResult":
     builds an ``Artifact`` without yt-dlp metadata (codec, resolution,
     duration — the FFmpeg pipeline fills those gaps via ffprobe).
     """
-    
 
     presigned_url = await storage.generate_presigned_download_url(job.source_uri)
 
@@ -261,10 +276,14 @@ async def _download_upload_source(job, workspace: Path) -> "DownloadResult":
     assert_size_under_limit(local_path)
 
     artifact = build_artifact_from_local(
-        local_path, job.source_uri, job_id=str(job.id),
+        local_path,
+        job.source_uri,
+        job_id=str(job.id),
     )
 
-    logger.info(f"R2 download complete for job {job.id} — {local_path} ({artifact.file.size_bytes} bytes)")
+    logger.info(
+        f"R2 download complete for job {job.id!s} — {local_path} ({artifact.file.size_bytes} bytes)"
+    )
 
     return DownloadResult(
         local_path=local_path,
