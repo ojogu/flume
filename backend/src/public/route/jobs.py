@@ -54,7 +54,7 @@ async def create_job(
     upload = await upload_service.find_by_uri(source.uri, api_key.id)
     if upload and upload.status == UploadStatus.UNATTACHED.value:
         await upload_service.attach_upload(upload.id, api_key.id)
-        logger.info(f"Prior upload {upload.id} attached to job")
+        logger.info(f"Prior upload {upload.id!s} attached to job")
 
     # Run 5 validation gates (registry → params → types → build spec)
     logger.debug(f"Starting pipeline validation — {len(body.pipeline)} operations")
@@ -65,13 +65,16 @@ async def create_job(
     )
     # inject implicit download as step 0 — always runs first
     download_type = "r2" if source.uri.startswith("uploads/") else "yt-dlp"
-    spec.insert(0, {
-        "operation": "download",
-        "params": {
-            "type": download_type,
-            "format": source.format.value,
+    spec.insert(
+        0,
+        {
+            "operation": "download",
+            "params": {
+                "type": download_type,
+                "format": source.format.value,
+            },
         },
-    })
+    )
     logger.info(
         f"Pipeline validation passed — "
         f"{len(spec)} steps: {[s['operation'] for s in spec]}"
@@ -89,7 +92,9 @@ async def create_job(
         selection=selection,
     )
 
-    logger.info(f"Job {job.id} created — status={job.status}, source={job.source_uri}")
+    logger.info(
+        f"Job {job.id!s} created — status={job.status}, source={job.source_uri}"
+    )
 
     # Emit job.created event for webhook subscribers
     await event_service.emit(
@@ -107,8 +112,9 @@ async def create_job(
     # Dispatch job processing to the orchestrator queue.
     # Celery task_id == job UUID so monitoring tools show the application ID.
     from celery_app.orchestrator import process_job
+
     process_job.apply_async(args=[str(job.id)], task_id=str(job.id))
-    logger.info(f"Job {job.id} dispatched to orchestrator")
+    logger.info(f"Job {job.id!s} dispatched to orchestrator")
 
     # Wrap in standard {status, message, data} envelope with HTTP 201
     return success(
@@ -144,6 +150,7 @@ async def list_jobs(
         ).model_dump(),
     )
 
+
 @job_route.get("/{job_id}/download")
 async def download_job(
     job_id: uuid.UUID,
@@ -165,6 +172,7 @@ async def get_job(
     job = await job_service.get_job_detail(job_id=job_id, api_key_id=api_key.id)
     if not job:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Job not found")
 
     return success(

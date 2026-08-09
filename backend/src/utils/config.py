@@ -46,7 +46,7 @@ class Config(BaseSettings):
     # ── CDN / output delivery ───────────────────────────────────────────────
     # Base URL for user-facing CDN endpoints (no trailing slash).
     # Used to construct output_url on artifacts and to redirect download requests.
-    cdn_base_url: str = "https://flume.ojogulabs.xyz/v1"
+    cdn_base_url: str = "https://api.flume.ojogulabs.xyz/v1"
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
