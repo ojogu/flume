@@ -61,6 +61,7 @@ rebuild/backend:
 	docker compose up -d --build backend
 
 rebuild/frontend:
+	docker rmi --force flume-frontend
 	docker compose up -d --build frontend
 
 rebuild/docs:
