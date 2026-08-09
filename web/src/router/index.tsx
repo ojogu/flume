@@ -13,6 +13,7 @@ import { JobsPage } from '@/pages/dashboard/JobsPage'
 import { JobDetailPage } from '@/pages/dashboard/JobDetailPage'
 import { ApiKeysPage } from '@/pages/dashboard/ApiKeysPage'
 import { WebhooksPage } from '@/pages/dashboard/WebhooksPage'
+import { WebhookDetailPage } from '@/pages/dashboard/WebhookDetailPage'
 import { PlatformsPage } from '@/pages/dashboard/PlatformsPage'
 import { AdminShell } from '@/pages/admin/AdminShell'
 import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
@@ -65,6 +66,10 @@ export const router = createBrowserRouter([
           {
             path: 'webhooks',
             element: <WebhooksPage />,
+          },
+          {
+            path: 'webhooks/:id',
+            element: <WebhookDetailPage />,
           },
           {
             path: 'platforms',

@@ -286,18 +286,31 @@ class EventService:
         logger.info(f"WebhookSubscription {subscription_id} deleted (user {user_id})")
 
     async def list_deliveries_by_user(
-        self, user_id: uuid.UUID, subscription_id: uuid.UUID, limit: int = 50,
-    ) -> list[WebhookDelivery]:
-        """List recent deliveries for a subscription, verifying user ownership."""
+        self,
+        user_id: uuid.UUID,
+        subscription_id: uuid.UUID,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[WebhookDelivery], int]:
+        """List deliveries for a subscription with pagination, verifying user ownership."""
         await self._verify_subscription_ownership(user_id, subscription_id)
+
+        where_clause = WebhookDelivery.subscription_id == subscription_id
+
+        count_result = await self.db.execute(
+            select(func.count()).select_from(WebhookDelivery).where(where_clause)
+        )
+        total = count_result.scalar() or 0
 
         result = await self.db.execute(
             select(WebhookDelivery)
-            .where(WebhookDelivery.subscription_id == subscription_id)
+            .where(where_clause)
             .order_by(WebhookDelivery.created_at.desc())
             .limit(limit)
+            .offset(offset)
         )
-        return list(result.scalars().all())
+        deliveries = list(result.scalars().all())
+        return deliveries, total
 
     async def test_subscription_by_user(
         self, user_id: uuid.UUID, subscription_id: uuid.UUID,
