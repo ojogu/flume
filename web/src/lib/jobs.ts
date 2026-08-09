@@ -1,6 +1,6 @@
 import { apiClient } from './api'
 
-export type JobStatus = 'pending' | 'processing' | 'succeeded' | 'partial_success' | 'failed'
+export type JobStatus = 'pending' | 'processing' | 'succeeded' | 'partial_success' | 'failed' | 'dead'
 
 export type JobStepStatus = 'pending' | 'running' | 'completed' | 'failed'
 
@@ -34,6 +34,8 @@ export interface Job {
   error: string | null
   parent_job_id: string | null
   playlist_entry_index: number | null
+  retry_count: number
+  max_retries: number
   completed_at: string | null
   created_at: string
   updated_at: string
@@ -77,5 +79,13 @@ export async function getJobs(params: GetJobsParams = {}): Promise<JobsResponse>
  */
 export async function getJob(id: string): Promise<Job> {
   const res = await apiClient<{ status: string; data: Job }>(`/jobs/${id}`)
+  return res.data
+}
+
+export async function retryJob(id: string): Promise<Job> {
+  const res = await apiClient<{ status: string; data: Job }>(
+    `/jobs/${id}/status`,
+    { method: 'PATCH', body: JSON.stringify({ action: 'retry' }) }
+  )
   return res.data
 }

@@ -30,7 +30,7 @@ export function JobsPage() {
   const [page, setPage] = useState(1)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const { data, isLoading, isError, error, isFetching } = useQuery({
+  const { data, isLoading, isError, error, isFetching, refetch } = useQuery({
     queryKey: ['jobs', activeApiKey, status, page],
     queryFn: () => getJobs({
       status: status === 'all' ? undefined : status,
@@ -63,13 +63,16 @@ export function JobsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <h1 className="text-display text-3xl text-[var(--text-primary)]">Jobs</h1>
-          <div className={cn(
-            "flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-medium tracking-wider uppercase transition-all duration-300",
-            isFetching ? "bg-brand/10 text-brand" : "bg-black/5 dark:bg-white/5 text-[var(--text-muted)]"
-          )}>
+          <button
+            onClick={() => refetch()}
+            className={cn(
+              "flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-medium tracking-wider uppercase transition-all duration-300 cursor-pointer hover:bg-brand/10",
+              isFetching ? "bg-brand/10 text-brand" : "bg-black/5 dark:bg-white/5 text-[var(--text-muted)]"
+            )}
+          >
             <RefreshCcw className={cn("h-3 w-3", isFetching && "animate-spin")} />
             {isFetching ? 'Polling' : 'Live'}
-          </div>
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
