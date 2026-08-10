@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Edit2, Trash2, Globe, LoaderCircle } from 'lucide-react'
+import { Plus, Edit2, Globe, LoaderCircle, Power, PowerOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { 
   Table, 
@@ -37,7 +37,6 @@ import {
   getPlatforms, 
   createPlatform, 
   updatePlatform, 
-  deletePlatform, 
   Platform, 
   CreatePlatformRequest 
 } from '@/lib/platforms'
@@ -52,8 +51,10 @@ export function AdminPlatformsPage() {
   // Interaction State
   const [showDialog, setShowDialog] = useState(false)
   const [editingPlatform, setEditingPlatform] = useState<Platform | null>(null)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [platformToDelete, setPlatformToDelete] = useState<Platform | null>(null)
+  const [originalSlug, setOriginalSlug] = useState<string | null>(null)
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false)
+  const [platformToDeactivate, setPlatformToDeactivate] = useState<Platform | null>(null)
+  const [showSlugChangeDialog, setShowSlugChangeDialog] = useState(false)
 
   // Form State
   const [formData, setFormData] = useState<CreatePlatformRequest>({
@@ -109,6 +110,7 @@ export function AdminPlatformsPage() {
 
   const handleOpenEdit = (platform: Platform) => {
     setEditingPlatform(platform)
+    setOriginalSlug(platform.slug)
     setFormData({
       name: platform.name,
       slug: platform.slug,
@@ -131,6 +133,15 @@ export function AdminPlatformsPage() {
       return
     }
 
+    if (editingPlatform && originalSlug && formData.slug !== originalSlug) {
+      setShowSlugChangeDialog(true)
+      return
+    }
+
+    await performSave()
+  }
+
+  const performSave = async () => {
     setIsSaving(true)
     try {
       if (editingPlatform) {
@@ -149,17 +160,27 @@ export function AdminPlatformsPage() {
     }
   }
 
-  const handleDelete = async () => {
-    if (!platformToDelete) return
+  const handleDeactivate = async () => {
+    if (!platformToDeactivate) return
     try {
-      await deletePlatform(platformToDelete.id)
-      setPlatforms(prev => prev.filter(p => p.id !== platformToDelete.id))
-      toast.success('Platform deleted')
+      await updatePlatform(platformToDeactivate.id, { is_active: false })
+      toast.success('Platform deactivated')
+      fetchPlatforms()
     } catch (err: any) {
-      toast.error('Failed to delete platform')
+      toast.error('Failed to deactivate platform')
     } finally {
-      setShowDeleteDialog(false)
-      setPlatformToDelete(null)
+      setShowDeactivateDialog(false)
+      setPlatformToDeactivate(null)
+    }
+  }
+
+  const handleActivate = async (platform: Platform) => {
+    try {
+      await updatePlatform(platform.id, { is_active: true })
+      toast.success('Platform activated')
+      fetchPlatforms()
+    } catch (err: any) {
+      toast.error('Failed to activate platform')
     }
   }
 
@@ -252,14 +273,25 @@ export function AdminPlatformsPage() {
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon-sm" 
-                        onClick={() => { setPlatformToDelete(platform); setShowDeleteDialog(true); }}
-                        className="text-[var(--text-muted)] hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {platform.is_active ? (
+                        <Button 
+                          variant="ghost" 
+                          size="icon-sm" 
+                          onClick={() => { setPlatformToDeactivate(platform); setShowDeactivateDialog(true); }}
+                          className="text-[var(--text-muted)] hover:text-orange-500 hover:bg-orange-500/10 transition-colors"
+                        >
+                          <PowerOff className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="icon-sm" 
+                          onClick={() => handleActivate(platform)}
+                          className="text-[var(--text-muted)] hover:text-green-500 hover:bg-green-500/10 transition-colors"
+                        >
+                          <Power className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -298,7 +330,6 @@ export function AdminPlatformsPage() {
                     const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
                     setFormData({...formData, slug: val})
                   }}
-                  disabled={!!editingPlatform}
                   className="font-mono text-xs bg-[var(--bg-subtle)]"
                 />
               </div>
@@ -399,20 +430,38 @@ export function AdminPlatformsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Deactivate Confirmation */}
+      <AlertDialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-display text-2xl">Delete Platform</AlertDialogTitle>
+            <AlertDialogTitle className="text-display text-2xl">Deactivate Platform</AlertDialogTitle>
             <AlertDialogDescription className="text-sm">
-              Permanently remove <span className="font-bold text-[var(--text-primary)]">{platformToDelete?.name}</span>? 
-              This action cannot be undone and may cause issues with historical job records.
+              Deactivate <span className="font-bold text-[var(--text-primary)]">{platformToDeactivate?.name}</span>?
+              It won't be available for new jobs but will remain visible in the admin dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none">
-              Delete Forever
+            <AlertDialogAction onClick={handleDeactivate} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none">
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Slug Change Confirmation */}
+      <AlertDialog open={showSlugChangeDialog} onOpenChange={setShowSlugChangeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-display text-2xl">Change Platform Slug?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              Changing the slug from <code className="bg-[var(--bg-subtle)] px-1 py-0.5 rounded text-xs font-mono">{originalSlug}</code> to <code className="bg-[var(--bg-subtle)] px-1 py-0.5 rounded text-xs font-mono">{formData.slug}</code> may break existing job records that reference the old slug. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { setShowSlugChangeDialog(false); await performSave(); }}>
+              Change Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
