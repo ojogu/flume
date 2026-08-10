@@ -3,11 +3,11 @@
 # Supports cache-aside pattern, token blacklisting, and general key-value storage.
 
 import json
-import redis.asyncio as redis
-import redis as redis_sync
-from typing import Optional
-from src.utils.config import config
 
+import redis as redis_sync
+import redis.asyncio as redis
+
+from src.utils.config import config
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -15,8 +15,8 @@ logger = get_logger(__name__)
 CACHE_TTL = 300
 REDIS_URL = config.redis_url
 
-_redis: Optional[redis.Redis] = None
-_redis_sync: Optional[redis_sync.Redis] = None
+_redis: redis.Redis | None = None
+_redis_sync: redis_sync.Redis | None = None
 
 
 async def setup_redis() -> redis.Redis:
@@ -29,7 +29,7 @@ async def setup_redis() -> redis.Redis:
         try:
             _redis = redis.from_url(REDIS_URL, decode_responses=True)
         except Exception as e:
-            logger.error(f"Failed to initialize Redis connection: {str(e)}")
+            logger.error(f"Failed to initialize Redis connection: {e!s}")
             raise
 
     return _redis
@@ -88,10 +88,10 @@ async def get_or_fetch_cache(key: str, fetch_callback, ttl: int = CACHE_TTL):
 
         return fresh
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to decode JSON for key {key}: {str(e)}")
+        logger.error(f"Failed to decode JSON for key {key}: {e!s}")
         raise
     except Exception as e:
-        logger.error(f"Error in get_or_fetch_cache for key {key}: {str(e)}")
+        logger.error(f"Error in get_or_fetch_cache for key {key}: {e!s}")
         raise
 
 
@@ -118,7 +118,7 @@ async def key_exist(key: str) -> bool:
         logger.debug(f"Key {key} exists: {bool(exist)}")
         return bool(exist)
     except Exception as e:
-        logger.error(f"Error checking if key {key} exists: {str(e)}")
+        logger.error(f"Error checking if key {key} exists: {e!s}")
         return False
 
 
@@ -139,10 +139,10 @@ async def get_from_cache(key: str):
         logger.debug(f"Cache miss for key: {key}")
         return None
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to decode cached JSON for key {key}: {str(e)}")
+        logger.error(f"Failed to decode cached JSON for key {key}: {e!s}")
         return None
     except Exception as e:
-        logger.error(f"Error retrieving cache for key {key}: {str(e)}")
+        logger.error(f"Error retrieving cache for key {key}: {e!s}")
         return None
 
 
@@ -153,5 +153,5 @@ async def clear_cache() -> bool:
         logger.info("Redis cache cleared successfully")
         return True
     except Exception as e:
-        logger.error(f"Error clearing Redis cache: {str(e)}")
+        logger.error(f"Error clearing Redis cache: {e!s}")
         return False

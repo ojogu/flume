@@ -1,14 +1,14 @@
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exception_base import BadRequest, DatabaseError, NotFoundError
 from src.model.upload import Upload, UploadStatus
 from src.public.schema.uploads import PresignedUploadResult
-from src.core.exception_base import NotFoundError, BadRequest, DatabaseError
+from src.service.storage import build_object_key, storage
 from src.utils.log import get_logger
-from src.service.storage import storage, build_object_key
 
 logger = get_logger(__name__)
 
@@ -51,7 +51,7 @@ class UploadService:
             await self.db.refresh(upload)
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Failed to create PENDING upload record: {e}")
+            logger.error(f"Failed to create PENDING upload record: upload_id={upload_id}, api_key_id={api_key_id}, error={e}")
             raise DatabaseError()
 
         # Generate a time-limited presigned URL from R2 now that we have a valid object key. 
@@ -97,7 +97,7 @@ class UploadService:
             raise BadRequest("Upload is not in a processable state")
 
         # ── Verify in R2 ──────────────────────────────────────────────
-        metadata = await storage.head_object(upload.uri)
+        metadata = await storage.head_object(upload.uri, upload_id)
         if metadata is None:
             logger.warning(f"Upload {upload_id}: object not found at key {upload.uri}")
             raise BadRequest("Upload not found or no longer available")
@@ -118,7 +118,7 @@ class UploadService:
             return upload
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Error completing upload {upload_id}: {e}")
+            logger.error(f"Error completing upload: upload_id={upload_id}, api_key_id={api_key_id}, error={e}")
             raise DatabaseError()
 
     # ── Lookup + lifecycle helpers ────────────────────────────────────
@@ -173,7 +173,7 @@ class UploadService:
             return upload
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Error attaching upload {upload_id}: {e}")
+            logger.error(f"Error attaching upload: upload_id={upload_id}, api_key_id={api_key_id}, error={e}")
             raise DatabaseError()
 
     async def cleanup_unattached(self, older_than: datetime) -> int:
@@ -198,7 +198,7 @@ class UploadService:
         deleted_count = 0
         for upload in uploads:
             try:
-                await storage.delete_object(upload.uri)
+                await storage.delete_object(upload.uri, upload.id)
             except Exception as e:
                 logger.warning(f"Failed to delete R2 object for upload {upload.id} (key={upload.uri}): {e}")
                 continue
@@ -211,5 +211,5 @@ class UploadService:
             return deleted_count
         except Exception as e:
             await self.db.rollback()
-            logger.error(f"Error cleaning up uploads: {e}")
+            logger.error(f"Error cleaning up uploads (total={len(uploads)}): {e}")
             raise DatabaseError()

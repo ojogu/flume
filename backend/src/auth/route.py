@@ -65,7 +65,7 @@ async def oauth(
         logger.info("webhook is ready")
         return {"status": "ready"}
 
-    logger.info(f"query_params; {dict(request.query_params)}")
+    logger.debug(f"query_params; {dict(request.query_params)}")
     return await auth_service.handle_google_callback(
         request=request,
         user_service=user_service,

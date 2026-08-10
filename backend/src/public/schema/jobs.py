@@ -1,14 +1,17 @@
+import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
-import uuid
-
+from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from src.model.job import SourceType, JobStatus
-from src.schema.download import _FormatPreference, _PlaylistSelection, _AUDIO_SAFE_FORMATS
+from src.model.job import JobStatus, SourceType
+from src.schema.download import (
+    _AUDIO_SAFE_FORMATS,
+    _FormatPreference,
+    _PlaylistSelection,
+)
 
 
 class OutputType(str, Enum):
@@ -80,17 +83,17 @@ class JobResponse(BaseModel):
     status: JobStatus
     source_uri: str
     source_type: SourceType
-    pipeline_steps: Optional[list] = None
-    outputs: Optional[list] = None
-    selection: Optional[dict] = None
-    source_metadata: Optional[dict] = None
-    title: Optional[str] = None
-    error: Optional[str] = None
-    parent_job_id: Optional[uuid.UUID] = None
-    playlist_entry_index: Optional[int] = None
-    completed_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    pipeline_steps: list | None = None
+    outputs: list | None = None
+    selection: dict | None = None
+    source_metadata: dict | None = None
+    title: str | None = None
+    error: str | None = None
+    parent_job_id: uuid.UUID | None = None
+    playlist_entry_index: int | None = None
+    completed_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -113,13 +116,13 @@ class StepResponse(BaseModel):
     step_index: int
     operation: str
     status: str
-    input_artifact: Optional[dict] = None
-    output_artifact: Optional[dict] = None
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    input_artifact: dict | None = None
+    output_artifact: dict | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class JobDetailResponse(JobResponse):

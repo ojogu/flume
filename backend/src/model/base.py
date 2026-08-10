@@ -1,16 +1,12 @@
+import uuid
 from datetime import datetime
 from typing import (
     Any,
-    Dict,
 )
 
 import sqlalchemy as sa
-import uuid
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr
-
-
-
 
 # Naming conventions for auto-generated constraint names.
 # Alembic migrations use these names — without them, every migration would be a rename.
@@ -50,7 +46,7 @@ class BaseModel(Base):
         return name + "s"
 
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Converts the SQLAlchemy model instance to a dictionary."""
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 

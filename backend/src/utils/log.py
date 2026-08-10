@@ -2,13 +2,15 @@ import logging
 import os
 import sys
 import uuid
+
 import structlog
 from fastapi import Request
+from opentelemetry._logs import get_logger_provider
+from opentelemetry.sdk._logs import LoggingHandler
 from starlette.middleware.base import BaseHTTPMiddleware
 from structlog.contextvars import bind_contextvars, clear_contextvars
+
 from .config import config
-from opentelemetry.sdk._logs import LoggingHandler
-from opentelemetry._logs import get_logger_provider
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -100,6 +102,7 @@ def configure_structlog() -> None:
     # Quiet noisy third-party loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     print("Handlers:", root_logger.handlers)
 
 

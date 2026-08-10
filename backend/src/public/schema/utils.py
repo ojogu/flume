@@ -1,9 +1,6 @@
 from datetime import datetime
-from typing import Optional
-import uuid
 
 from pydantic import BaseModel
-
 
 # ── Utility endpoint schemas ──────────────────────────────────────────────────
 # Response bodies for /v1/utils routes — events catalog, key verification.
@@ -29,8 +26,8 @@ class EventListResponse(BaseModel):
 class VerifyKeyResponse(BaseModel):
     """API key verification result — read-only metadata about the key."""
     valid: bool
-    key_prefix: Optional[str] = None
-    name: Optional[str] = None
-    expires_at: Optional[datetime] = None
-    last_used_at: Optional[datetime] = None
-    status: Optional[str] = None
+    key_prefix: str | None = None
+    name: str | None = None
+    expires_at: datetime | None = None
+    last_used_at: datetime | None = None
+    status: str | None = None

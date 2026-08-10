@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 
 from src.core.dependency import get_api_key_from_header, get_platform_service
+from src.internal.schema.platforms import PlatformListResponse, PlatformResponse
 from src.model.api import ApiKey
-from src.internal.schema.platforms import PlatformResponse, PlatformListResponse
 from src.public.schema.utils import EventInfo, EventListResponse, VerifyKeyResponse
 from src.service.platform import PlatformService
 from src.service.util import UtilService

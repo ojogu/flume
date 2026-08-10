@@ -2,34 +2,35 @@
 # Maps every custom exception (BadRequest, NotFoundError, etc.) to a consistent
 # JSON error envelope. Also handles built-in FastAPI/Pydantic/SQLAlchemy errors.
 
-from typing import Any, Callable, Dict
-from fastapi import FastAPI, Request, HTTPException, status
-from src.schema import ErrorResponse
+from collections.abc import Callable
+
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from src.schema import ErrorResponse
+from src.utils.log import get_logger
 
 from ..core.exception_base import (
-    Environment_Variable_Exception,
-    InUseError,
-    TokenExpired,
-    InvalidToken,
-    NotFoundError,
     AlreadyExistsError,
-    InvalidEmailPassword,
     BadRequest,
-    NotVerified,
-    EmailVerificationError,
-    Unauthorized,
-    DatabaseError,
-    ServerError,
-    NotActive,
     BaseExceptionClass,
+    DatabaseError,
+    EmailVerificationError,
+    Environment_Variable_Exception,
     ExternalAPIError,
+    InUseError,
+    InvalidEmailPassword,
+    InvalidToken,
+    NotActive,
+    NotFoundError,
+    NotVerified,
+    ServerError,
+    TokenExpired,
+    Unauthorized,
 )
-from src.utils.log import get_logger
 
 exception_logger = get_logger(__name__)
 
@@ -37,13 +38,13 @@ exception_logger = get_logger(__name__)
 # Factory that captures per-exception status_code + initial_detail in a closure,
 # avoiding N nearly-identical handler definitions
 def create_exception_handler(
-    status_code: int, initial_detail: Dict
+    status_code: int, initial_detail: dict
 ) -> Callable[[Request, Exception], JSONResponse]:
     """Create a standardized exception handler"""
 
     async def exception_handler(request: Request, exc: BaseExceptionClass):
-        # Log the exception details
-        exception_logger.error(f"Exception occurred: {str(exc)}")
+        request_id = request.headers.get("X-Request-ID", "unknown")
+        exception_logger.error(f"Exception occurred: request_id={request_id}, path={request.url.path}, error={exc}")
 
         # Copy initial detail and override the message dynamically
         response_payload = initial_detail.copy()
@@ -294,7 +295,8 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
-        exception_logger.error(f"HTTP {exc.status_code}: {exc.detail}", exc_info=True)
+        request_id = request.headers.get("X-Request-ID", "unknown")
+        exception_logger.error(f"HTTP error: request_id={request_id}, path={request.url.path}, status={exc.status_code}, detail={exc.detail}", exc_info=True)
         return JSONResponse(
             content={
                 "status": "error",
@@ -317,7 +319,8 @@ def register_error_handlers(app: FastAPI):
             error_details.append(f"{field}: {message}")
 
         error_message = "; ".join(error_details)
-        exception_logger.error(f"Validation error: {error_message}")
+        request_id = request.headers.get("X-Request-ID", "unknown")
+        exception_logger.error(f"Validation error: request_id={request_id}, path={request.url.path}, errors={error_message}")
 
         return JSONResponse(
             content={
@@ -331,7 +334,8 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(ValidationError)
     async def pydantic_validation_error_handler(request: Request, exc: ValidationError):
-        exception_logger.error(f"Pydantic validation error: {str(exc)}")
+        request_id = request.headers.get("X-Request-ID", "unknown")
+        exception_logger.error(f"Pydantic validation error: request_id={request_id}, path={request.url.path}, error={exc}")
         messages = [e["msg"] for e in exc.errors()]
         return JSONResponse(
             content={
@@ -345,7 +349,8 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(IntegrityError)
     async def integrity_error_handler(request: Request, exc: IntegrityError):
-        exception_logger.error(f"Integrity error: {str(exc)}")
+        request_id = request.headers.get("X-Request-ID", "unknown")
+        exception_logger.error(f"Integrity error: request_id={request_id}, path={request.url.path}, error={exc}")
         return JSONResponse(
             content={
                 "status": "error",
@@ -359,7 +364,8 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
-        exception_logger.error(f"Database error: {str(exc)}")
+        request_id = request.headers.get("X-Request-ID", "unknown")
+        exception_logger.error(f"Database error: request_id={request_id}, path={request.url.path}, error={exc}")
         return JSONResponse(
             content={
                 "status": "error",
@@ -373,7 +379,8 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(500)
     async def internal_server_error(request: Request, exc: Exception):
-        exception_logger.error(f"Internal server error: {str(exc)}", exc_info=True)
+        request_id = request.headers.get("X-Request-ID", "unknown")
+        exception_logger.error(f"Internal server error: request_id={request_id}, path={request.url.path}, error={exc}", exc_info=True)
         return JSONResponse(
             content={
                 "status": "error",

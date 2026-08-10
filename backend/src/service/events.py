@@ -178,9 +178,9 @@ class EventService:
 
             success = 200 <= response.status_code < 300
             if success:
-                logger.info("Test ping to %s succeeded (status=%d)", sub.url, response.status_code)
+                logger.info("Test ping succeeded: subscription_id={}, url={}, status={}", subscription_id, sub.url, response.status_code)
             else:
-                logger.warning("Test ping to %s failed (status=%d)", sub.url, response.status_code)
+                logger.warning("Test ping failed: subscription_id={}, url={}, status={}", subscription_id, sub.url, response.status_code)
 
             return {
                 "success": success,
@@ -188,14 +188,14 @@ class EventService:
                 "response_body": response.text[:4096],
             }
         except TimeoutException:
-            logger.warning("Test ping to %s timed out", sub.url)
+            logger.warning("Test ping timed out: subscription_id={}, url={}", subscription_id, sub.url)
             return {
                 "success": False,
                 "status_code": None,
                 "response_body": "Connection timeout after 10s",
             }
         except Exception as e:
-            logger.warning(f"Test ping to {sub.url} failed: {e}")
+            logger.warning("Test ping error: subscription_id={}, url={}, error={}", subscription_id, sub.url, e)
             return {
                 "success": False,
                 "status_code": None,
@@ -348,9 +348,9 @@ class EventService:
 
             success = 200 <= response.status_code < 300
             if success:
-                logger.info("Test ping to %s succeeded (status=%d)", sub.url, response.status_code)
+                logger.info("Test ping succeeded: subscription_id={}, url={}, status={}", subscription_id, sub.url, response.status_code)
             else:
-                logger.warning("Test ping to %s failed (status=%d)", sub.url, response.status_code)
+                logger.warning("Test ping failed: subscription_id={}, url={}, status={}", subscription_id, sub.url, response.status_code)
 
             return {
                 "success": success,
@@ -358,14 +358,14 @@ class EventService:
                 "response_body": response.text[:4096],
             }
         except TimeoutException:
-            logger.warning("Test ping to %s timed out", sub.url)
+            logger.warning("Test ping timed out: subscription_id={}, url={}", subscription_id, sub.url)
             return {
                 "success": False,
                 "status_code": None,
                 "response_body": "Connection timeout after 10s",
             }
         except Exception as e:
-            logger.warning(f"Test ping to {sub.url} failed: {e}")
+            logger.warning("Test ping error: subscription_id={}, url={}, error={}", subscription_id, sub.url, e)
             return {
                 "success": False,
                 "status_code": None,

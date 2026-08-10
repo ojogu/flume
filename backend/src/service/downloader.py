@@ -8,7 +8,6 @@
 # Celery tasks invoke it from worker processes; it is never called from the FastAPI event loop.
 
 
-import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,8 +24,9 @@ from src.schema.artifact import (
 from src.schema.download import DownloadResult, _ExtractedInfo, _FormatPreference
 from src.utils.config import config
 from src.utils.ffprobe import probe_media
+from src.utils.log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # format preference → yt-dlp format string lookup for video sources
 _VIDEO_FORMAT_MAP: dict[_FormatPreference, str] = {

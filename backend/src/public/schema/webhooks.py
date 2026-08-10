@@ -1,6 +1,5 @@
-from datetime import datetime
-from typing import Optional
 import uuid
+from datetime import datetime
 
 from pydantic import AnyHttpUrl, BaseModel
 
@@ -13,9 +12,9 @@ class CreateWebhookSubscription(BaseModel):
 
 
 class UpdateWebhookSubscription(BaseModel):
-    url: Optional[AnyHttpUrl] = None
-    events: Optional[list[str]] = None
-    is_active: Optional[bool] = None
+    url: AnyHttpUrl | None = None
+    events: list[str] | None = None
+    is_active: bool | None = None
 
 
 class WebhookSubscriptionResponse(BaseModel):
@@ -25,8 +24,8 @@ class WebhookSubscriptionResponse(BaseModel):
     url: str
     events: list
     is_active: bool
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class WebhookSubscriptionCreatedResponse(WebhookSubscriptionResponse):
@@ -41,9 +40,9 @@ class WebhookDeliveryResponse(BaseModel):
     event_type: str
     payload: EventEnvelope
     status: str
-    response_code: Optional[int] = None
-    response_body: Optional[str] = None
+    response_code: int | None = None
+    response_body: str | None = None
     attempts: int
-    next_retry_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    next_retry_at: datetime | None = None
+    created_at: datetime | None = None
+    completed_at: datetime | None = None

@@ -1,6 +1,5 @@
-from datetime import datetime
-from typing import Optional
 import uuid
+from datetime import datetime
 
 from pydantic import AnyHttpUrl, BaseModel
 
@@ -21,9 +20,9 @@ class CreateInternalWebhookRequest(BaseModel):
 class UpdateInternalWebhookRequest(BaseModel):
     """Partial update for a webhook subscription."""
 
-    url: Optional[AnyHttpUrl] = None
-    events: Optional[list[str]] = None
-    is_active: Optional[bool] = None
+    url: AnyHttpUrl | None = None
+    events: list[str] | None = None
+    is_active: bool | None = None
 
 
 class InternalWebhookResponse(BaseModel):
@@ -33,12 +32,12 @@ class InternalWebhookResponse(BaseModel):
 
     id: uuid.UUID
     api_key_id: uuid.UUID
-    api_key_name: Optional[str] = None
+    api_key_name: str | None = None
     url: str
     events: list
     is_active: bool
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class InternalWebhookCreatedResponse(InternalWebhookResponse):
@@ -57,12 +56,12 @@ class InternalWebhookDeliveryResponse(BaseModel):
     event_type: str
     payload: EventEnvelope
     status: str
-    response_code: Optional[int] = None
-    response_body: Optional[str] = None
+    response_code: int | None = None
+    response_body: str | None = None
     attempts: int
-    next_retry_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    next_retry_at: datetime | None = None
+    created_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 class PaginatedWebhookDeliveriesResponse(BaseModel):

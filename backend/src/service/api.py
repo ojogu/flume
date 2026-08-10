@@ -1,15 +1,14 @@
 import datetime
 import secrets
-from typing import Optional
 import uuid
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exception_base import DatabaseError, NotFoundError
 from src.model.api import ApiKey, ApiKeyStatus
 from src.utils.config import config
-from src.utils.crypto import hash_str, verify_str
-from src.core.exception_base import NotFoundError, DatabaseError
+from src.utils.crypto import hash_str
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -32,7 +31,7 @@ class ApiKeyService:
         return full_key, key_hash, key_prefix
 
     async def create_key(
-        self, user_id: uuid.UUID, name: str, expires_at: Optional[datetime.datetime] = None
+        self, user_id: uuid.UUID, name: str, expires_at: datetime.datetime | None = None
     ) -> tuple[ApiKey, str]:
         full_key, key_hash, key_prefix = self._generate_key()
 
@@ -108,7 +107,7 @@ class ApiKeyService:
             raise DatabaseError()
 
     # Hash the raw key, look up by hash (constant-ish time), check expiry, touch last_used_at
-    async def verify_key(self, raw_key: str) -> Optional[ApiKey]:
+    async def verify_key(self, raw_key: str) -> ApiKey | None:
         computed_hash = hash_str(raw_key)
         result = await self.db.execute(
             select(ApiKey).where(

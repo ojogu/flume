@@ -1,19 +1,18 @@
 import datetime
 import secrets
-from typing import Optional
 import uuid
-from src.schema import UpdateUser, CreateUser
-from src.model import User, MagicLinkToken
+
+from sqlalchemy import and_, select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, update
+
+from src.model import MagicLinkToken, User
+from src.schema import CreateUser
 from src.utils.exception import (
     AlreadyExistsError,
     DatabaseError,
     ServerError,
 )
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-
-
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -26,14 +25,14 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_user_by_id(self, user_id: uuid.UUID) -> Optional[User]:
+    async def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
         """Fetch a user by their UUID."""
         if not isinstance(user_id, uuid.UUID):
             user_id = uuid.UUID(user_id, version=4)
         result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> User | None:
         """Fetch a user by their email address."""
         result = await self.db.execute(
             select(User).where(User.email == email.lower())
@@ -43,7 +42,7 @@ class UserService:
     async def create_user(self, **user_data) -> User:
         """Create a new user."""
         validated_data = CreateUser(**user_data)
-        logger.info(f"validated data: {validated_data}")
+        logger.debug(f"validated data: {validated_data}")
 
         new_user = User(**validated_data.model_dump())
         logger.info(f"Creating new user: {new_user.email}, ID: {new_user.id}")
@@ -66,7 +65,7 @@ class UserService:
             await self.db.rollback()
             raise DatabaseError()
 
-    async def update_user(self, email: str, update_data: dict) -> Optional[User]:
+    async def update_user(self, email: str, update_data: dict) -> User | None:
         """Update a user by email."""
         result = await self.db.execute(
             select(User).where(User.email == email.lower())
@@ -119,7 +118,7 @@ class UserService:
             raise ServerError()
 
 
-    async def verify_magic_link_token(self, token: str) -> Optional[str]:
+    async def verify_magic_link_token(self, token: str) -> str | None:
         # Composite check: token must match, not be used yet, and not be expired
         result = await self.db.execute(
             select(MagicLinkToken).where(
@@ -149,7 +148,7 @@ class UserService:
             raise ServerError()
 
     # Orchestrates: verify token → find-or-create user → flag as verified
-    async def verify_magic_link_and_login(self, token: str) -> Optional[User]:
+    async def verify_magic_link_and_login(self, token: str) -> User | None:
         email = await self.verify_magic_link_token(token)
         if not email:
             return None
