@@ -2,12 +2,8 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import RedirectResponse
 
 from src.core.dependency import get_current_user, get_job_service
-from src.utils.log import get_logger
-
-logger = get_logger(__name__)
 from src.internal.schema.jobs import (
     InternalJobDetailResponse,
     InternalJobListResponse,
@@ -16,7 +12,10 @@ from src.internal.schema.jobs import (
 )
 from src.model.user import User
 from src.service.jobs import JobService
+from src.utils.log import get_logger
 from src.utils.response import success
+
+logger = get_logger(__name__)
 
 # ── Internal job routes (JWT authenticated) ──────────────────────────────────
 # Dashboard-facing endpoints for viewing jobs across all of a user's API keys.
@@ -154,28 +153,14 @@ async def update_job_status(
 ):
     """Update a job's status — supports retry action.
 
-    Retry resets the job to PENDING, increments retry_count, clears error,
-    and deletes existing steps so the orchestrator recreates them.
+    Retry resets the job to PENDING, increments retry_count, clears error,and deletes existing steps so the orchestrator recreates them.
     If max retries are exceeded, job goes to DEAD state.
     """
     if body.action != "retry":
         from src.core.exception_base import BadRequest
         raise BadRequest(f"Unknown action: {body.action}")
 
-    job = await job_service.retry_job(job_id, user.id)
-
-    result = await job_service.db.execute(
-        select(ApiKey.name).where(ApiKey.id == job.api_key_id)
-    )
-    api_key_name = result.scalar_one_or_none()
-
-    steps = [
-        {
-            **s.to_dict(),
-            "output_url": s.output_artifact.get("output_url") if s.output_artifact else None,
-        }
-        for s in (job.job_steps or [])
-    ]
+    job, steps, api_key_name = await job_service.retry_job_and_return(job_id, user.id)
 
     data = InternalJobDetailResponse(
         **job.to_dict(),

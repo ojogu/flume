@@ -57,6 +57,16 @@ class JobCancelledData(BaseModel):
     error: str | None = None
 
 
+class JobRetriedData(BaseModel):
+    """Payload for ``job.retried`` events."""
+
+    job_id: str
+    status: str
+    retry_count: int
+    source_uri: str
+    source_type: str
+
+
 class StepStartedData(BaseModel):
     """Payload for ``step.started`` events."""
 
@@ -127,6 +137,11 @@ class JobCancelledEnvelope(_BaseEnvelope):
     data: JobCancelledData
 
 
+class JobRetriedEnvelope(_BaseEnvelope):
+    type: Literal[EventType.JOB_RETRIED] = EventType.JOB_RETRIED
+    data: JobRetriedData
+
+
 class StepStartedEnvelope(_BaseEnvelope):
     type: Literal[EventType.STEP_STARTED] = EventType.STEP_STARTED
     data: StepStartedData
@@ -154,6 +169,7 @@ EventEnvelope = Annotated[
         JobCompletedEnvelope,
         JobFailedEnvelope,
         JobCancelledEnvelope,
+        JobRetriedEnvelope,
         StepStartedEnvelope,
         StepCompletedEnvelope,
         StepFailedEnvelope,
