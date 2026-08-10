@@ -37,6 +37,7 @@ class ParamType(str, Enum):
     ARRAY = "array"
     URL = "url"
     OBJECT = "object"
+    TIMECODE = "timecode"  # human-readable time strings (e.g. "1:00", "01:30:05.500")
 
 
 @dataclass
@@ -77,12 +78,12 @@ REGISTRY: dict[str, OperationDefinition] = {
         output_type=[ArtifactType.VIDEO, ArtifactType.AUDIO],  # mirrors input type
         params={
             "start": ParamDefinition(
-                type=ParamType.FLOAT,
+                type=ParamType.TIMECODE,
                 required=True,
                 min=0.0,
             ),
             "end": ParamDefinition(
-                type=ParamType.FLOAT,
+                type=ParamType.TIMECODE,
                 required=True,
                 min=0.0,
             ),
@@ -267,7 +268,7 @@ REGISTRY: dict[str, OperationDefinition] = {
         output_type=[ArtifactType.IMAGE],
         params={
             "timestamp": ParamDefinition(
-                type=ParamType.FLOAT,
+                type=ParamType.TIMECODE,
                 required=True,
                 min=0.0,
             ),
@@ -282,12 +283,12 @@ REGISTRY: dict[str, OperationDefinition] = {
         output_type=[ArtifactType.GIF],
         params={
             "start": ParamDefinition(
-                type=ParamType.FLOAT,
+                type=ParamType.TIMECODE,
                 required=True,
                 min=0.0,
             ),
             "end": ParamDefinition(
-                type=ParamType.FLOAT,
+                type=ParamType.TIMECODE,
                 required=True,
                 min=0.0,
             ),

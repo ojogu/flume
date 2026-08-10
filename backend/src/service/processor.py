@@ -114,9 +114,11 @@ class ProcessorService:
         """Clip a segment from the input between ``start`` and ``end``.
 
         Re-encodes to H.264 video + AAC audio so the cut is frame-accurate regardless of keyframe boundaries. Output container is mp4.
+
+        `start` and `end` are pre-validated and normalized as floats by Gate 3 (validate_params) — no parsing or type coercion needed here.
         """
-        start = float(params["start"])
-        end = float(params["end"])
+        start = params["start"]
+        end = params["end"]
 
         if end <= start:
             return ProcessResult(
