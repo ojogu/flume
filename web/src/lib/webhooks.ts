@@ -84,11 +84,12 @@ export async function deleteWebhook(id: string): Promise<void> {
  */
 export async function listWebhookDeliveries(
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; status?: 'all' | 'delivered' | 'exhausted' }
 ): Promise<{ data: WebhookDelivery[]; total: number }> {
   const query = new URLSearchParams()
   if (params?.limit !== undefined) query.set('limit', String(params.limit))
   if (params?.offset !== undefined) query.set('offset', String(params.offset))
+  if (params?.status !== undefined && params.status !== 'all') query.set('status', params.status)
   const queryStr = query.toString() ? `?${query.toString()}` : ''
   const res = await apiClient<{ status: string; data: { data: WebhookDelivery[]; total: number } }>(
     `/webhooks/${id}/deliveries${queryStr}`

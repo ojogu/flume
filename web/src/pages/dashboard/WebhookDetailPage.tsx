@@ -16,19 +16,10 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
   getWebhook,
   listWebhookDeliveries,
   testWebhook,
   updateWebhook,
-  WebhookDelivery,
   WebhookSubscription,
 } from '@/lib/webhooks'
 import { formatRelativeTime, cn } from '@/lib/utils'
@@ -40,6 +31,7 @@ export function WebhookDetailPage() {
   const [page, setPage] = useState(0)
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null)
   const [expandedDeliveryId, setExpandedDeliveryId] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'delivered' | 'exhausted'>('all')
 
   const queryClient = useQueryClient()
 
@@ -50,8 +42,8 @@ export function WebhookDetailPage() {
   })
 
   const { data: deliveriesData, isLoading: deliveriesLoading, refetch: refetchDeliveries } = useQuery({
-    queryKey: ['webhook-deliveries', id, page],
-    queryFn: () => listWebhookDeliveries(id!, { limit: PAGE_SIZE, offset: page * PAGE_SIZE }),
+    queryKey: ['webhook-deliveries', id, page, statusFilter],
+    queryFn: () => listWebhookDeliveries(id!, { limit: PAGE_SIZE, offset: page * PAGE_SIZE, status: statusFilter }),
     enabled: !!id,
   })
 
@@ -226,16 +218,38 @@ export function WebhookDetailPage() {
       <Separator className="bg-[var(--border-subtle)]" />
 
       <section>
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-[var(--text-primary)]">Delivery history</h2>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
               {deliveriesData
-                ? `${deliveriesData.total} total delivery${deliveriesData.total === 1 ? '' : 's'}`
+                ? `${deliveriesData.total} delivery${deliveriesData.total === 1 ? '' : 's'}`
                 : 'Recent delivery attempts.'}
             </p>
           </div>
-          {deliveriesLoading && <Loader2 className="h-4 w-4 animate-spin text-[var(--text-muted)]" />}
+          <div className="flex items-center gap-3">
+            {deliveriesLoading && <Loader2 className="h-4 w-4 animate-spin text-[var(--text-muted)]" />}
+            <div className="inline-flex rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-subtle)] p-1 gap-1 shrink-0">
+              {(['all', 'delivered', 'exhausted'] as const).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => {
+                    setStatusFilter(status)
+                    setPage(0)
+                    setExpandedDeliveryId(null)
+                  }}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
+                    statusFilter === status
+                      ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                  )}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {deliveriesData?.data.length === 0 ? (
@@ -250,39 +264,110 @@ export function WebhookDetailPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[40%]">Event</TableHead>
-                    <TableHead className="w-[15%]">Status</TableHead>
-                    <TableHead className="w-[15%]">Response</TableHead>
-                    <TableHead className="w-[20%]">Time</TableHead>
-                    <TableHead className="w-[10%]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {deliveriesData?.data.map((delivery) => (
-                    <DeliveryRow
-                      key={delivery.id}
-                      delivery={delivery}
-                      isExpanded={expandedDeliveryId === delivery.id}
-                      onToggle={() =>
+            <div className="space-y-2">
+              {deliveriesData?.data.map((delivery) => {
+                const isDelivered = delivery.status === 'delivered'
+                const isFailed =
+                  delivery.status === 'failed' ||
+                  delivery.status === 'exhausted' ||
+                  Boolean(delivery.response_code && delivery.response_code >= 300)
+                const statusVariant = isDelivered ? 'default' : isFailed ? 'destructive' : 'secondary'
+                const isExpanded = expandedDeliveryId === delivery.id
+
+                return (
+                  <div key={delivery.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
+                    <div
+                      className="flex cursor-pointer items-center gap-4 px-4 py-3 hover:bg-[var(--bg-subtle)]/50"
+                      onClick={() =>
                         setExpandedDeliveryId((prev) =>
                           prev === delivery.id ? null : delivery.id
                         )
                       }
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-mono text-sm font-semibold text-[var(--text-primary)]">
+                          {delivery.event_type}
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <Badge variant={statusVariant} className="text-xs capitalize">
+                          {delivery.status}
+                        </Badge>
+                      </div>
+                      <div className="shrink-0">
+                        <span
+                          className={cn(
+                            'font-mono text-sm font-semibold',
+                            isDelivered
+                              ? 'text-brand'
+                              : isFailed
+                                ? 'text-destructive'
+                                : 'text-[var(--text-secondary)]'
+                          )}
+                        >
+                          {delivery.response_code || '—'}
+                        </span>
+                      </div>
+                      <div className="flex min-w-0 items-center gap-1.5 text-sm text-[var(--text-muted)]">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{formatRelativeTime(delivery.created_at)}</span>
+                      </div>
+                      <div className="shrink-0">
+                        <ChevronRight
+                          className={cn(
+                            'h-4 w-4 text-[var(--text-muted)] transition-transform duration-200',
+                            isExpanded && 'rotate-90'
+                          )}
+                        />
+                      </div>
+                    </div>
 
-            {expandedDeliveryId && (
-              <DeliveryDetails
-                delivery={deliveriesData!.data.find((d) => d.id === expandedDeliveryId)!}
-              />
-            )}
+                    {isExpanded && (
+                      <div className="border-t border-[var(--border-subtle)] px-4 pb-4 pt-4">
+                        <div className="space-y-4">
+                          <div>
+                            <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Payload</p>
+                            <pre className="max-h-64 overflow-auto rounded-lg bg-[var(--bg-subtle)] p-4 text-xs font-mono leading-relaxed text-[var(--text-secondary)]">
+                              {JSON.stringify(delivery.payload, null, 2)}
+                            </pre>
+                          </div>
+                          {delivery.response_body && (
+                            <div>
+                              <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Response body</p>
+                              <pre className="max-h-32 overflow-auto rounded-lg bg-[var(--bg-subtle)] p-4 text-xs font-mono leading-relaxed text-[var(--text-secondary)]">
+                                {delivery.response_body}
+                              </pre>
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--text-muted)]">
+                            <span>
+                              <span className="font-medium text-[var(--text-secondary)]">{delivery.attempts}</span>{' '}
+                              {delivery.attempts === 1 ? 'attempt' : 'attempts'}
+                            </span>
+                            {delivery.next_retry_at && (
+                              <span>
+                                Next retry:{' '}
+                                <span className="font-medium text-[var(--text-secondary)]">
+                                  {formatRelativeTime(delivery.next_retry_at)}
+                                </span>
+                              </span>
+                            )}
+                            {delivery.completed_at && (
+                              <span>
+                                Completed:{' '}
+                                <span className="font-medium text-[var(--text-secondary)]">
+                                  {formatRelativeTime(delivery.completed_at)}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
 
             {totalPages > 1 && (
               <div className="mt-4 flex items-center justify-between">
@@ -320,113 +405,6 @@ export function WebhookDetailPage() {
           </>
         )}
       </section>
-    </div>
-  )
-}
-
-function DeliveryRow({
-  delivery,
-  isExpanded,
-  onToggle,
-}: {
-  delivery: WebhookDelivery
-  isExpanded: boolean
-  onToggle: () => void
-}) {
-  const isDelivered = delivery.status === 'delivered'
-  const isFailed =
-    delivery.status === 'failed' ||
-    delivery.status === 'exhausted' ||
-    Boolean(delivery.response_code && delivery.response_code >= 300)
-  const statusVariant = isDelivered ? 'default' : isFailed ? 'destructive' : 'secondary'
-
-  return (
-    <>
-      <TableRow className="cursor-pointer hover:bg-[var(--bg-subtle)]/50" onClick={onToggle}>
-        <TableCell className="font-mono text-sm font-semibold text-[var(--text-primary)]">
-          {delivery.event_type}
-        </TableCell>
-        <TableCell>
-          <Badge variant={statusVariant} className="text-xs capitalize">
-            {delivery.status}
-          </Badge>
-        </TableCell>
-        <TableCell>
-          <span
-            className={cn(
-              'font-mono text-sm font-semibold',
-              isDelivered
-                ? 'text-brand'
-                : isFailed
-                  ? 'text-destructive'
-                  : 'text-[var(--text-secondary)]'
-            )}
-          >
-            {delivery.response_code || '—'}
-          </span>
-        </TableCell>
-        <TableCell>
-          <div className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-            <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
-            {formatRelativeTime(delivery.created_at)}
-          </div>
-        </TableCell>
-        <TableCell>
-          <div className="flex items-center justify-center">
-            <ChevronRight
-              className={cn(
-                'h-4 w-4 text-[var(--text-muted)] transition-transform duration-200',
-                isExpanded && 'rotate-90'
-              )}
-            />
-          </div>
-        </TableCell>
-      </TableRow>
-    </>
-  )
-}
-
-function DeliveryDetails({ delivery }: { delivery: WebhookDelivery }) {
-  return (
-    <div className="mt-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-subtle)] p-4">
-      <div className="space-y-4">
-        <div>
-          <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Payload</p>
-          <pre className="max-h-64 overflow-auto rounded-lg bg-[var(--bg-card)] p-4 text-xs font-mono leading-relaxed text-[var(--text-secondary)]">
-            {JSON.stringify(delivery.payload, null, 2)}
-          </pre>
-        </div>
-        {delivery.response_body && (
-          <div>
-            <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Response body</p>
-            <pre className="max-h-32 overflow-auto rounded-lg bg-[var(--bg-card)] p-4 text-xs font-mono leading-relaxed text-[var(--text-secondary)]">
-              {delivery.response_body}
-            </pre>
-          </div>
-        )}
-        <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--text-muted)]">
-          <span>
-            <span className="font-medium text-[var(--text-secondary)]">{delivery.attempts}</span>{' '}
-            {delivery.attempts === 1 ? 'attempt' : 'attempts'}
-          </span>
-          {delivery.next_retry_at && (
-            <span>
-              Next retry:{' '}
-              <span className="font-medium text-[var(--text-secondary)]">
-                {formatRelativeTime(delivery.next_retry_at)}
-              </span>
-            </span>
-          )}
-          {delivery.completed_at && (
-            <span>
-              Completed:{' '}
-              <span className="font-medium text-[var(--text-secondary)]">
-                {formatRelativeTime(delivery.completed_at)}
-              </span>
-            </span>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
