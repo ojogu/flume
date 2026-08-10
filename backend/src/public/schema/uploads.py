@@ -1,6 +1,5 @@
-from datetime import datetime
-from typing import Optional
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -23,7 +22,7 @@ class PresignedUploadResult(BaseModel):
 class PresignUploadRequest(BaseModel):
     original_filename: str
     content_type: str
-    file_size: Optional[int] = None
+    file_size: int | None = None
 
 
 class PresignUploadResponse(BaseModel):
@@ -45,9 +44,9 @@ class UploadResponse(BaseModel):
     api_key_id: uuid.UUID
     uri: str
     status: UploadStatus
-    original_filename: Optional[str] = None
-    file_size: Optional[int] = None
-    content_type: Optional[str] = None
-    etag: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    original_filename: str | None = None
+    file_size: int | None = None
+    content_type: str | None = None
+    etag: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

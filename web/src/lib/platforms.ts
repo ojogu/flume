@@ -68,12 +68,3 @@ export async function updatePlatform(id: string, data: UpdatePlatformRequest): P
   })
   return res.data
 }
-
-/**
- * Permanently remove a platform from the catalog.
- */
-export async function deletePlatform(id: string): Promise<void> {
-  await apiClient<{ status: string; message: string }>(`/platforms/${id}`, {
-    method: 'DELETE',
-  })
-}

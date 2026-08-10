@@ -1,4 +1,3 @@
-import uuid
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
@@ -6,12 +5,9 @@ from sqlalchemy.orm import Mapped
 
 from .base import BaseModel
 
-
 # ── Platform model ────────────────────────────────────────────────────────────
-# Curated list of supported media platforms. The slug maps to yt-dlp's
-# extractor_key (lowercased) and is validated during job orchestration.
-# Admin CRUD manages the lifecycle; the public API exposes active platforms
-# for discovery. Platforms are standalone reference data — no FK to jobs.
+# Curated list of supported media platforms. The slug maps to yt-dlp's extractor_key (lowercased) and is validated during job orchestration.
+# Admin CRUD manages the lifecycle; the public API exposes active platforms or discovery. Platforms are standalone reference data — no FK to jobs.
 
 class Platform(BaseModel):
     """Supported media platform — curated via admin CRUD, validated during job processing."""

@@ -2,9 +2,9 @@
 # Source of truth for validation gates (registry lookup, param validation, type compatibility).
 # Not stored in the DB — changes require a deploy.
 
-from enum import Enum
-from typing import Optional, Union
 from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
 
 
 class ArtifactType(str, Enum):
@@ -44,13 +44,13 @@ class ParamType(str, Enum):
 class ParamDefinition:
     type: ParamType
     required: bool
-    default: Optional[Union[str, int, float, bool, list]] = None
-    values: Optional[list[str]] = None       # for enum type only
-    min: Optional[Union[int, float]] = None  # for integer/float only
-    max: Optional[Union[int, float]] = None  # for integer/float only
+    default: str | int | float | bool | list | None = None
+    values: list[str] | None = None       # for enum type only
+    min: int | float | None = None  # for integer/float only
+    max: int | float | None = None  # for integer/float only
     items: Optional["ParamDefinition"] = None  # for array type only
-    min_items: Optional[int] = None          # for array type only
-    max_items: Optional[int] = None          # for array type only
+    min_items: int | None = None          # for array type only
+    max_items: int | None = None          # for array type only
 
 
 @dataclass
@@ -304,7 +304,7 @@ REGISTRY: dict[str, OperationDefinition] = {
 }
 
 
-def get_operation(name: str) -> Optional[OperationDefinition]:
+def get_operation(name: str) -> OperationDefinition | None:
     """Retrieve an operation definition by name. Returns None if not found."""
     return REGISTRY.get(name)
 
@@ -320,7 +320,7 @@ def operation_exists(name: str) -> bool:
     return name in REGISTRY
 
 
-def get_capability(name: str) -> Optional[OperationCapability]:
+def get_capability(name: str) -> OperationCapability | None:
     """Retrieve the product capability for an operation."""
     op = get_operation(name)
     return op.capability if op else None

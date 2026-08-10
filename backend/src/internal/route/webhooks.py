@@ -1,18 +1,18 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import Response
 from fastapi import status as http_status
+from fastapi.responses import Response
 
 from src.core.dependency import get_current_user, get_event_service
-from src.model.user import User
-from src.service.events import EventService
 from src.internal.schema.webhooks import (
     CreateInternalWebhookRequest,
-    UpdateInternalWebhookRequest,
     InternalWebhookCreatedResponse,
     InternalWebhookDeliveryResponse,
+    UpdateInternalWebhookRequest,
 )
+from src.model.user import User
+from src.service.events import EventService
 from src.utils.response import success
 
 # ── Internal webhook routes (JWT authenticated) ──────────────────────────────

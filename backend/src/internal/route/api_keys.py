@@ -2,16 +2,16 @@ import uuid
 
 from fastapi import APIRouter, Depends
 
-from src.service.api import ApiKeyService
-from src.core.dependency import get_current_user, get_api_key_service
-from src.model.user import User
+from src.core.dependency import get_api_key_service, get_current_user
 from src.internal.schema.api_keys import (
-    ApiKeyResponse,
     ApiKeyCreatedResponse,
     ApiKeyListResponse,
+    ApiKeyResponse,
     CreateApiKeyRequest,
     UpdateApiKeyRequest,
 )
+from src.model.user import User
+from src.service.api import ApiKeyService
 from src.utils.response import success
 
 # ── API key CRUD ──────────────────────────────────────────────────────────────

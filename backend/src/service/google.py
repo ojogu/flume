@@ -1,13 +1,15 @@
+import os
+
 from fastapi import Request
 from fastapi.responses import RedirectResponse
-from google_auth_oauthlib.flow import Flow
-from google.oauth2.credentials import Credentials
+from google.auth.transport import requests
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
-from google.auth.transport import requests
-import os
-from src.utils.config import config
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+
 from src.core.exception_base import ServerError
+from src.utils.config import config
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -75,7 +77,7 @@ class GoogleAuthService:
     # authorization code for token set (access, refresh, id), and returns them
     def handle_callback(self, request: Request):
         try:
-            logger.info(f"cookies, {request.cookies}")
+            logger.debug("OAuth callback received, has_cookies={}", "oauth_state" in request.cookies)
 
             # pass the `state` from query params — Google verifies it matches the original
             flow = Flow.from_client_config(

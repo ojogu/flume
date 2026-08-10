@@ -9,15 +9,14 @@
 # ──────────────────────────────────────────────────────────────────────────
 
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from src.model.event import DeliveryStatus, WebhookDelivery
-
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
+from src.model.event import DeliveryStatus, WebhookDelivery
 from src.utils.crypto import build_signed_headers
 from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
@@ -44,7 +43,6 @@ def deliver_webhook(delivery_id: str):
 
 
 async def _deliver_webhook_async(delivery_id: str):
-    from src.model.event import WebhookSubscription
     from src.utils.db import get_async_db_session
 
     async with get_async_db_session() as db:

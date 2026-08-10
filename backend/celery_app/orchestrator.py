@@ -9,6 +9,8 @@
 # Runs on the **orchestrator** queue (few workers, lightweight tasks).
 # ──────────────────────────────────────────────────────────────────────────
 
+import time
+
 from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
@@ -176,6 +178,9 @@ async def _handle_single(job_service: JobService, job: Job):
     """Create JobSteps for a single video and dispatch the download task."""
     from celery_app.download import download_task
 
+    start = time.perf_counter()
+    logger.info(f"Job processing started: {job.id}")
+
     # full pipeline is already on the job (download injected as step 0 at route level)
     for i, step in enumerate(job.pipeline_steps):
         await job_service.create_job_step(job.id, i, step.get("operation", "unknown"))
@@ -187,10 +192,16 @@ async def _handle_single(job_service: JobService, job: Job):
     # dispatch download — Celery task_id == job UUID for monitoring
     download_task.apply_async(args=[str(job.id)], task_id=str(job.id))
 
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(f"Job dispatch complete: {job.id} — duration_ms={duration_ms:.2f}")
+
 
 async def _handle_playlist(job_service: JobService, parent: Job, info):
     """Fan out into child jobs — one per selected playlist entry."""
     from celery_app.download import download_task
+
+    start = time.perf_counter()
+    logger.info(f"Playlist fanout started: parent={parent.id}, entries={info.playlist_count}")
 
     # validate selection against playlist
     selection = _resolve_selection(parent, info)
@@ -223,7 +234,8 @@ async def _handle_playlist(job_service: JobService, parent: Job, info):
 
         download_task.apply_async(args=[str(child.id)], task_id=str(child.id))
 
-    logger.info(f"Parent {parent.id!s} — fanned out {len(children)} child jobs")
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(f"Parent {parent.id!s} — fanned out {len(children)} child jobs — duration_ms={duration_ms:.2f}")
 
 
 def _resolve_selection(parent: Job, info) -> list[int] | None:

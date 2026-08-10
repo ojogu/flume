@@ -9,20 +9,19 @@ from sqlalchemy import inspect as sa_inspect
 
 from src.auth.route import auth_route
 from src.internal.route.api_keys import api_key_route
-from src.internal.route.platforms import platform_route
 from src.internal.route.jobs import internal_job_route
+from src.internal.route.platforms import platform_route
 from src.internal.route.webhooks import internal_webhook_route
 from src.public.route.jobs import job_route
 from src.public.route.uploads import upload_route
-from src.public.route.webhooks import webhook_route
 from src.public.route.utils import utils_route
+from src.public.route.webhooks import webhook_route
 from src.utils.config import Settings
 from src.utils.db import engine
 from src.utils.exception import register_error_handlers
 from src.utils.log import RequestContextMiddleware, configure_structlog, get_logger
 from src.utils.redis import setup_redis
 from src.utils.telemetry import instrument_fastapi_app, setup_telemetry
-
 
 logger = get_logger(__name__)
 

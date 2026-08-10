@@ -2,26 +2,32 @@
 
 from .api import ApiKey
 from .base import Base, BaseModel
-from .event import EventType, ALL_EVENT_TYPES, DeliveryStatus, WebhookSubscription, WebhookDelivery
+from .event import (
+    ALL_EVENT_TYPES,
+    DeliveryStatus,
+    EventType,
+    WebhookDelivery,
+    WebhookSubscription,
+)
 from .job import Job, JobStep
 from .platform import Platform
 from .upload import Upload
-from .user import User, Project, MagicLinkToken
+from .user import MagicLinkToken, Project, User
 
 __all__ = [
+    "ALL_EVENT_TYPES",
+    "ApiKey",
     "Base",
     "BaseModel",
-    "User",
-    "Project",
-    "ApiKey", 
-    "MagicLinkToken",
+    "DeliveryStatus",
+    "EventType",
     "Job",
     "JobStep",
+    "MagicLinkToken",
     "Platform",
+    "Project",
     "Upload",
-    "EventType",
-    "ALL_EVENT_TYPES",
-    "DeliveryStatus",
-    "WebhookSubscription",
+    "User",
     "WebhookDelivery",
+    "WebhookSubscription",
 ]

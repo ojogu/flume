@@ -1,11 +1,10 @@
+import uuid
 from datetime import datetime
 
 import sqlalchemy as sa
-import uuid
 from sqlalchemy.orm import Mapped, relationship
 
 from .base import BaseModel
-
 
 # User model — profile, OAuth tokens, auth provider; MagicLinkToken for passwordless login
 

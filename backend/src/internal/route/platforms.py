@@ -3,13 +3,13 @@ import uuid
 from fastapi import APIRouter, Depends
 
 from src.core.dependency import get_current_admin, get_platform_service
-from src.model.user import User
 from src.internal.schema.platforms import (
     CreatePlatformRequest,
-    UpdatePlatformRequest,
-    PlatformResponse,
     PlatformListResponse,
+    PlatformResponse,
+    UpdatePlatformRequest,
 )
+from src.model.user import User
 from src.service.platform import PlatformService
 from src.utils.response import success
 
@@ -75,16 +75,4 @@ async def update_platform(
     return success(
         data=PlatformResponse(**platform.to_dict()).model_dump(),
         message="Platform updated",
-    )
-
-
-@platform_route.delete("/{platform_id}")
-async def delete_platform(
-    platform_id: uuid.UUID,
-    user: User = Depends(get_current_admin),
-    platform_service: PlatformService = Depends(get_platform_service),
-):
-    await platform_service.delete_platform(platform_id=platform_id)
-    return success(
-        message="Platform deleted",
     )

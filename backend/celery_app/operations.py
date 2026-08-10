@@ -10,6 +10,7 @@
 # Runs on the **media_queue** (CPU-bound, FFmpeg). Task name is ``jobs.media.execute``.
 # ────────────────────────────────────────
 
+import time
 import uuid
 from pathlib import Path
 
@@ -49,6 +50,9 @@ async def _execute_operation_async(job_id: str, step_index: int):
     from src.service.jobs import JobService
     from src.service.processor import ProcessorService
     from src.utils.db import get_async_db_session
+
+    start = time.perf_counter()
+    logger.info(f"Operation started: job={job_id}, step={step_index}")
 
     async with get_async_db_session() as db:
         job_service = JobService(db)
@@ -127,9 +131,10 @@ async def _execute_operation_async(job_id: str, step_index: int):
                     raise RuntimeError(
                         f"[{operation}] Processor returned success but no artifact"
                     )
+                duration_ms = (time.perf_counter() - start) * 1000
                 await _handle_success(
                     job_service, event_service,
-                    job, step, step_index, operation, result,
+                    job, step, step_index, operation, result, duration_ms,
                 )
             else:
                 # Operation failed with a structured ProcessResult.error.
@@ -137,17 +142,19 @@ async def _execute_operation_async(job_id: str, step_index: int):
                     result.error.summary if result.error
                     else f"[{operation}] FFmpeg failed (no error details)"
                 )
+                duration_ms = (time.perf_counter() - start) * 1000
                 await _handle_failure(
                     job_service, event_service,
-                    job, step, step_index, operation, error_summary,
+                    job, step, step_index, operation, error_summary, duration_ms,
                 )
 
         except Exception as e:
-            # Catches input-resolution failures, unexpected exceptions from the processor, and the contract-violation case above. 
+            # Catches input-resolution failures, unexpected exceptions from the processor, and the contract-violation case above.
             # Operation-level failures (ProcessResult.success=False) are handled above and do not re-enter this branch.
+            duration_ms = (time.perf_counter() - start) * 1000
             await _handle_failure(
                 job_service, event_service,
-                job, step, step_index, operation, str(e),
+                job, step, step_index, operation, str(e), duration_ms,
             )
 
 
@@ -159,6 +166,7 @@ async def _handle_success(
     step_index: int,
     operation: str,
     result: ProcessResult,
+    duration_ms: float,
 ) -> None:
     """Persist step COMPLETED, emit STEP_COMPLETED, chain to next or finish job."""
     job_uuid = job.id
@@ -220,7 +228,7 @@ async def _handle_success(
         )
 
         logger.info(
-            f"Job {job_id} — final step {step_index} complete, marking SUCCEEDED"
+            f"Job {job_id} — final step {step_index} complete, marking SUCCEEDED — duration_ms={duration_ms:.2f}"
         )
         await job_service.update_status(job_uuid, JobStatus.SUCCEEDED)
         await event_service.emit(
@@ -248,6 +256,7 @@ async def _handle_failure(
     step_index: int,
     operation: str,
     error_summary: str,
+    duration_ms: float,
 ) -> None:
     """Persist step FAILED, emit STEP_FAILED + JOB_FAILED, notify parent."""
     job_uuid = job.id
@@ -285,6 +294,8 @@ async def _handle_failure(
 
     # Even on failure the parent must be notified so it can compute partial_success when all siblings have terminated.
     await job_service.notify_child_complete(job_uuid)
+
+    logger.info(f"Job {job_id} — step {step_index} FAILED — duration_ms={duration_ms:.2f}")
 
 
 async def _resolve_input_path(job_service: JobService, job_uuid: uuid.UUID, step_index: int) -> str | None:

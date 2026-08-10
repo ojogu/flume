@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
 
 from src.model.event import EventType
-
 
 # ── Event data models ───────────────────────────────────────────────────
 
@@ -163,17 +162,6 @@ class PingEnvelope(_BaseEnvelope):
 
 
 EventEnvelope = Annotated[
-    Union[
-        JobCreatedEnvelope,
-        JobProcessingEnvelope,
-        JobCompletedEnvelope,
-        JobFailedEnvelope,
-        JobCancelledEnvelope,
-        JobRetriedEnvelope,
-        StepStartedEnvelope,
-        StepCompletedEnvelope,
-        StepFailedEnvelope,
-        PingEnvelope,
-    ],
+    JobCreatedEnvelope | JobProcessingEnvelope | JobCompletedEnvelope | JobFailedEnvelope | JobCancelledEnvelope | JobRetriedEnvelope | StepStartedEnvelope | StepCompletedEnvelope | StepFailedEnvelope | PingEnvelope,
     Field(discriminator="type"),
 ]

@@ -3,16 +3,18 @@
 # get_session() = session-per-request pattern for FastAPI endpoints.
 # get_async_db_session() = standalone session for Celery/background tasks.
 
-from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from .config import config
-from src.model import Base, BaseModel
-from .config import config
-from sqlalchemy.exc import SQLAlchemyError
-from src.utils.log import get_logger
-from sqlalchemy.pool import NullPool
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
+
 from src.model import *
+from src.model import Base
+from src.utils.log import get_logger
+
+from .config import config
 
 logger = get_logger(__name__)
 

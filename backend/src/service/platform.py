@@ -1,11 +1,10 @@
-import datetime
 import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exception_base import AlreadyExistsError, DatabaseError, NotFoundError
 from src.model.platform import Platform
-from src.core.exception_base import NotFoundError, AlreadyExistsError, DatabaseError
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -13,8 +12,8 @@ logger = get_logger(__name__)
 
 # ── Platform service ──────────────────────────────────────────────────────────
 # CRUD operations for the supported platforms catalog.
-# All queries exclude soft-deleted records. The slug-based lookup is used
-# by the orchestrator to validate platforms before job processing.
+# The slug-based lookup is used by the orchestrator to validate platforms
+# before job processing.
 
 class PlatformService:
     def __init__(self, db: AsyncSession):
@@ -87,18 +86,4 @@ class PlatformService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Error updating platform {platform_id}: {e}")
-            raise DatabaseError() from e
-
-    async def delete_platform(self, platform_id: uuid.UUID) -> None:
-        """Soft-delete a platform by setting deleted_at. Raises NotFoundError if missing."""
-        platform = await self.get_platform(platform_id)
-        platform.deleted_at = datetime.datetime.now(datetime.timezone.utc)
-
-        try:
-            await self.db.flush()
-            await self.db.commit()
-            logger.info(f"Platform deleted: {platform.slug}")
-        except Exception as e:
-            await self.db.rollback()
-            logger.error(f"Error deleting platform {platform_id}: {e}")
             raise DatabaseError() from e

@@ -1,8 +1,8 @@
 import hashlib
 import hmac
 
-from cryptography.fernet import Fernet
 import sqlalchemy as sa
+from cryptography.fernet import Fernet
 
 from src.utils.config import config
 from src.utils.log import get_logger

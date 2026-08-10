@@ -1,6 +1,5 @@
-from datetime import datetime
-from typing import Optional
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -10,13 +9,13 @@ from src.model.api import ApiKeyStatus
 class CreateApiKeyRequest(BaseModel):
     """Request to create a new API key — name, optional expiry."""
     name: str
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
 
 class UpdateApiKeyRequest(BaseModel):
     """Request to update an API key — name and/or expiry."""
-    name: Optional[str] = None
-    expires_at: Optional[datetime] = None
+    name: str | None = None
+    expires_at: datetime | None = None
 
 
 class ApiKeyResponse(BaseModel):
@@ -27,9 +26,9 @@ class ApiKeyResponse(BaseModel):
     name: str
     key_prefix: str
     status: ApiKeyStatus
-    expires_at: Optional[datetime] = None
-    last_used_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
+    expires_at: datetime | None = None
+    last_used_at: datetime | None = None
+    created_at: datetime | None = None
 
 
 # Extends ApiKeyResponse with full_key because the raw key is only shown once at creation

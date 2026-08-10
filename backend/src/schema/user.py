@@ -1,6 +1,5 @@
-from datetime import datetime
-from typing import Optional
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -10,9 +9,9 @@ class UserResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
-    google_id: Optional[str] = None
-    refresh_token: Optional[str] = None
-    access_token: Optional[str] = None
+    google_id: str | None = None
+    refresh_token: str | None = None
+    access_token: str | None = None
     email: str
     auth_provider: str
     is_active: bool
@@ -20,49 +19,49 @@ class UserResponse(BaseModel):
     oauth_verified: bool
     onboarded: bool
     is_admin: bool = False
-    name: Optional[str] = None
-    picture: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    name: str | None = None
+    picture: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class CreateUser(BaseModel):
     """New user creation payload — used internally after OAuth or magic link."""
-    google_id: Optional[str] = None
-    refresh_token: Optional[str] = None
-    access_token: Optional[str] = None
+    google_id: str | None = None
+    refresh_token: str | None = None
+    access_token: str | None = None
     email: str
     auth_provider: str
     is_active: bool = False
     email_verified: bool = False
     oauth_verified: bool = False
     onboarded: bool = False
-    password_hash: Optional[str] = None
+    password_hash: str | None = None
     is_admin: bool = False
-    name: Optional[str] = None
-    picture: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    name: str | None = None
+    picture: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 class UpdateUser(BaseModel):
     """Partial user update — all fields optional."""
-    google_id: Optional[str] = None
-    refresh_token: Optional[str] = None
-    access_token: Optional[str] = None
-    email: Optional[str] = None
-    auth_provider: Optional[str] = None
-    email_verified: Optional[bool] = None
-    oauth_verified: Optional[bool] = None
-    onboarded: Optional[bool] = None
-    password: Optional[str] = None
-    is_admin: Optional[bool] = None
-    name: Optional[str] = None
-    picture: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    google_id: str | None = None
+    refresh_token: str | None = None
+    access_token: str | None = None
+    email: str | None = None
+    auth_provider: str | None = None
+    email_verified: bool | None = None
+    oauth_verified: bool | None = None
+    onboarded: bool | None = None
+    password: str | None = None
+    is_admin: bool | None = None
+    name: str | None = None
+    picture: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 class MagicLinkTokenCreate(BaseModel):
@@ -77,7 +76,7 @@ class MagicLinkTokenResponse(BaseModel):
     id: uuid.UUID
     token: str
     email: str
-    resend_email_id: Optional[uuid.UUID] = None
+    resend_email_id: uuid.UUID | None = None
     expires_at: datetime
     used: bool
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None

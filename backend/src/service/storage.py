@@ -54,7 +54,7 @@ class R2Storage:
         if self._client is not None:
             return self._client
 
-        logger.info(f"Initialising boto3 S3 client for R2 endpoint: {config.s3_url}")
+        logger.debug(f"Initialising boto3 S3 client for R2 endpoint: {config.s3_url}")
 
         self._client = boto3.client(
             "s3",
@@ -107,7 +107,7 @@ class R2Storage:
         # Build expiry timestamp so clients can show a countdown or pre-emptively request a new URL before the old one expires.
         return url
 
-    async def head_object(self, object_key: str) -> dict | None:
+    async def head_object(self, object_key: str, upload_id: uuid.UUID | None = None) -> dict | None:
         """Check whether an object exists in R2 and return its metadata.
 
         Returns a dict with content_length, content_type, etag, last_modified
@@ -127,9 +127,9 @@ class R2Storage:
             }
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
-                logger.warning(f"Object not found in R2: key={object_key}")
+                logger.warning(f"Object not found in R2: key={object_key}, upload_id={upload_id}")
                 return None
-            logger.error(f"R2 head_object failed for key={object_key}: {e}")
+            logger.error(f"R2 head_object failed: key={object_key}, upload_id={upload_id}, error={e}")
             raise
 
     async def generate_presigned_download_url(
@@ -186,12 +186,12 @@ class R2Storage:
         )
         return object_key
 
-    async def delete_object(self, object_key: str) -> None:
+    async def delete_object(self, object_key: str, upload_id: uuid.UUID | None = None) -> None:
         """Remove an object from R2 — used by the cleanup sweep for orphaned uploads.
 
         Silently succeeds if the object doesn't exist (R2 delete is idempotent).
         """
-        logger.info(f"Deleting R2 object: key={object_key}")
+        logger.info(f"Deleting R2 object: key={object_key}, upload_id={upload_id}")
         try:
             await self._run(
                 "delete_object",
@@ -199,7 +199,7 @@ class R2Storage:
                 Key=object_key,
             )
         except ClientError as e:
-            logger.error(f"Failed to delete R2 object key={object_key}: {e}")
+            logger.error(f"Failed to delete R2 object: key={object_key}, upload_id={upload_id}, error={e}")
             raise
 
 

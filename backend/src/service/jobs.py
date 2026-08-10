@@ -354,7 +354,7 @@ class JobService:
 
         await self.db.flush()
         await self.db.commit()
-        logger.info(f"JobStep {step_id} → {status.value}")
+        logger.debug(f"JobStep {step_id} → {status.value}")
 
     async def get_pending_job_step(
         self, job_id: uuid.UUID, operation: str

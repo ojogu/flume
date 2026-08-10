@@ -1,7 +1,6 @@
 # ── Pipeline validation gates ──────────────────────────────────────────
 #
-# Five sequential gates. If any fails, the request is rejected immediately
-# with a clear BadRequest. Nothing proceeds until the current gate passes.
+# Five sequential gates. If any fails, the request is rejected immediately with a clear BadRequest. Nothing proceeds until the current gate passes.
 #
 #   Gate 1: Schema validation   (Pydantic — CreateJobRequest)
 #   Gate 2: Registry lookup     (operation names exist)
@@ -215,7 +214,7 @@ def validate_type_compatibility(source_type: str, pipeline: list[dict]) -> None:
 
         current_types = set(op_def.output_type)
 
-    logger.debug(f"Gate 4 passed — type compatibility OK")
+    logger.debug("Gate 4 passed — type compatibility OK")
 
 
 # ── Gate 5: Pipeline spec construction ───────────────────────────────────
