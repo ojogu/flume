@@ -81,7 +81,7 @@ class ProcessorService:
         """
         handler_name = self._HANDLERS.get(operation)
         if handler_name is None:
-            logger.error(f"No handler registered for operation '{operation}'")
+            logger.error(f"No handler registered for operation '{operation}' — job={job_id}, step={step_index}")
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -99,7 +99,7 @@ class ProcessorService:
             f"Executing operation '{operation}' for job {job_id} step {step_index} "
             f"— input={input_path}, workspace={workspace}"
         )
-        return await handler(input_path, workspace, job_id, step_index, params)
+        return await handler(input_path, workspace, job_id, step_index, operation, params)
 
     # ── Operations ──────────────────────────────────
 
@@ -109,6 +109,7 @@ class ProcessorService:
         workspace: Path,
         job_id: uuid.UUID,
         step_index: int,
+        operation: str,
         params: dict,
     ) -> ProcessResult:
         """Clip a segment from the input between ``start`` and ``end``.
@@ -142,7 +143,7 @@ class ProcessorService:
             "-c:a", "aac",
             output_path,
         ]
-        result = await self._run_ffmpeg(cmd, "trim", params, input_path, output_path)
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
         if not result.success:
             return result
 
@@ -167,6 +168,8 @@ class ProcessorService:
         params: dict,
         input_path: str,
         output_path: str,
+        job_id: uuid.UUID,
+        step_index: int,
     ) -> ProcessResult:
         """Execute an FFmpeg command list and capture the result.
 
@@ -182,9 +185,7 @@ class ProcessorService:
                 text=True,
             )
         except FileNotFoundError:
-            # FFmpeg binary itself is missing on the worker host.
-            logger.error("ffmpeg binary not found on PATH")
-            #TODO; shouldn't this be an internal error, we cannot be telling clients that we don't have ffmpeg installed
+            logger.error(f"ffmpeg binary not found on PATH — job={job_id}, step={step_index}, op={operation}")
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -199,7 +200,7 @@ class ProcessorService:
         if proc.returncode != 0:
             stderr = proc.stderr or ""
             logger.warning(
-                f"FFmpeg failed for operation '{operation}' (exit={proc.returncode})"
+                f"FFmpeg failed — job={job_id}, step={step_index}, op={operation}, exit={proc.returncode}"
             )
             error = await summarize_ffmpeg_error(
                 operation=operation,
@@ -211,9 +212,8 @@ class ProcessorService:
             return ProcessResult(success=False, error=error)
 
         if not os.path.exists(output_path):
-            # FFmpeg returned success but did not produce an output file.
             logger.error(
-                f"FFmpeg exited 0 but output file is missing: {output_path}"
+                f"FFmpeg exited 0 but output file missing — job={job_id}, step={step_index}, op={operation}, path={output_path}"
             )
             return ProcessResult(
                 success=False,

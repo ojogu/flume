@@ -8,6 +8,7 @@
 # Runs on the **download_queue** (many workers, I/O-bound).
 # ─────────────────────────────────────────────────────
 
+import time
 import uuid
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
 from src.model.job import JobStatus, StepStatus
-from src.schema.download import DownloadResult, _FormatPreference
+from src.schema.download import DownloadResult, _ExtractedInfo, _FormatPreference
 from src.service.downloader import (
     assert_size_under_limit,
     build_artifact_from_local,
@@ -53,6 +54,9 @@ async def _download_task_async(job_id: str):
     from src.service.events import EventService
     from src.service.jobs import JobService
     from src.utils.db import get_async_db_session
+
+    start = time.perf_counter()
+    logger.info(f"Download task started for job {job_id}")
 
     async with get_async_db_session() as db:
         job_service = JobService(db)
@@ -197,7 +201,8 @@ async def _download_task_async(job_id: str):
                     api_key_id=job.api_key_id,
                 )
 
-            logger.info(f"Download complete for job {job_id} — {result.local_path}")
+            duration_ms = (time.perf_counter() - start) * 1000
+            logger.info(f"Download complete for job {job_id} — {result.local_path} — duration_ms={duration_ms:.2f}")
 
         except Exception as e:
             logger.error(f"Download failed for job {job_id}: {e}")
@@ -285,8 +290,15 @@ async def _download_upload_source(job, workspace: Path) -> "DownloadResult":
         f"R2 download complete for job {job.id!s} — {local_path} ({artifact.file.size_bytes} bytes)"
     )
 
+    metadata = _ExtractedInfo(
+        platform=artifact.source.platform,
+        video_id=artifact.source.video_id,
+        url=artifact.source.url,
+        title=artifact.source.title or "",
+    )
+
     return DownloadResult(
         local_path=local_path,
-        metadata=artifact.model_dump(),
+        metadata=metadata,
         artifact=artifact,
     )

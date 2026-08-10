@@ -2,7 +2,7 @@ import { apiClient } from './api'
 
 export type JobStatus = 'pending' | 'processing' | 'succeeded' | 'partial_success' | 'failed' | 'dead'
 
-export type JobStepStatus = 'pending' | 'running' | 'completed' | 'failed'
+export type JobStepStatus = 'pending' | 'running' | 'complete' | 'completed' | 'failed'
 
 export interface JobStep {
   id: string

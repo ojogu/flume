@@ -4,6 +4,8 @@
 
 import asyncio
 import concurrent
+
+
 def run_async_in_sync(coro):
     """
     Helper function to run async code in sync Celery tasks

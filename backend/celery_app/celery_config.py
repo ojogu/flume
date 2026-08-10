@@ -1,6 +1,7 @@
 
 
 from kombu import Queue
+
 from src.utils.config import config
 
 

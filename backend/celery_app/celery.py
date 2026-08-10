@@ -4,14 +4,13 @@
 # worker_process_init signal (after fork), not at module import time.
 
 # from celery.schedules import crontab
-from src.utils.config import config
-from datetime import timedelta
 from celery import Celery
-from .celery_config import CeleryConfig
-
+from celery.signals import worker_process_init, worker_process_shutdown
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
+
 from src.utils.telemetry import setup_telemetry
-from celery.signals import worker_process_init, worker_process_shutdown 
+
+from .celery_config import CeleryConfig
 
 bg_task = Celery(
     "celery",

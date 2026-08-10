@@ -18,7 +18,15 @@ export function formatRelativeTime(dateString: string) {
 
 export function formatDuration(ms: number | null) {
   if (ms === null) return '--'
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
+
+  const totalMilliseconds = Math.max(0, Math.round(ms))
+  const hours = Math.floor(totalMilliseconds / 3_600_000)
+  const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000)
+  const seconds = Math.floor((totalMilliseconds % 60_000) / 1_000)
+  const milliseconds = totalMilliseconds % 1_000
+
+  return [hours, minutes, seconds, milliseconds]
+    .map((value, index) => String(value).padStart(index === 3 ? 3 : 2, '0'))
+    .join(':')
 }
 
