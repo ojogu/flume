@@ -10,15 +10,14 @@
 #   Gate 5: Pipeline spec       (build enriched spec for DB storage)
 # ──────────────────────────────────────────────────────────────────────────
 
+from src.core.exception_base import BadRequest
+from src.utils.log import get_logger
 from src.utils.registry import (
     ArtifactType,
     ParamType,
     get_operation,
     operation_exists,
-    OperationDefinition,
 )
-from src.core.exception_base import BadRequest
-from src.utils.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -35,15 +34,12 @@ logger = get_logger(__name__)
 def validate_registry(pipeline: list[dict]) -> None:
     """Every operation name must exist in the operation registry.
 
-    Rejects on the first unknown operation with a positional error so the
-    client knows exactly which step is wrong.
+    Rejects on the first unknown operation with a positional error so the client knows exactly which step is wrong.
     """
     for i, step in enumerate(pipeline):
         name = step["operation"]
         if not operation_exists(name):
-            # Build the valid-ops string separately so the f-string expression
-            # doesn't span multiple lines — Python 3.10's tokenizer chokes on
-            # newlines inside a single f"...".
+            # Build the valid-ops string separately so the f-string expression doesn't span multiple lines — Python 3.10's tokenizer chokes on newlines inside a single f"...".
             valid_ops = ', '.join(sorted([
                 'trim', 'cut', 'compress', 'transcode', 'resize',
                 'watermark', 'subtitle', 'mute',
@@ -129,6 +125,22 @@ def _validate_param_value(
                     f"{param_name}[{j}]", item, definition.items, position, op_name
                 )
 
+    elif definition.type == ParamType.TIMECODE:
+        if not isinstance(value, str):
+            raise BadRequest(f"Param {ctx} must be a timecode string")
+        try:
+            from src.utils.timecode import parse_timecode
+            parsed = parse_timecode(value)
+        except ValueError:
+            raise BadRequest(f"Param {ctx} has invalid timecode format '{value}'") from None
+        if definition.min is not None and parsed < definition.min:
+            raise BadRequest(f"Param {ctx} must be >= {definition.min}, got {value}")
+        if definition.max is not None and parsed > definition.max:
+            raise BadRequest(f"Param {ctx} must be <= {definition.max}, got {value}")
+        # Return the parsed float so the caller can reassign it.
+        # This normalizes timecode strings to floats in-place in submitted params.
+        return parsed
+
     elif definition.type == ParamType.OBJECT:
         if not isinstance(value, dict):
             raise BadRequest(f"Param {ctx} must be an object")
@@ -165,9 +177,12 @@ def validate_params(pipeline: list[dict]) -> None:
                 )
 
             if name in submitted:
-                _validate_param_value(
+                result = _validate_param_value(
                     name, submitted[name], param_def, i, op_name
                 )
+                # Normalize TIMECODE strings to floats in-place so the pipeline spec stores pre-validated numeric values.
+                if result is not None:
+                    submitted[name] = result
     logger.debug(f"Gate 3 passed — params valid for {len(pipeline)} operations")
 
 
@@ -178,8 +193,7 @@ def validate_type_compatibility(source_type: str, pipeline: list[dict]) -> None:
     1.  The source artifact type must match step 0's input_types.
     2.  Each step's output_type must intersect with the next step's input_types.
 
-    Uses operation-level matching — each operation declares what it accepts
-    and what it produces. No phase constraints, only data compatibility.
+    Uses operation-level matching — each operation declares what it accepts and what it produces. No phase constraints, only data compatibility.
     """
     try:
         current_types = {ArtifactType(source_type)}
@@ -208,9 +222,7 @@ def validate_type_compatibility(source_type: str, pipeline: list[dict]) -> None:
 def build_pipeline_spec(pipeline: list[dict]) -> list[dict]:
     """All gates passed — build the enriched pipeline spec for DB storage.
 
-    Each step is annotated with category, capability, input_types, and
-    output_type from the registry so downstream consumers (dispatch, workers)
-    can operate without re-querying the registry.
+    Each step is annotated with category, capability, input_types, and output_type from the registry so downstream consumers (dispatch, workers) can operate without re-querying the registry.
     """
     spec = []
     for step in pipeline:
@@ -236,9 +248,9 @@ def validate_and_build_pipeline(
     """Run all five gates in sequence.
 
     Args:
-        source:       Source URL string (already validated as HttpUrl by Pydantic).
-        source_type:  "video" or "audio" — the type of the source artifact.
-        pipeline:     List of {operation, params} dicts from the request body.
+        source: Source URL string (already validated as HttpUrl by Pydantic).
+        source_type: "video" or "audio" — the type of the source artifact.
+        pipeline: List of {operation, params} dicts from the request body.
 
     Returns:
         The enriched pipeline spec (list of dicts) ready for DB storage.
