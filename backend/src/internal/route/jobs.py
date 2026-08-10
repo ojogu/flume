@@ -107,12 +107,16 @@ async def get_job(
     )
     api_key_name = result.scalar_one_or_none()
 
+    # Sort steps by step_index to ensure correct ordering [0, 1, 2, ...]
+    # This allows the dashboard to use steps[steps.length - 1] to reliably get the final step
+    sorted_job_steps = sorted(job.job_steps or [], key=lambda s: s.step_index)
     steps = [
         {
             **s.to_dict(),
+            # Extract output_url from the output_artifact JSON blob if present
             "output_url": s.output_artifact.get("output_url") if s.output_artifact else None,
         }
-        for s in (job.job_steps or [])
+        for s in sorted_job_steps
     ]
 
     data = InternalJobDetailResponse(
