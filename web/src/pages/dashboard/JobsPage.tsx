@@ -51,6 +51,7 @@ export function JobsPage() {
     switch (status) {
       case 'succeeded': return 'default'
       case 'failed': return 'destructive'
+      case 'dead': return 'destructive'
       case 'processing': return 'secondary'
       case 'pending': return 'outline'
       case 'partial_success': return 'secondary'
@@ -86,6 +87,7 @@ export function JobsPage() {
               <SelectItem value="processing">Processing</SelectItem>
               <SelectItem value="succeeded">Succeeded</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="dead">Dead</SelectItem>
             </SelectContent>
           </Select>
         </div>

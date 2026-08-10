@@ -11,6 +11,7 @@ from src.model.job import TERMINAL_JOB_STATUSES, Job, JobStatus, JobStep, StepSt
 from src.schema.download import _ExtractedInfo
 from src.service.downloader import build_source_meta
 from src.utils.log import get_logger
+from src.utils.title import sanitize_title_for_filename
 
 logger = get_logger(__name__)
 
@@ -101,7 +102,7 @@ class JobService:
         total = await self.db.scalar(select(func.count()).select_from(base.subquery()))
 
         query = (
-            base.order_by(Job.created_at.desc())
+            base.order_by(Job.updated_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
         )
@@ -163,7 +164,7 @@ class JobService:
                 f"Error creating job for API key {api_key_id} — "
                 f"source={source_uri}: {e}"
             )
-            raise DatabaseError()
+            raise DatabaseError from None
 
     # ── Status transitions ─────────────────────────────────────────────────────
 
@@ -195,19 +196,35 @@ class JobService:
         await self.db.commit()
         logger.info(f"Job {job_id} status → {status.value}")
 
-    async def retry_job(self, job_id: uuid.UUID, user_id: uuid.UUID) -> Job:
-        """Retry a non-terminal, non-dead job.
+    # ── Retry ─────────────────────────────────
+    # NOTE: after every db.commit() we call db.refresh(job) to re-fetch all attributes while still in the async call stack. 
+    # SQLAlchemy's expire_on_commit=True expires every attribute on commit; the next access would trigger a lazy load requiring async IO. Without refresh(), accessing job attributes (including to_dict()) after commit raises greenlet_spawn errors in async context.
 
-        Increments retry_count, resets status to PENDING, clears error, and deletes existing job steps so the orchestrator recreates them.
-        If retry_count >= max_retries after increment, sets status to DEAD.
+    async def retry_job_and_return(
+        self, job_id: uuid.UUID, user_id: uuid.UUID
+    ) -> tuple[Job, list[dict], str | None]:
+        """Retry a job and return fully-hydrated data in one shot.
+
+        Returns (job, steps, api_key_name) after committing the retry.
+        Steps are returned as dicts with output_url merged in.
+        Handles commit internally — caller should not commit.
+
+        All DB work (validation, mutations, commit, refresh, and subsequent queries) happen in a single async call stack, avoiding greenlet_spawn errors from SQLAlchemy's expire_on_commit=True default.
         """
+        from sqlalchemy import select
+
+        from src.model.api import ApiKey
+        from src.model.job import JobStep
+
         job = await self.get_job_detail_by_user(user_id, job_id)
         if not job:
             raise NotFoundError("Job not found")
 
-        if job.status in (s.value for s in TERMINAL_JOB_STATUSES):
-            raise BadRequest(f"Cannot retry a terminal job (status={job.status})")
+        # Only SUCCEEDED is truly terminal — FAILED and PARTIAL_SUCCESS are retryable
+        if job.status == JobStatus.SUCCEEDED.value:
+            raise BadRequest("Cannot retry a succeeded job")
 
+        # DEAD jobs are handled by the DLQ page — not retriable here
         if job.status == JobStatus.DEAD.value:
             raise BadRequest("Cannot retry a dead job")
 
@@ -219,20 +236,61 @@ class JobService:
             job.error = f"Exceeded max retries ({job.max_retries})"
             await self.db.flush()
             await self.db.commit()
+            await self.db.refresh(job)  # re-fetch all attributes while still in async context
             logger.warning(f"Job {job_id} reached dead state after {job.retry_count} retries")
-            return job
+        else:
+            job.status = JobStatus.PENDING.value
+            job.error = None
+            job.completed_at = None
 
-        job.status = JobStatus.PENDING.value
-        job.error = None
-        job.completed_at = None
+            for step in job.job_steps or []:
+                await self.db.delete(step)
 
-        for step in job.job_steps or []:
-            await self.db.delete(step)
+            await self.db.flush()
+            await self.db.commit()
+            await self.db.refresh(job)  # re-fetch all attributes while still in async context
+            logger.info(f"Job {job_id} retried (attempt {job.retry_count}/{job.max_retries})")
 
-        await self.db.flush()
-        await self.db.commit()
-        logger.info(f"Job {job_id} retried (attempt {job.retry_count}/{job.max_retries})")
-        return job
+            # Emit job.retried event for webhook subscribers
+            from src.model.event import EventType
+            from src.service.events import EventService
+            event_service = EventService(self.db)
+            await event_service.emit(
+                event_type=EventType.JOB_RETRIED,
+                resource_id=job.id,
+                data={
+                    "job_id": str(job.id),
+                    "status": job.status,
+                    "retry_count": job.retry_count,
+                    "source_uri": job.source_uri,
+                    "source_type": job.source_type,
+                },
+                api_key_id=job.api_key_id,
+            )
+
+            # Dispatch job processing to the orchestrator queue
+            from celery_app.orchestrator import process_job
+            process_job.apply_async(args=[str(job.id)], task_id=str(job.id))
+            logger.info(f"Job {job_id} dispatched to orchestrator after retry")
+
+        # Fetch everything fresh — safe now that job has been refreshed post-commit
+        api_key_result = await self.db.execute(
+            select(ApiKey.name).where(ApiKey.id == job.api_key_id)
+        )
+        api_key_name = api_key_result.scalar_one_or_none()
+
+        steps_result = await self.db.execute(
+            select(JobStep).where(JobStep.job_id == job_id).order_by(JobStep.step_index)
+        )
+        steps = [
+            {
+                **s.to_dict(),
+                "output_url": s.output_artifact.get("output_url") if s.output_artifact else None,
+            }
+            for s in steps_result.scalars().all()
+        ]
+
+        return job, steps, api_key_name
 
     async def set_source_metadata(self, job_id: uuid.UUID, metadata: dict) -> None:
         """Store the ``SourceInfo + MediaInfo`` dict after download completes."""
@@ -363,7 +421,7 @@ class JobService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Failed to create child jobs for {parent_job.id!s}: {e}")
-            raise DatabaseError()
+            raise DatabaseError from None
 
         return children
 
@@ -479,12 +537,14 @@ class JobService:
         api_key_short = str(job.api_key_id).split("-")[0]
         job_short = str(job.id).split("-")[0]
 
+        title = job.source_metadata.get("source", {}).get("title") if job.source_metadata else None
+        sanitized = sanitize_title_for_filename(title)
+
         if last_step.step_index == 0:
-            object_key = f"outputs/{api_key_short}/{job_short}/input.{container}"
+            filename = sanitized if sanitized else "input"
         else:
-            object_key = (
-                f"outputs/{api_key_short}/{job_short}/"
-                f"step_{last_step.step_index}_output.{container}"
-            )
+            filename = sanitized if sanitized else f"step_{last_step.step_index}_output"
+
+        object_key = f"outputs/{api_key_short}/{job_short}/{filename}.{container}"
 
         return await storage.generate_presigned_download_url(object_key)

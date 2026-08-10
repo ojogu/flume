@@ -378,7 +378,7 @@ function WebhookCard({
                 size="sm"
                 className="h-9 gap-2"
                 onClick={(e) => {
-                  e.stopPropagation()
+                  e.preventDefault()
                   handleTest()
                 }}
                 disabled={testing}
@@ -390,7 +390,7 @@ function WebhookCard({
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <Button variant="ghost" size="icon" className="size-11 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]" onClick={(e) => { e.stopPropagation(); onEdit() }} aria-label="Edit endpoint">
+                    <Button variant="ghost" size="icon" className="size-11 text-[var(--text-muted)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]" onClick={(e) => { e.preventDefault(); onEdit() }} aria-label="Edit endpoint">
                       <Pencil className="h-4 w-4" />
                     </Button>
                   }
@@ -400,7 +400,7 @@ function WebhookCard({
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <Button variant="ghost" size="icon" className="size-11 text-[var(--text-muted)] hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete() }} aria-label="Delete endpoint">
+                    <Button variant="ghost" size="icon" className="size-11 text-[var(--text-muted)] hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.preventDefault(); onDelete() }} aria-label="Delete endpoint">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   }

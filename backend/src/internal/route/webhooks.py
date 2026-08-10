@@ -123,10 +123,11 @@ async def list_webhook_deliveries(
     event_service: EventService = Depends(get_event_service),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    status: str = Query('all', regex='^(all|delivered|exhausted)$'),
 ):
-    """List delivery attempts for a subscription with pagination."""
+    """List delivery attempts for a subscription with pagination and optional status filter."""
     deliveries, total = await event_service.list_deliveries_by_user(
-        user.id, subscription_id, limit=limit, offset=offset,
+        user.id, subscription_id, limit=limit, offset=offset, status=status,
     )
     return success(
         data={

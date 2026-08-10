@@ -22,6 +22,7 @@ class EventType(str, enum.Enum):
     JOB_COMPLETED = "job.completed"
     JOB_FAILED = "job.failed"
     JOB_CANCELLED = "job.cancelled"
+    JOB_RETRIED = "job.retried"
     STEP_STARTED = "step.started"
     STEP_COMPLETED = "step.completed"
     STEP_FAILED = "step.failed"

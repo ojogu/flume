@@ -226,10 +226,10 @@ export function JobDetailPage() {
 
           {/* Start time */}
           <Tooltip>
-            <TooltipTrigger asChild>
-              <p className="text-xs text-[var(--text-muted)] cursor-default">
-                Started {formatRelativeTime(job.created_at)}
-              </p>
+            <TooltipTrigger
+              render={<p className="text-xs text-[var(--text-muted)] cursor-default" />}
+            >
+              Started {formatRelativeTime(job.created_at)}
             </TooltipTrigger>
             <TooltipContent>
               {new Date(job.created_at).toLocaleString()}
@@ -261,7 +261,7 @@ export function JobDetailPage() {
               </div>
 
               {/* Step Content */}
-              <div className="flex-1 space-y-3">
+              <div className="flex-1 space-y-3 min-w-0">
                 <div className="flex items-center justify-between">
                   <h3 className={cn(
                     "font-semibold text-base",
@@ -272,10 +272,10 @@ export function JobDetailPage() {
                   <div className="flex items-center gap-2">
                     {step.started_at && (
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="text-xs font-mono text-[var(--text-muted)] font-medium cursor-default">
-                            {formatRelativeTime(step.started_at)}
-                          </span>
+                        <TooltipTrigger
+                          render={<span className="text-xs font-mono text-[var(--text-muted)] font-medium cursor-default" />}
+                        >
+                          {formatRelativeTime(step.started_at)}
                         </TooltipTrigger>
                         <TooltipContent>
                           Started: {new Date(step.started_at).toLocaleString()}
@@ -286,10 +286,10 @@ export function JobDetailPage() {
                       <>
                         <span className="text-xs text-[var(--text-muted)]">→</span>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-xs font-mono text-[var(--text-muted)] font-medium cursor-default">
-                              {formatRelativeTime(step.completed_at)}
-                            </span>
+                          <TooltipTrigger
+                            render={<span className="text-xs font-mono text-[var(--text-muted)] font-medium cursor-default" />}
+                          >
+                            {formatRelativeTime(step.completed_at)}
                           </TooltipTrigger>
                           <TooltipContent>
                             Completed: {new Date(step.completed_at).toLocaleString()}
@@ -309,7 +309,7 @@ export function JobDetailPage() {
                   <Button
                     variant="outline"
                     onClick={() => handleDownload(id!)}
-                    className="w-full justify-start gap-2 border-brand/20 bg-brand/5 hover:bg-brand/10 text-brand"
+                    className="w-full justify-start gap-2 py-4 border-brand/20 bg-brand/5 hover:bg-brand/10 text-brand"
                   >
                     <ExternalLink className="h-5 w-5" />
                     <div className="space-y-1 text-left">

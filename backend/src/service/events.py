@@ -1,28 +1,34 @@
 import json
 import secrets
+import uuid
 from datetime import datetime, timezone
 from typing import Any
-import uuid
 
 from httpx import TimeoutException
-from sqlalchemy import select, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.exception_base import NotFoundError
-from src.model.event import DeliveryStatus, EventType, WebhookSubscription, WebhookDelivery
-from src.model.api import ApiKey
 from src.internal.schema.webhooks import InternalWebhookResponse
+from src.model.api import ApiKey
+from src.model.event import (
+    DeliveryStatus,
+    EventType,
+    WebhookDelivery,
+    WebhookSubscription,
+)
 from src.schema.event import (
-    JobCreatedEnvelope,
-    JobProcessingEnvelope,
-    JobCompletedEnvelope,
-    JobFailedEnvelope,
     JobCancelledEnvelope,
-    StepStartedEnvelope,
+    JobCompletedEnvelope,
+    JobCreatedEnvelope,
+    JobFailedEnvelope,
+    JobProcessingEnvelope,
+    JobRetriedEnvelope,
+    PingEnvelope,
     StepCompletedEnvelope,
     StepFailedEnvelope,
-    PingEnvelope,
+    StepStartedEnvelope,
 )
 from src.utils.crypto import build_signed_headers
 from src.utils.http_client import get_http_client
@@ -36,6 +42,7 @@ _EVENT_TYPE_TO_ENVELOPE: dict[EventType, type] = {
     EventType.JOB_COMPLETED: JobCompletedEnvelope,
     EventType.JOB_FAILED: JobFailedEnvelope,
     EventType.JOB_CANCELLED: JobCancelledEnvelope,
+    EventType.JOB_RETRIED: JobRetriedEnvelope,
     EventType.STEP_STARTED: StepStartedEnvelope,
     EventType.STEP_COMPLETED: StepCompletedEnvelope,
     EventType.STEP_FAILED: StepFailedEnvelope,
@@ -291,11 +298,20 @@ class EventService:
         subscription_id: uuid.UUID,
         limit: int = 20,
         offset: int = 0,
+        status: str = 'all',
     ) -> tuple[list[WebhookDelivery], int]:
-        """List deliveries for a subscription with pagination, verifying user ownership."""
+        """List deliveries for a subscription with pagination and optional status filter, verifying user ownership."""
         await self._verify_subscription_ownership(user_id, subscription_id)
 
         where_clause = WebhookDelivery.subscription_id == subscription_id
+
+        if status == 'delivered':
+            where_clause = and_(where_clause, WebhookDelivery.status == 'delivered')
+        elif status == 'exhausted':
+            where_clause = and_(
+                where_clause,
+                WebhookDelivery.status.in_(['exhausted', 'failed'])
+            )
 
         count_result = await self.db.execute(
             select(func.count()).select_from(WebhookDelivery).where(where_clause)
