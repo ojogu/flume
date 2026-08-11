@@ -38,6 +38,9 @@ class Config(BaseSettings):
     
     # optional cookies file for yt-dlp (authenticated downloads — private content, age-restricted, etc.)
     ytdlp_cookie_file: str = "/app/cookies/cookies.txt"
+
+    # optional proxy URL for yt-dlp downloads
+    yt_proxy_url: str | None = None
     
     # hard limit on downloaded file size (bytes); jobs exceeding this are failed.
     # default: 2 GB
