@@ -1,23 +1,19 @@
 # ── FFmpeg operation execution layer ─────────────────────────────────────────
-# Responsibilities:
-#   1. Build FFmpeg command lists per operation (trim, cut, compress, ...)
-#   2. Run FFmpeg via subprocess and capture stdout/stderr
-#   3. On failure, route stderr to the LLM error summarizer
-#   4. On success, build an ``Artifact`` describing the output file
-
-# Class-based service mirroring ``JobService``/``EventService``: constructed with an ``AsyncSession`` so it can be wired through the same dependency injection paths and share the DB transaction with its caller.
-
-# Runs inside Celery workers (sync execution context). The async methods below are driven by ``run_async_in_sync`` exactly like the download task.
+# Executes media operations (trim, mute, compress, cut, watermark, subtitle, etc.) by building FFmpeg command lists, running them via subprocess, and returning a ProcessResult. On failure, stderr is routed to the LLM error summarizer.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import subprocess
 import uuid
+from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import ClassVar
 
+import requests
+import yt_dlp
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.schema.artifact import (
@@ -28,27 +24,32 @@ from src.schema.artifact import (
 )
 from src.schema.processor import ProcessError, ProcessResult
 from src.service.llm_error_summarizer import summarize_ffmpeg_error
+from src.service.storage import storage
 from src.utils.ffprobe import probe_media
+from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
 
 logger = get_logger(__name__)
 
 
 class ProcessorService:
-    """FFmpeg execution service.
-
-    Each operation is a private method that builds the FFmpeg command list, invokes ``_run_ffmpeg``, and (on success) attaches an ``Artifact`` built from the output file. ``execute_operation`` is the single public entry point used by the ``jobs.media.execute`` Celery task.
-
-    Args:
-        db: Async SQLAlchemy session. Currently unused by FFmpeg execution itself but kept for symmetry with the other services so the same injection pattern applies and future DB-touching helpers (e.g. ffprobe enrichment) can land without a constructor change.
-    """
+    """FFmpeg execution service. Each operation is a private method that builds an FFmpeg command, runs it via ``_run_ffmpeg``, and on success attaches an ``Artifact`` built from the output file. ``execute_operation`` is the single public entry point used by the ``jobs.media.execute`` Celery task."""
 
     # ── Handler registry ──────────────────────────────────
-    # Maps operation name → bound method name. Kept at the top of the class so the supported operations read as a table of contents; new operations (Phase 3+) plug in by adding a method + an entry here. Method names are strings (not direct references) because the class body can't forward-reference methods defined below — resolution happens at call time via getattr.
-    
-    
+    # Maps operation name → bound method name. Method names are strings (not direct references) because the class body can't forward-reference methods defined below — resolution happens at call time via getattr.
     _HANDLERS: ClassVar[dict[str, str]] = {
         "trim": "_trim",
+        "mute": "_mute",
+        "thumbnail": "_thumbnail",
+        "extract_audio": "_extract_audio",
+        "gif": "_gif",
+        "compress": "_compress",
+        "resize": "_resize",
+        "transcode": "_transcode",
+        "cut": "_cut",
+        "watermark": "_watermark",
+        "subtitle": "_subtitle",
+        "join": "_join",
     }
 
     def __init__(self, db: AsyncSession):
@@ -65,20 +66,7 @@ class ProcessorService:
         input_path: str,
         workspace: Path,
     ) -> ProcessResult:
-        """Dispatch to the per-operation handler.
-
-        Args:
-            job_id: Owning job UUID. Used to build artifact identifiers.
-            step_index: Zero-based step index for this operation. Used to name the output file uniquely within the workspace.
-            operation: Operation name from ``pipeline_steps`` (e.g. "trim").
-            params: Operation params from ``pipeline_steps``.
-            input_path: Absolute path to the input file (previous step's output or, for step_index 0, the downloaded file).
-            workspace: Absolute path to the job's isolated workspace.
-
-        Returns:
-            ``ProcessResult`` with either a built ``Artifact`` (success) or a
-            structured ``ProcessError`` (failure).
-        """
+        """Dispatch to the registered handler for *operation*."""
         handler_name = self._HANDLERS.get(operation)
         if handler_name is None:
             logger.error(f"No handler registered for operation '{operation}' — job={job_id}, step={step_index}")
@@ -112,16 +100,11 @@ class ProcessorService:
         operation: str,
         params: dict,
     ) -> ProcessResult:
-        """Clip a segment from the input between ``start`` and ``end``.
-
-        Re-encodes to H.264 video + AAC audio so the cut is frame-accurate regardless of keyframe boundaries. Output container is mp4.
-
-        `start` and `end` are pre-validated and normalized as floats by Gate 3 (validate_params) — no parsing or type coercion needed here.
-        """
+        """Clip a segment from the input between ``start`` and ``end``. Re-encodes to H.264 + AAC for frame-accurate cutting."""
         start = params["start"]
         end = params["end"]
 
-        if end <= start:
+        if end <= start:  # Degenerate segment — nothing to keep
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -159,6 +142,610 @@ class ProcessorService:
             artifact=artifact,
         )
 
+    async def _mute(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Remove the audio stream from the input video."""
+        output_path = str(workspace / f"step_{step_index}_output.mp4")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-c:v", "copy",
+            "-an",
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="mute",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    async def _thumbnail(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Extract a single frame from the video as a JPEG."""
+        timestamp = params["timestamp"]
+        output_path = str(workspace / f"step_{step_index}_output.jpg")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-ss", str(timestamp),
+            "-vframes", "1",
+            "-q:v", "2",  # JPEG quality: 2=high, 31=low
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="thumbnail",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    async def _extract_audio(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Strip video and encode audio to mp3 or aac."""
+        fmt = params["format"]  # required=true, validated by Gate 3
+        output_path = str(workspace / f"step_{step_index}_output.{fmt}")
+        if fmt == "mp3":
+            cmd = ["ffmpeg", "-y", "-i", input_path, "-vn", "-c:a", "libmp3lame", "-q:a", "2", output_path]
+        else:  # aac
+            cmd = ["ffmpeg", "-y", "-i", input_path, "-vn", "-c:a", "aac", "-strict", "experimental", output_path]
+
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="extract_audio",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    async def _gif(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Convert a video segment to a GIF using two-pass palette generation for better quality."""
+        start = params["start"]
+        end = params["end"]
+        fps = params.get("fps", 15)
+
+        palette_path = str(workspace / f"step_{step_index}_palette.png")  # intermediate; cleaned up after
+        output_path = str(workspace / f"step_{step_index}_output.gif")
+
+        # Pass 1: generate palette
+        cmd_palette = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-ss", str(start),
+            "-to", str(end),
+            "-vf", f"fps={fps},palettegen",
+            palette_path,
+        ]
+        result = await self._run_ffmpeg(cmd_palette, operation, params, input_path, palette_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        # Pass 2: apply palette to produce GIF
+        cmd_gif = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-ss", str(start),
+            "-to", str(end),
+            "-i", palette_path,
+            "-filter_complex", f"fps={fps},paletteuse",
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd_gif, operation, params, input_path, output_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        # Clean up palette file
+        with suppress(OSError):
+            os.remove(palette_path)
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="gif",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    # CRF: lower = better quality, larger file. 28=web quality, 23=default, 18=visually lossless.
+    _CRF_MAP: ClassVar[dict[str, int]] = {"low": 28, "medium": 23, "high": 18}
+
+    async def _compress(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Re-encode video at a lower CRF to reduce file size. Audio is re-encoded to AAC."""
+        quality = params.get("quality", "medium")
+        crf = self._CRF_MAP[quality]
+        output_path = str(workspace / f"step_{step_index}_output.mp4")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-c:v", "libx264",
+            "-crf", str(crf),
+            "-preset", "medium",  # balance between encoding speed and compression
+            "-c:a", "aac",
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="compress",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    _RESIZE_PRESETS: ClassVar[dict[str, tuple[int, int]]] = {
+        "360p": (640, 360),
+        "480p": (854, 480),
+        "720p": (1280, 720),
+        "1080p": (1920, 1080),
+        "4k": (3840, 2160),
+    }
+
+    async def _resize(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Scale video to a target resolution using a preset or explicit width/height."""
+        preset = params.get("preset")
+        if preset:
+            width, height = self._RESIZE_PRESETS.get(preset, (1280, 720))
+        else:
+            width = params.get("width")
+            height = params.get("height")
+            if not width and not height:
+                return ProcessResult(
+                    success=False,
+                    error=ProcessError(
+                        code="invalid_params",
+                        summary="[resize] Either 'preset' or 'width'/'height' must be provided.",
+                        cause="No resize target specified.",
+                        fix="Provide preset=720p or width=1280&height=720.",
+                        raw_stderr="",
+                    ),
+                )
+            width = width or -1  # -1 tells FFmpeg to infer this dimension from the other and preserve aspect
+            height = height or -1
+
+        output_path = str(workspace / f"step_{step_index}_output.mp4")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            # Reduce only the dimension that exceeds target; the other scales automatically to preserve aspect
+            "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease",
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="resize",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    # Container → (video codec, audio codec, output extension)
+    _TRANSCODE_CODEC_MAP: ClassVar[dict[str, tuple[str, str, str]]] = {
+        "mp4": ("libx264", "aac", "mp4"),
+        "webm": ("libvpx-vp9", "libopus", "webm"),
+        "mov": ("qtrle", "pcm_s16le", "mov"),
+    }
+
+    async def _transcode(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Convert video to a different container/codec format (mp4, webm, or mov)."""
+        fmt = params["format"]  # required=true, validated by Gate 3
+        vcodec, acodec, ext = self._TRANSCODE_CODEC_MAP[fmt]
+        output_path = str(workspace / f"step_{step_index}_output.{ext}")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-c:v", vcodec,
+            "-c:a", acodec,
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="transcode",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    async def _cut(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Remove segments from the video by extracting kept ranges and concatenating them."""
+        segments = params["segments"]
+        if not segments:
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="invalid_params",
+                    summary="[cut] At least one segment must be provided.",
+                    cause="segments array is empty.",
+                    fix="Provide segments=[{start:float, end:float}, ...].",
+                    raw_stderr="",
+                ),
+            )
+
+        # Sort segments, then compute the gaps between/around them as kept ranges
+        sorted_segs = sorted(segments, key=lambda s: s["start"])
+        kept_ranges: list[tuple[float, float]] = []
+        prev_end = 0.0
+        for seg in sorted_segs:
+            start, end = seg["start"], seg["end"]
+            if start > prev_end:
+                kept_ranges.append((prev_end, start))  # gap before this segment is kept
+            prev_end = max(prev_end, end)
+
+        # If last segment doesn't reach end-of-file, keep the remaining tail
+        media = probe_media(input_path)
+        duration = media.duration_seconds or 0
+        if prev_end < duration:
+            kept_ranges.append((prev_end, duration))
+
+        if not kept_ranges:
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="invalid_params",
+                    summary="[cut] No valid ranges to keep after processing segments.",
+                    cause="Segments may cover the entire video.",
+                    fix="Ensure segments do not cover the entire duration.",
+                    raw_stderr="",
+                ),
+            )
+
+        # Build trim+setpts filters per kept range, then concat into one output
+        n = len(kept_ranges)
+        filter_parts: list[str] = []
+        for i, (s, e) in enumerate(kept_ranges):
+            filter_parts.append(f"[0:v]trim=start={s}:end={e},setpts=PTS-STARTPTS[v{i}]")
+            filter_parts.append(f"[0:a]atrim=start={s}:end={e},asetpts=PTS-STARTPTS[a{i}]")
+
+        concat_parts = "[v0]" + "".join(f"[v{i}]" for i in range(1, n))
+        concat_parts += "[a0]" + "".join(f"[a{i}]" for i in range(1, n))
+        concat_parts += f"concat=n={n}:v=1:a=1[vout][aout]"
+
+        filter_complex = ";".join([*filter_parts, concat_parts])
+
+        output_path = str(workspace / f"step_{step_index}_output.mp4")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-filter_complex", filter_complex,
+            "-map", "[vout]",  # select only the concatenated output streams
+            "-map", "[aout]",
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="cut",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    _WATERMARK_POSITIONS: ClassVar[dict[str, tuple[str, str]]] = {
+        "top_left": ("0", "0"),
+        "top_right": ("W-w", "0"),
+        "bottom_left": ("0", "H-h"),
+        "bottom_right": ("W-w", "H-h"),
+        "center": ("(W-w)/2", "(H-h)/2"),
+    }
+
+    async def _watermark(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Overlay a watermark image onto the video at the specified position."""
+        image_url = params["image_url"]
+        position = params.get("position", "bottom_right")
+        coords = self._WATERMARK_POSITIONS.get(position, ("W-w", "H-h"))
+
+        try:
+            logger.info(f"Downloading watermark image from {image_url}")
+            resp = requests.get(image_url, timeout=30)
+            resp.raise_for_status()
+        except Exception as exc:
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="download_failed",
+                    summary=f"[watermark] Failed to download watermark image: {exc}",
+                    cause=f"HTTP GET to '{image_url}' failed.",
+                    fix="Verify the image URL is publicly accessible.",
+                    raw_stderr=str(exc),
+                ),
+            )
+
+        ext = Path(image_url).suffix.lstrip(".") or "png"
+        wm_path = str(workspace / f"step_{step_index}_watermark.{ext}")
+        with open(wm_path, "wb") as f:
+            f.write(resp.content)
+
+        # Probe input video to get dimensions for overlay position calculation
+        media = probe_media(input_path)
+        width = media.width or 0
+        height = media.height or 0
+
+        # Replace W/H placeholders with actual dimensions — FFmpeg evaluates these at runtime
+        overlay_x = coords[0].replace("W", str(width)).replace("w", "")
+        overlay_y = coords[1].replace("H", str(height)).replace("h", "")
+
+        output_path = str(workspace / f"step_{step_index}_output.mp4")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-i", wm_path,
+            "-filter_complex", f"overlay={overlay_x}:{overlay_y}",
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        with suppress(OSError):
+            os.remove(wm_path)  # clean up downloaded image
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="watermark",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    async def _subtitle(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Burn subtitles into the video from an SRT file. Auto-generated subtitles are not yet supported."""
+        if params.get("auto"):
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="not_implemented",
+                    summary="[subtitle] Auto-generated subtitles are not yet supported.",
+                    cause="auto mode requires a Whisper transcription integration.",
+                    fix="Provide a subtitle file via file_url.",
+                    raw_stderr="",
+                ),
+            )
+
+        file_url = params.get("file_url")
+        if not file_url:
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="invalid_params",
+                    summary="[subtitle] Either 'file_url' or 'auto: true' must be provided.",
+                    cause="No subtitle source specified.",
+                    fix="Provide file_url pointing to an SRT subtitle file.",
+                    raw_stderr="",
+                ),
+            )
+
+        try:
+            logger.info(f"Downloading subtitle file from {file_url}")
+            resp = requests.get(file_url, timeout=30)
+            resp.raise_for_status()
+        except Exception as exc:
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="download_failed",
+                    summary=f"[subtitle] Failed to download subtitle file: {exc}",
+                    cause=f"HTTP GET to '{file_url}' failed.",
+                    fix="Verify the subtitle URL is publicly accessible.",
+                    raw_stderr=str(exc),
+                ),
+            )
+
+        srt_path = str(workspace / f"step_{step_index}_subtitles.srt")
+        with open(srt_path, "wb") as f:
+            f.write(resp.content)
+
+        output_path = str(workspace / f"step_{step_index}_output.mp4")
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-vf", f"subtitles={srt_path}",
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+        with suppress(OSError):
+            os.remove(srt_path)  # clean up downloaded subtitle file
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="subtitle",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    async def _join(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Concatenate multiple video clips into one output using the FFmpeg concat filter."""
+        clips = params["clips"]  # list of URLs; min 2, max 10 — validated by Gate 3
+        n = len(clips)
+        clip_paths: list[str] = []
+
+        for i, clip_url in enumerate(clips):
+            clip_url = clip_url.strip()
+            if clip_url.startswith("uploads/"):
+                # R2 presigned GET — stream download asynchronously
+                ext = Path(clip_url).suffix.lstrip(".") or "mp4"
+                local_path = str(workspace / f"join_clip_{i}.{ext}")
+                presigned = await storage.generate_presigned_download_url(clip_url)
+                client = get_http_client(timeout=300.0)
+                async with client.stream("GET", presigned) as resp:
+                    resp.raise_for_status()
+                    with open(local_path, "wb") as f:
+                        async for chunk in resp.aiter_bytes():
+                            f.write(chunk)
+                await client.aclose()
+            else:
+                # Platform URL — yt-dlp with custom output name to avoid collision
+                local_path = str(workspace / f"join_clip_{i}.mp4")
+                opts: dict = {
+                    "outtmpl": str(workspace / f"join_clip_{i}.%(ext)s"),
+                    "format": "bestvideo+bestaudio/best",
+                    "quiet": True,
+                    "no_warnings": True,
+                    "merge_output_format": "mp4",
+                }
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, self._download_clip_sync, clip_url, str(workspace), i, opts)
+
+            clip_paths.append(local_path)
+
+        # Build concat filter complex — re-encodes all clips to a common format
+        filter_complex = (
+            "".join(f"[{i}:v][{i}:a]" for i in range(n))
+            + f"concat=n={n}:v=1:a=1[vout][aout]"
+        )
+        output_path = str(workspace / f"step_{step_index}_output.mp4")
+        cmd = [
+            "ffmpeg", "-y",
+            *[["-i", p] for p in clip_paths],
+            "-filter_complex", filter_complex,
+            "-map", "[vout]",
+            "-map", "[aout]",
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            output_path,
+        ]
+        result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+
+        for p in clip_paths:
+            with suppress(OSError):
+                os.remove(p)
+        if not result.success:
+            return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="join",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    @staticmethod
+    def _download_clip_sync(url: str, workspace_dir: str, index: int, opts: dict) -> None:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([url])
+
     # ── FFmpeg subprocess primitive ─────────────────────────────────────────
 
     async def _run_ffmpeg(
@@ -171,12 +758,7 @@ class ProcessorService:
         job_id: uuid.UUID,
         step_index: int,
     ) -> ProcessResult:
-        """Execute an FFmpeg command list and capture the result.
-
-        Returns a ProcessResult:
-          success → `output_path` populated, no artifact (caller attaches).
-          failure → `error` populated via the LLM summarizer.
-        """
+        """Execute an FFmpeg command. Returns ProcessResult with output_path on success, error on failure."""
         logger.debug(f"FFmpeg cmd: {' '.join(cmd)}")
         try:
             proc = subprocess.run(
@@ -237,11 +819,7 @@ class ProcessorService:
         step_index: int,
         operation: str,
     ) -> Artifact:
-        """Build an ``Artifact`` for an operation's output file.
-
-        ``SourceInfo`` is pipeline-flavored: platform="pipeline" signals that this artifact was derived by FFmpeg, not downloaded. Media info is populated by probing the output file with ffprobe so the Artifact accurately reflects
-        the media on disk.
-        """
+        """Build an Artifact from the output file. Probes media info with ffprobe; platform="pipeline" marks it as FFmpeg-derived."""
         try:
             size_bytes = os.stat(output_path, follow_symlinks=True).st_size
         except OSError:
