@@ -85,7 +85,7 @@ REGISTRY: dict[str, OperationDefinition] = {
             ),
             "end": ParamDefinition(
                 type=ParamType.TIMECODE,
-                required=True,
+                required=False,
                 min=0.0,
             ),
         },
@@ -297,7 +297,7 @@ REGISTRY: dict[str, OperationDefinition] = {
             ),
             "end": ParamDefinition(
                 type=ParamType.TIMECODE,
-                required=True,
+                required=False,
                 min=0.0,
             ),
             "fps": ParamDefinition(

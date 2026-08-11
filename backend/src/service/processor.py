@@ -104,9 +104,9 @@ class ProcessorService:
         """Clip a segment from the input between ``start`` and ``end``. Re-encodes to H.264 + AAC for frame-accurate cutting."""
         job_id_str = str(job_id)
         start = params["start"]
-        end = params["end"]
+        end = params.get("end")  # optional — None means "till end of video"
 
-        if end <= start:
+        if end is not None and end <= start:
             logger.warning(
                 f"[{operation}] job={job_id_str} step={step_index} — "
                 f"end ({end}) must be > start ({start})"
@@ -121,6 +121,10 @@ class ProcessorService:
                     raw_stderr="",
                 ),
             )
+
+        if end is None:
+            media = probe_media(input_path)
+            end = media.duration_seconds or 0
 
         output_path = str(workspace / f"step_{step_index}_output.mp4")
         cmd = [
@@ -250,8 +254,12 @@ class ProcessorService:
     ) -> ProcessResult:
         """Convert a video segment to a GIF using two-pass palette generation for better quality."""
         start = params["start"]
-        end = params["end"]
+        end = params.get("end")  # optional — None means "till end of video"
         fps = params.get("fps", 15)
+
+        if end is None:
+            media = probe_media(input_path)
+            end = media.duration_seconds or 0
 
         palette_path = str(workspace / f"step_{step_index}_palette.png")  # intermediate; cleaned up after
         output_path = str(workspace / f"step_{step_index}_output.gif")
