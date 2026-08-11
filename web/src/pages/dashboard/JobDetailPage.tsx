@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { JobDetailHeader } from '@/components/dashboard/job-detail/JobDetailHeader'
@@ -19,10 +19,13 @@ const RETRYABLE_STATUSES = new Set(['pending', 'processing', 'failed'])
 
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [copiedId, setCopiedId] = useState(false)
   const [showRetryDialog, setShowRetryDialog] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+
+  const backUrl = `/dashboard/jobs${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
 
   const jobQuery = useQuery({
     queryKey: ['job', id],
@@ -106,6 +109,7 @@ export function JobDetailPage() {
         elapsedMs={elapsed}
         onCopyId={handleCopyId}
         onOpenRetry={() => setShowRetryDialog(true)}
+        backUrl={backUrl}
       />
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">

@@ -51,6 +51,7 @@ class ParamDefinition:
     items: Optional["ParamDefinition"] = None  # for array type only
     min_items: int | None = None          # for array type only
     max_items: int | None = None          # for array type only
+    params: dict[str, "ParamDefinition"] | None = None  # for OBJECT type — nested field schemas
 
 
 @dataclass
@@ -100,7 +101,14 @@ REGISTRY: dict[str, OperationDefinition] = {
             "segments": ParamDefinition(
                 type=ParamType.ARRAY,
                 required=True,
-                items=ParamDefinition(type=ParamType.OBJECT, required=True),
+                items=ParamDefinition(
+                    type=ParamType.OBJECT,
+                    required=True,
+                    params={
+                        "start": ParamDefinition(type=ParamType.TIMECODE, required=True, min=0.0),
+                        "end": ParamDefinition(type=ParamType.TIMECODE, required=True, min=0.0),
+                    },
+                ),
                 min_items=1,
                 max_items=50,
             ),

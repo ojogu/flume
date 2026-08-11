@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Copy, Check, RefreshCcw, Inbox, ArrowRight } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -20,15 +20,32 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { getJobs, Job } from '@/lib/jobs'
+import { getJobs, getJobCounts, Job } from '@/lib/jobs'
 import { formatRelativeTime, cn } from '@/lib/utils'
 import { useApiStore } from '@/stores/apiStore'
 
 export function JobsPage() {
   const { activeApiKey } = useApiStore()
-  const [status, setStatus] = useState<string>('all')
-  const [page, setPage] = useState(1)
+  const [searchParams, setSearchParams] = useSearchParams()
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const status = searchParams.get('status') || 'all'
+  const page = parseInt(searchParams.get('page') || '1', 10)
+
+  const setStatus = (v: string) => {
+    setSearchParams((prev) => {
+      prev.set('status', v)
+      prev.set('page', '1')
+      return prev
+    })
+  }
+
+  const setPage = (p: number) => {
+    setSearchParams((prev) => {
+      prev.set('page', String(p))
+      return prev
+    })
+  }
 
   const { data, isLoading, isError, error, isFetching, refetch } = useQuery({
     queryKey: ['jobs', activeApiKey, status, page],
@@ -39,6 +56,11 @@ export function JobsPage() {
       per_page: 20
     }),
     refetchInterval: 5000,
+  })
+
+  const { data: counts } = useQuery({
+    queryKey: ['job-counts', activeApiKey],
+    queryFn: () => getJobCounts(activeApiKey || undefined),
   })
 
   const copyToClipboard = (text: string) => {
@@ -90,6 +112,13 @@ export function JobsPage() {
               <SelectItem value="dead">Dead</SelectItem>
             </SelectContent>
           </Select>
+          {counts && (
+            <p className="text-sm text-[var(--text-muted)]">
+              {status === 'all'
+                ? `${Object.values(counts).reduce((a, b) => a + b, 0)} total jobs`
+                : `${counts[status as keyof typeof counts] || 0} ${status} jobs`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -179,7 +208,7 @@ export function JobsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Link
-                      to={`/dashboard/jobs/${job.id}`}
+                      to={`/dashboard/jobs/${job.id}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`}
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline transition-all"
                     >
                       Inspect
@@ -204,7 +233,7 @@ export function JobsPage() {
               size="sm"
               className="h-8 px-3 text-xs"
               disabled={page === 1}
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={() => setPage(Math.max(1, page - 1))}
             >
               Previous
             </Button>
@@ -213,7 +242,7 @@ export function JobsPage() {
               size="sm"
               className="h-8 px-3 text-xs"
               disabled={page * 20 >= data.total}
-              onClick={() => setPage(p => p + 1)}
+              onClick={() => setPage(page + 1)}
             >
               Next
             </Button>

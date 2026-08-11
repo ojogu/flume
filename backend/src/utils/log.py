@@ -108,6 +108,7 @@ def configure_structlog() -> None:
     logging.getLogger("opentelemetry.instrumentation.celery").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
     logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+    logging.getLogger("botocore").setLevel(logging.WARNING)
     print("Handlers:", root_logger.handlers)
 
 

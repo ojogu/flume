@@ -1,7 +1,7 @@
 import { AlertCircle, CheckCircle2, Circle, Clock3 } from 'lucide-react'
 import type { JobStep } from '@/lib/jobs'
-import { formatRelativeTime, cn } from '@/lib/utils'
-import { formatAbsoluteTime, formatOperation, formatStepDuration, formatStepStatus, isCompletedStepStatus } from './jobDetailFormatters'
+import { cn } from '@/lib/utils'
+import { formatAbsoluteTime, formatUTCTime, formatOperation, formatStepDuration, formatStepStatus, isCompletedStepStatus } from './jobDetailFormatters'
 import { JobErrorCallout } from './JobErrorCallout'
 
 function StepStatusIcon({ status }: { status: JobStep['status'] }) {
@@ -22,7 +22,7 @@ function StepStatusIcon({ status }: { status: JobStep['status'] }) {
 function StepTime({ label, value }: { label: string; value: string }) {
   return (
     <time className="text-xs text-[var(--text-secondary)]" dateTime={value} title={formatAbsoluteTime(value)}>
-      {label} {formatRelativeTime(value)}
+      {label} {formatUTCTime(value)}
       <span className="sr-only">, {formatAbsoluteTime(value)}</span>
     </time>
   )

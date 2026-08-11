@@ -111,6 +111,32 @@ class JobService:
 
         return jobs, total or 0
 
+    async def get_counts_by_status(
+        self,
+        user_id: uuid.UUID,
+        api_key_id: uuid.UUID | None = None,
+    ) -> dict:
+        """Return job counts grouped by status for all API keys belonging to a user."""
+        base = (
+            select(Job.status, func.count(Job.id))
+            .join(ApiKey, Job.api_key_id == ApiKey.id)
+            .where(ApiKey.user_id == user_id)
+        )
+
+        if api_key_id:
+            base = base.where(Job.api_key_id == api_key_id)
+
+        result = await self.db.execute(base.group_by(Job.status))
+        counts = {row[0]: row[1] for row in result.all()}
+
+        # Ensure all statuses are present
+        all_statuses = [s.value for s in JobStatus]
+        for status in all_statuses:
+            if status not in counts:
+                counts[status] = 0
+
+        return counts
+
     async def get_job_detail_by_user(
         self, user_id: uuid.UUID, job_id: uuid.UUID
     ) -> Job | None:

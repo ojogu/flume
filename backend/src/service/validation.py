@@ -13,6 +13,7 @@ from src.core.exception_base import BadRequest
 from src.utils.log import get_logger
 from src.utils.registry import (
     ArtifactType,
+    ParamDefinition,
     ParamType,
     get_operation,
     operation_exists,
@@ -143,6 +144,16 @@ def _validate_param_value(
     elif definition.type == ParamType.OBJECT:
         if not isinstance(value, dict):
             raise BadRequest(f"Param {ctx} must be an object")
+        nested = definition.params
+        if nested:
+            for key in value:
+                if key not in nested:
+                    raise BadRequest(f"Unknown param '{key}' in {ctx}")
+            for name, nested_def in nested.items():
+                if name in value:
+                    result = _validate_param_value(name, value[name], nested_def, position, op_name)
+                    if result is not None:
+                        value[name] = result
 
 
 def validate_params(pipeline: list[dict]) -> None:

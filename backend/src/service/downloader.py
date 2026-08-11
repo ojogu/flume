@@ -78,6 +78,9 @@ def _build_ydl_opts(
     if cookie_file:
         opts["cookiefile"] = cookie_file
 
+    if config.yt_proxy_url:
+        opts["proxy"] = config.yt_proxy_url
+
     return opts
 
 

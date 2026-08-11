@@ -89,3 +89,11 @@ export async function retryJob(id: string): Promise<Job> {
   )
   return res.data
 }
+
+export type JobCounts = Record<JobStatus, number>
+
+export async function getJobCounts(apiKeyId?: string): Promise<JobCounts> {
+  const query = apiKeyId ? `?api_key_id=${apiKeyId}` : ''
+  const res = await apiClient<{ status: string; data: JobCounts }>(`/jobs/counts${query}`)
+  return res.data
+}

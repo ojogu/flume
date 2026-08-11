@@ -14,6 +14,7 @@ export function JobDetailHeader({
   elapsedMs,
   onCopyId,
   onOpenRetry,
+  backUrl = '/dashboard/jobs',
 }: {
   job: Job
   copiedId: boolean
@@ -21,13 +22,14 @@ export function JobDetailHeader({
   elapsedMs: number
   onCopyId: () => void
   onOpenRetry: () => void
+  backUrl?: string
 }) {
   const isFailed = job.status === 'failed' || job.status === 'dead'
   const sourceTitle = typeof job.source_metadata?.source?.title === 'string' ? job.source_metadata.source.title : null
 
   return (
     <header className="space-y-6">
-      <Link to="/dashboard/jobs" className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-brand">
+      <Link to={backUrl} className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-brand">
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         Back to jobs
       </Link>

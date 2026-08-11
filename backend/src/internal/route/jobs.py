@@ -84,6 +84,20 @@ async def list_jobs(
     )
 
 
+@internal_job_route.get("/counts")
+async def get_job_counts(
+    user: User = Depends(get_current_user),
+    job_service: JobService = Depends(get_job_service),
+    api_key_id: uuid.UUID | None = Query(None, description="Filter by API key"),
+):
+    """Return job counts grouped by status for the authenticated user."""
+    counts = await job_service.get_counts_by_status(
+        user_id=user.id,
+        api_key_id=api_key_id,
+    )
+    return success(data=counts)
+
+
 @internal_job_route.get("/{job_id}")
 async def get_job(
     job_id: uuid.UUID,

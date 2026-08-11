@@ -33,16 +33,14 @@ async def summarize_with_llm(
         stderr_lines=stderr_lines,
     )
 
-    if config.api_base:
-        os.environ["LITELLM_API_BASE"] = config.api_base
-
     logger.info(f"Calling LiteLLM for error summarization: model={config.model}, operation={operation}")
 
     response = await litellm.acompletion(
         model=config.model,
+        api_base=config.api_base,
         api_key=config.api_key,
         messages=[{"role": "user", "content": prompt}],
-        timeout=15.0,
+         timeout=45.0,
     )
 
     content = response.choices[0].message.content
