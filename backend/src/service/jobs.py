@@ -164,6 +164,7 @@ class JobService:
                 f"Error creating job for API key {api_key_id} — "
                 f"source={source_uri}: {e}"
             )
+            logger.exception(f"Error creating job for API key {api_key_id}")
             raise DatabaseError from None
 
     # ── Status transitions ─────────────────────────────────────────────────────
@@ -421,6 +422,7 @@ class JobService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Failed to create child jobs for {parent_job.id!s}: {e}")
+            logger.exception(f"Failed to create child jobs for {parent_job.id!s}")
             raise DatabaseError from None
 
         return children

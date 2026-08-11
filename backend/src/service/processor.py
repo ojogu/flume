@@ -67,9 +67,10 @@ class ProcessorService:
         workspace: Path,
     ) -> ProcessResult:
         """Dispatch to the registered handler for *operation*."""
+        job_id_str = str(job_id)
         handler_name = self._HANDLERS.get(operation)
         if handler_name is None:
-            logger.error(f"No handler registered for operation '{operation}' — job={job_id}, step={step_index}")
+            logger.error(f"No handler registered for operation '{operation}' — job={job_id_str}, step={step_index}")
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -84,7 +85,7 @@ class ProcessorService:
         handler = getattr(self, handler_name)
 
         logger.info(
-            f"Executing operation '{operation}' for job {job_id} step {step_index} "
+            f"Executing operation '{operation}' for job {job_id_str} step {step_index} "
             f"— input={input_path}, workspace={workspace}"
         )
         return await handler(input_path, workspace, job_id, step_index, operation, params)
@@ -101,10 +102,15 @@ class ProcessorService:
         params: dict,
     ) -> ProcessResult:
         """Clip a segment from the input between ``start`` and ``end``. Re-encodes to H.264 + AAC for frame-accurate cutting."""
+        job_id_str = str(job_id)
         start = params["start"]
         end = params["end"]
 
-        if end <= start:  # Degenerate segment — nothing to keep
+        if end <= start:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"end ({end}) must be > start ({start})"
+            )
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -344,6 +350,7 @@ class ProcessorService:
         params: dict,
     ) -> ProcessResult:
         """Scale video to a target resolution using a preset or explicit width/height."""
+        job_id_str = str(job_id)
         preset = params.get("preset")
         if preset:
             width, height = self._RESIZE_PRESETS.get(preset, (1280, 720))
@@ -351,6 +358,10 @@ class ProcessorService:
             width = params.get("width")
             height = params.get("height")
             if not width and not height:
+                logger.warning(
+                    f"[{operation}] job={job_id_str} step={step_index} — "
+                    f"neither preset nor width/height provided in params={params}"
+                )
                 return ProcessResult(
                     success=False,
                     error=ProcessError(
@@ -435,8 +446,12 @@ class ProcessorService:
         params: dict,
     ) -> ProcessResult:
         """Remove segments from the video by extracting kept ranges and concatenating them."""
+        job_id_str = str(job_id)
         segments = params["segments"]
         if not segments:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — segments array is empty"
+            )
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -465,6 +480,10 @@ class ProcessorService:
             kept_ranges.append((prev_end, duration))
 
         if not kept_ranges:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"segments cover entire video; nothing to keep | segments={segments}"
+            )
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -530,6 +549,7 @@ class ProcessorService:
         params: dict,
     ) -> ProcessResult:
         """Overlay a watermark image onto the video at the specified position."""
+        job_id_str = str(job_id)
         image_url = params["image_url"]
         position = params.get("position", "bottom_right")
         coords = self._WATERMARK_POSITIONS.get(position, ("W-w", "H-h"))
@@ -539,6 +559,13 @@ class ProcessorService:
             resp = requests.get(image_url, timeout=30)
             resp.raise_for_status()
         except Exception as exc:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"watermark image download failed: {exc} | image_url={image_url}"
+            )
+            logger.exception(
+                f"[{operation}] job={job_id_str} step={step_index} watermark download failed"
+            )
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -598,7 +625,12 @@ class ProcessorService:
         params: dict,
     ) -> ProcessResult:
         """Burn subtitles into the video from an SRT file. Auto-generated subtitles are not yet supported."""
+        job_id_str = str(job_id)
         if params.get("auto"):
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"auto subtitles requested but not implemented"
+            )
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -612,6 +644,10 @@ class ProcessorService:
 
         file_url = params.get("file_url")
         if not file_url:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"no file_url provided and auto=false"
+            )
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -628,6 +664,13 @@ class ProcessorService:
             resp = requests.get(file_url, timeout=30)
             resp.raise_for_status()
         except Exception as exc:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"subtitle file download failed: {exc} | file_url={file_url}"
+            )
+            logger.exception(
+                f"[{operation}] job={job_id_str} step={step_index} subtitle download failed"
+            )
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -676,38 +719,61 @@ class ProcessorService:
         params: dict,
     ) -> ProcessResult:
         """Concatenate multiple video clips into one output using the FFmpeg concat filter."""
+        job_id_str = str(job_id)
         clips = params["clips"]  # list of URLs; min 2, max 10 — validated by Gate 3
         n = len(clips)
         clip_paths: list[str] = []
 
         for i, clip_url in enumerate(clips):
             clip_url = clip_url.strip()
-            if clip_url.startswith("uploads/"):
-                # R2 presigned GET — stream download asynchronously
-                ext = Path(clip_url).suffix.lstrip(".") or "mp4"
-                local_path = str(workspace / f"join_clip_{i}.{ext}")
-                presigned = await storage.generate_presigned_download_url(clip_url)
-                client = get_http_client(timeout=300.0)
-                async with client.stream("GET", presigned) as resp:
-                    resp.raise_for_status()
-                    with open(local_path, "wb") as f:
-                        async for chunk in resp.aiter_bytes():
-                            f.write(chunk)
-                await client.aclose()
-            else:
-                # Platform URL — yt-dlp with custom output name to avoid collision
-                local_path = str(workspace / f"join_clip_{i}.mp4")
-                opts: dict = {
-                    "outtmpl": str(workspace / f"join_clip_{i}.%(ext)s"),
-                    "format": "bestvideo+bestaudio/best",
-                    "quiet": True,
-                    "no_warnings": True,
-                    "merge_output_format": "mp4",
-                }
-                loop = asyncio.get_event_loop()
-                await loop.run_in_executor(None, self._download_clip_sync, clip_url, str(workspace), i, opts)
+            try:
+                if clip_url.startswith("uploads/"):
+                    # R2 presigned GET — stream download asynchronously
+                    ext = Path(clip_url).suffix.lstrip(".") or "mp4"
+                    local_path = str(workspace / f"join_clip_{i}.{ext}")
+                    presigned = await storage.generate_presigned_download_url(clip_url)
+                    client = get_http_client(timeout=300.0)
+                    async with client.stream("GET", presigned) as resp:
+                        resp.raise_for_status()
+                        with open(local_path, "wb") as f:
+                            async for chunk in resp.aiter_bytes():
+                                f.write(chunk)
+                    await client.aclose()
+                else:
+                    # Platform URL — yt-dlp with custom output name to avoid collision
+                    local_path = str(workspace / f"join_clip_{i}.mp4")
+                    opts: dict = {
+                        "outtmpl": str(workspace / f"join_clip_{i}.%(ext)s"),
+                        "format": "bestvideo+bestaudio/best",
+                        "quiet": True,
+                        "no_warnings": True,
+                        "merge_output_format": "mp4",
+                    }
+                    loop = asyncio.get_event_loop()
+                    await loop.run_in_executor(None, self._download_clip_sync, clip_url, str(workspace), i, opts)
 
-            clip_paths.append(local_path)
+                clip_paths.append(local_path)
+            except Exception as exc:
+                logger.warning(
+                    f"[{operation}] job={job_id_str} step={step_index} clip[{i}] download failed: {exc} | url={clip_url}"
+                )
+                logger.exception(
+                    f"[{operation}] job={job_id_str} step={step_index} clip[{i}] download failed"
+                )
+                # Clean up any partial clip files
+                for p in clip_paths:
+                    with suppress(OSError):
+                        os.remove(p)
+                return ProcessResult(
+                    success=False,
+                    error=ProcessError(
+                        code="download_failed",
+                        summary=f"[join] Failed to download clip {i+1}/{n}: {exc}",
+                        cause=f"Clip {i+1} at '{clip_url}' could not be downloaded.",
+                        fix="Verify all clip URLs are accessible.",
+                        raw_stderr=str(exc),
+                    ),
+                )
 
         # Build concat filter complex — re-encodes all clips to a common format
         filter_complex = (
@@ -759,6 +825,7 @@ class ProcessorService:
         step_index: int,
     ) -> ProcessResult:
         """Execute an FFmpeg command. Returns ProcessResult with output_path on success, error on failure."""
+        job_id_str = str(job_id)
         logger.debug(f"FFmpeg cmd: {' '.join(cmd)}")
         try:
             proc = subprocess.run(
@@ -767,7 +834,7 @@ class ProcessorService:
                 text=True,
             )
         except FileNotFoundError:
-            logger.error(f"ffmpeg binary not found on PATH — job={job_id}, step={step_index}, op={operation}")
+            logger.error(f"ffmpeg binary not found on PATH — job={job_id_str}, step={step_index}, op={operation}")
             return ProcessResult(
                 success=False,
                 error=ProcessError(
@@ -782,7 +849,7 @@ class ProcessorService:
         if proc.returncode != 0:
             stderr = proc.stderr or ""
             logger.warning(
-                f"FFmpeg failed — job={job_id}, step={step_index}, op={operation}, exit={proc.returncode}"
+                f"FFmpeg failed — job={job_id_str}, step={step_index}, op={operation}, exit={proc.returncode}"
             )
             error = await summarize_ffmpeg_error(
                 operation=operation,
@@ -795,7 +862,7 @@ class ProcessorService:
 
         if not os.path.exists(output_path):
             logger.error(
-                f"FFmpeg exited 0 but output file missing — job={job_id}, step={step_index}, op={operation}, path={output_path}"
+                f"FFmpeg exited 0 but output file missing — job={job_id_str}, step={step_index}, op={operation}, path={output_path}"
             )
             return ProcessResult(
                 success=False,

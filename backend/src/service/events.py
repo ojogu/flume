@@ -196,6 +196,7 @@ class EventService:
             }
         except Exception as e:
             logger.warning("Test ping error: subscription_id={}, url={}, error={}", subscription_id, sub.url, e)
+            logger.exception("Test ping error: subscription_id={}", subscription_id)
             return {
                 "success": False,
                 "status_code": None,
@@ -366,6 +367,7 @@ class EventService:
             }
         except Exception as e:
             logger.warning("Test ping error: subscription_id={}, url={}, error={}", subscription_id, sub.url, e)
+            logger.exception("Test ping error: subscription_id={}", subscription_id)
             return {
                 "success": False,
                 "status_code": None,

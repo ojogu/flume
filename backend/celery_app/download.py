@@ -206,6 +206,7 @@ async def _download_task_async(job_id: str):
 
         except Exception as e:
             logger.error(f"Download failed for job {job_id}: {e}")
+            logger.exception(f"Download failed for job {job_id}")
             await job_service.update_job_step(
                 step.id,
                 StepStatus.FAILED,

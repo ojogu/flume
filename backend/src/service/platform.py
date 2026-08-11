@@ -38,6 +38,7 @@ class PlatformService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Error creating platform: {e}")
+            logger.exception("Error creating platform")
             raise DatabaseError()
 
     async def get_platforms(self, active_only: bool = False) -> list[Platform]:
@@ -86,4 +87,5 @@ class PlatformService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"Error updating platform {platform_id}: {e}")
+            logger.exception("Error updating platform %s", platform_id)
             raise DatabaseError() from e

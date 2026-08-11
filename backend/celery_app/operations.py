@@ -156,6 +156,10 @@ async def _execute_operation_async(job_id: str, step_index: int):
             # Catches input-resolution failures, unexpected exceptions from the processor, and the contract-violation case above.
             # Operation-level failures (ProcessResult.success=False) are handled above and do not re-enter this branch.
             duration_ms = (time.perf_counter() - start) * 1000
+            logger.error(
+                f"Job {job_id} step {step_index} ({operation}) unexpected exception"
+            )
+            logger.exception(f"Job {job_id} step {step_index} unexpected exception")
             await _handle_failure(
                 job_service, event_service,
                 job, step, step_index, operation, str(e), duration_ms,
@@ -265,6 +269,11 @@ async def _handle_failure(
     """Persist step FAILED, emit STEP_FAILED + JOB_FAILED, notify parent."""
     job_uuid = job.id
     job_id = str(job_uuid)
+
+    logger.error(
+        f"Job {job_id} step {step_index} ({operation}) FAILED — duration_ms={duration_ms:.2f}"
+        f" | error={error_summary}"
+    )
 
     await job_service.update_job_step(
         step.id, StepStatus.FAILED, error=error_summary,
