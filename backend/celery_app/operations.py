@@ -107,8 +107,12 @@ async def _execute_operation_async(job_id: str, step_index: int):
         )
 
         try:
-            # Resolve input from the previous step's output_artifact.
-            input_path = await _resolve_input_path(job_service, job_uuid, step_index)
+            # Combine operations (e.g. join) read clips from params, not from the previous step's artifact.
+            capability = step_spec.get("capability")
+            if capability == "combine":
+                input_path = ""
+            else:
+                input_path = await _resolve_input_path(job_service, job_uuid, step_index)
             if input_path is None:
                 raise RuntimeError(
                     f"Could not resolve input path for step {step_index}"

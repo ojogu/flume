@@ -48,9 +48,18 @@ class Config(BaseSettings):
     # Used to construct output_url on artifacts and to redirect download requests.
     cdn_base_url: str = "https://api.flume.ojogulabs.xyz/v1"
 
+    # ── LiteLLM / LLM error summarization ────────────────────────────────────
+    # Used by src/service/llm_error_summarizer to explain FFmpeg failures in plain English.
+    # model: litellm model identifier (e.g. "openai/deepseek-v4-flash")
+    # api_base: base URL for the LLM API (LiteLLM appends /chat/completions automatically)
+    # api_key: secret key for the LLM provider
+    model: str = "openai/deepseek-v4-flash"
+    api_base: str = "https://opencode.ai/zen/go/v1"
+    api_key: str | None = None
+
     model_config = SettingsConfigDict(
         case_sensitive=False,
-        env_file=Path(__file__).resolve().parent.parent.parent / ".env",  # Adjusted to point to the root directory
+        env_file=Path(__file__).resolve().parent.parent.parent / ".env",
         env_file_encoding="utf-8",
     )
 
