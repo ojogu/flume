@@ -463,12 +463,12 @@ class ProcessorService:
                 ),
             )
 
-        # Sort segments, then compute the gaps between/around them as kept ranges
+        # Sort segments, then compute the gaps between/around them as kept ranges (what to keep, inverse of cut ranges)
         sorted_segs = sorted(segments, key=lambda s: s["start"])
         kept_ranges: list[tuple[float, float]] = []
         prev_end = 0.0
         for seg in sorted_segs:
-            start, end = seg["start"], seg["end"]
+            start, end = float(seg["start"]), float(seg["end"])
             if start > prev_end:
                 kept_ranges.append((prev_end, start))  # gap before this segment is kept
             prev_end = max(prev_end, end)
@@ -478,6 +478,10 @@ class ProcessorService:
         duration = media.duration_seconds or 0
         if prev_end < duration:
             kept_ranges.append((prev_end, duration))
+
+        # Branch on actual streams present so audio-only sources don't produce a broken [0:v] reference
+        has_video = media.video_codec is not None
+        has_audio = media.audio_codec is not None
 
         if not kept_ranges:
             logger.warning(
@@ -496,29 +500,56 @@ class ProcessorService:
             )
 
         # Build trim+setpts filters per kept range, then concat into one output
+        # FFmpeg concat expects segment-interleaved order: [v0][a0][v1][a1]... not [v0][v1][a0][a1]
         n = len(kept_ranges)
         filter_parts: list[str] = []
         for i, (s, e) in enumerate(kept_ranges):
-            filter_parts.append(f"[0:v]trim=start={s}:end={e},setpts=PTS-STARTPTS[v{i}]")
-            filter_parts.append(f"[0:a]atrim=start={s}:end={e},asetpts=PTS-STARTPTS[a{i}]")
+            if has_video:
+                filter_parts.append(f"[0:v]trim=start={s}:end={e},setpts=PTS-STARTPTS[v{i}]")
+            if has_audio:
+                filter_parts.append(f"[0:a]atrim=start={s}:end={e},asetpts=PTS-STARTPTS[a{i}]")
 
-        concat_parts = "[v0]" + "".join(f"[v{i}]" for i in range(1, n))
-        concat_parts += "[a0]" + "".join(f"[a{i}]" for i in range(1, n))
-        concat_parts += f"concat=n={n}:v=1:a=1[vout][aout]"
-
-        filter_complex = ";".join([*filter_parts, concat_parts])
-
-        output_path = str(workspace / f"step_{step_index}_output.mp4")
-        cmd = [
-            "ffmpeg", "-y",
-            "-i", input_path,
-            "-filter_complex", filter_complex,
-            "-map", "[vout]",  # select only the concatenated output streams
-            "-map", "[aout]",
-            "-c:v", "libx264",
-            "-c:a", "aac",
-            output_path,
-        ]
+        if has_video and has_audio:
+            concat_parts = "[v0][a0]" + "".join(f"[v{i}][a{i}]" for i in range(1, n))
+            concat_parts += f"concat=n={n}:v=1:a=1[vout][aout]"
+            filter_complex = ";".join([*filter_parts, concat_parts])
+            output_path = str(workspace / f"step_{step_index}_output.mp4")
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", input_path,
+                "-filter_complex", filter_complex,
+                "-map", "[vout]",
+                "-map", "[aout]",
+                "-c:v", "libx264",
+                "-c:a", "aac",
+                output_path,
+            ]
+        elif has_video:
+            concat_parts = "[v0]" + "".join(f"[v{i}]" for i in range(1, n))
+            concat_parts += f"concat=n={n}:v=1:a=0[vout]"
+            filter_complex = ";".join([*filter_parts, concat_parts])
+            output_path = str(workspace / f"step_{step_index}_output.mp4")
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", input_path,
+                "-filter_complex", filter_complex,
+                "-map", "[vout]",
+                "-c:v", "libx264",
+                output_path,
+            ]
+        else:
+            concat_parts = "[a0]" + "".join(f"[a{i}]" for i in range(1, n))
+            concat_parts += f"concat=n={n}:v=0:a=1[aout]"
+            filter_complex = ";".join([*filter_parts, concat_parts])
+            output_path = str(workspace / f"step_{step_index}_output.mp4")
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", input_path,
+                "-filter_complex", filter_complex,
+                "-map", "[aout]",
+                "-c:a", "aac",
+                output_path,
+            ]
         result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
         if not result.success:
             return result
