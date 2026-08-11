@@ -322,6 +322,7 @@ def build_artifact_from_local(
         platform="upload",
         video_id=Path(source_uri).stem,
         url=source_uri,
+        title=Path(source_uri).stem or "video",
     )
     file_info = _FileInfo(
         path=local_path,
