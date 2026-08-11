@@ -159,6 +159,7 @@ async def _process_job_async(job_id: str):
                     await _handle_single(job_service, job)
         except Exception as e:
             logger.error(f"Orchestration failed for job {job_id}: {e}")
+            logger.exception(f"Orchestration failed for job {job_id}")
             await job_service.update_status(
                 job.id, JobStatus.FAILED, error="Processing failed"
             )

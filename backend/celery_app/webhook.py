@@ -98,6 +98,8 @@ async def _deliver_webhook_async(delivery_id: str):
                 await _handle_failure(delivery, subscription.url)
 
         except Exception as e:
+            logger.error(f"Webhook delivery failed: url={subscription.url}")
+            logger.exception(f"Webhook delivery failed: url={subscription.url}")
             delivery.response_body = str(e)[:4096]
             await _handle_failure(delivery, subscription.url)
 

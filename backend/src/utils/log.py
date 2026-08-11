@@ -103,6 +103,11 @@ def configure_structlog() -> None:
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("celery").setLevel(logging.WARNING)
+    logging.getLogger("amqp").setLevel(logging.WARNING)
+    logging.getLogger("opentelemetry.instrumentation.celery").setLevel(logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
+    logging.getLogger("LiteLLM").setLevel(logging.WARNING)
     print("Handlers:", root_logger.handlers)
 
 
