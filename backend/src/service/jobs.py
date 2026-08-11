@@ -275,6 +275,8 @@ class JobService:
 
             await self.db.flush()
             await self.db.commit()
+            from src.service.storage import storage
+            storage._delete_workspace(job.id)
             await self.db.refresh(job)  # re-fetch all attributes while still in async context
             logger.info(f"Job {job_id} retried (attempt {job.retry_count}/{job.max_retries})")
 

@@ -10,7 +10,9 @@
 
 import asyncio
 import os
+import shutil
 import uuid
+from pathlib import Path
 
 import boto3
 from botocore.config import Config as BotoConfig
@@ -22,6 +24,31 @@ from src.utils.log import get_logger
 logger = get_logger(__name__)
 
 UPLOAD_URL_EXPIRY_SECONDS = 3600
+
+
+def _ensure_workspace(job_uuid: uuid.UUID) -> Path:
+    """Return the job's isolated workspace directory, creating it if missing."""
+    short = str(job_uuid).split("-")[0]
+    workspace = Path(config.workspaces_dir) / f"job_{short}"
+    workspace.mkdir(parents=True, exist_ok=True)
+    return workspace
+
+
+def _delete_workspace(job_uuid: uuid.UUID) -> None:
+    """Delete the local workspace directory for a job (best-effort).
+
+    Called immediately after the final artifact is successfully written to R2.
+    Failures are logged but do not propagate — workspace cleanup is best-effort.
+    """
+    short = str(job_uuid).split("-")[0]
+    workspace = Path(config.workspaces_dir) / f"job_{short}"
+    if workspace.exists():
+        try:
+            logger.info(f"Deleting workspace {workspace}")
+            shutil.rmtree(workspace)
+            logger.info(f"Workspace deleted {workspace}")
+        except Exception:
+            logger.warning(f"Failed to cleanup workspace {workspace}")
 
 
 def build_object_key(api_key_id: uuid.UUID, upload_id: uuid.UUID, filename: str) -> str:

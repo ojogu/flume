@@ -91,7 +91,7 @@ async def _download_task_async(job_id: str):
 
         try:
             # create isolated workspace
-            workspace = _ensure_workspace(job_uuid)
+            workspace = storage._ensure_workspace(job_uuid)
             logger.info(f"Workspace ready for job {job_id}: {workspace}")
 
             # download — external URLs via yt-dlp, upload URIs via R2 presigned GET
@@ -165,6 +165,7 @@ async def _download_task_async(job_id: str):
                 filename = sanitized if sanitized else "input"
                 object_key = f"outputs/{api_key_short}/{job_short}/{filename}.{ext}"
                 await storage.upload_file(result.local_path, object_key)
+                storage._delete_workspace(job_uuid)
                 result.artifact.output_url = (
                     f"{config.cdn_base_url}/job/{job_id}/download"
                 )
@@ -244,17 +245,6 @@ async def _download_task_async(job_id: str):
 
             # still notify parent so it can compute partial_success
             await job_service.notify_child_complete(job_uuid)
-
-
-def _ensure_workspace(job_uuid: uuid.UUID) -> Path:
-    """Create and return the isolated workspace directory for a job.
-
-    Pattern: ``{config.workspaces_dir}/job_{short_uuid}/``
-    """
-    short = str(job_uuid).split("-")[0]
-    workspace = Path(config.workspaces_dir) / f"job_{short}"
-    workspace.mkdir(parents=True, exist_ok=True)
-    return workspace
 
 
 async def _download_upload_source(job, workspace: Path) -> "DownloadResult":

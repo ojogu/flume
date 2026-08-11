@@ -1,10 +1,8 @@
 # ── Celery app factory ────────────────────────────────────────────────────────
-# Configures the Celery instance with broker, result backend, queue routing,
-# and beat schedule. OTel instrumentation runs in each worker process via
-# worker_process_init signal (after fork), not at module import time.
+# Configures the Celery instance with broker, result backend, queue routing,and beat schedule. OTel instrumentation runs in each worker process via worker_process_init signal (after fork), not at module import time.
 
-# from celery.schedules import crontab
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import worker_process_init, worker_process_shutdown
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
@@ -20,6 +18,7 @@ bg_task = Celery(
         "celery_app.orchestrator",
         "celery_app.webhook",
         "celery_app.operations",
+        "celery_app.cleanup",
     ],
 )
 
@@ -33,6 +32,10 @@ bg_task.config_from_object(CeleryConfig)
 
 # interval = config.celery_beat_interval
 bg_task.conf.beat_schedule = {
+    "cleanup-stale-workspaces": {
+        "task": "celery_app.cleanup_stale_workspaces",
+        "schedule": crontab(minute="*/15"),
+    },
 }
 
 # Schedule,Crontab Code,Description

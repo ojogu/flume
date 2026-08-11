@@ -35,7 +35,10 @@ class Config(BaseSettings):
     # ── yt-dlp / workspace configuration ──────────────────────────────────
     # base directory for per-job workspaces; each job gets its own subdirectory e.g. /var/lib/flume/workspaces job_<short_uuid>/
     workspaces_dir: str = "/var/lib/flume/workspaces"
-    
+
+    # cleanup workspaces older than this (hours)
+    cleanup_max_age_hours: int = 2
+
     # optional cookies file for yt-dlp (authenticated downloads — private content, age-restricted, etc.)
     ytdlp_cookie_file: str = "/app/cookies/cookies.txt"
 

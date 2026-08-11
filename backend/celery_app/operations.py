@@ -21,7 +21,7 @@ from src.model.job import Job, JobStatus, JobStep, StepStatus
 from src.schema.processor import ProcessResult
 from src.service.events import EventService
 from src.service.jobs import JobService
-from src.utils.config import config
+from src.service.storage import storage
 from src.utils.log import get_logger
 from src.utils.title import sanitize_title_for_filename
 
@@ -118,7 +118,7 @@ async def _execute_operation_async(job_id: str, step_index: int):
                     f"Could not resolve input path for step {step_index}"
                 )
 
-            workspace = _ensure_workspace(job_uuid)
+            workspace = storage._ensure_workspace(job_uuid)
 
             result = await processor.execute_operation(
                 job_id=job_uuid,
@@ -224,6 +224,7 @@ async def _handle_success(
         filename = sanitized if sanitized else f"step_{step_index}_output"
         object_key = f"outputs/{api_key_short}/{job_short}/{filename}.{ext}"
         await storage.upload_file(result.output_path, object_key)
+        storage._delete_workspace(job_uuid)
         result.artifact.output_url = (
             f"{config.cdn_base_url}/job/{job_id}/download"
         )
@@ -356,11 +357,3 @@ async def _resolve_input_path(job_service: JobService, job_uuid: uuid.UUID, step
         return None
 
     return file_path
-
-
-def _ensure_workspace(job_uuid: uuid.UUID) -> Path:
-    """Return the job's isolated workspace directory, creating it if missing."""
-    short = str(job_uuid).split("-")[0]
-    workspace = Path(config.workspaces_dir) / f"job_{short}"
-    workspace.mkdir(parents=True, exist_ok=True)
-    return workspace
