@@ -110,7 +110,7 @@ services:
     networks:
       - observability
 
-  celery-beat:
+  beat:
     build:
       context: ./backend
     command: celery -A celery_app.celery.bg_task beat -l info
