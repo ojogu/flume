@@ -11,6 +11,7 @@ volumes:
   loki_data:
   tempo_data:
   prometheus_data:
+  workspaces:
 
 services:
 
@@ -107,6 +108,7 @@ services:
       - ./backend/logs:/app/logs
       - ./backend/src:/app/src
       - ./backend/cookies:/app/cookies:rw
+      - workspaces:/var/lib/flume/workspaces
     networks:
       - observability
 
@@ -129,6 +131,8 @@ services:
       - queue
     networks:
       - observability
+    volumes:
+      - workspaces:/var/lib/flume/workspaces
 
   flower:
     build:

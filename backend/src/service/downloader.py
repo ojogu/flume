@@ -130,6 +130,7 @@ def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
             video_id=raw.get("id") or "playlist",
             url=raw.get("webpage_url") or "",
             title=raw.get("title") or "",
+            description=raw.get("description"),
             is_playlist=True,
             playlist_title=raw.get("title"),
             playlist_count=raw.get("playlist_count") or len(entries),
@@ -141,6 +142,7 @@ def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
         video_id=raw.get("id") or "unknown",
         url=raw.get("webpage_url") or "",
         title=raw.get("title") or "",
+        description=raw.get("description"),
         duration_seconds=_safe_float(raw.get("duration")),
         width=raw.get("width"),
         height=raw.get("height"),
@@ -164,6 +166,7 @@ def build_source_meta(info: _ExtractedInfo) -> dict:
             "video_id": info.video_id,
             "url": info.url,
             "title": info.title,
+            "description": info.description,
         },
         "media": {
             "duration_seconds": info.duration_seconds,
@@ -268,6 +271,7 @@ def build_artifact(info: _ExtractedInfo, local_path: str, job_id: str = "unknown
         video_id=info.video_id,
         url=info.url,
         title=info.title,
+        description=info.description,
     )
 
     try:
