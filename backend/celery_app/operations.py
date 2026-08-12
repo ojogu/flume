@@ -120,6 +120,15 @@ async def _execute_operation_async(job_id: str, step_index: int):
 
             workspace = storage._ensure_workspace(job_uuid)
 
+            # Inject description from download artifact into meme params if caption not provided
+            if operation == "meme" and not params.get("caption"):
+                prev_step = await job_service.get_step(job_uuid, step_index - 1)
+                desc = None
+                if prev_step and prev_step.output_artifact:
+                    desc = prev_step.output_artifact.get("source", {}).get("description")
+                if desc:
+                    params["caption"] = desc
+
             result = await processor.execute_operation(
                 job_id=job_uuid,
                 step_index=step_index,

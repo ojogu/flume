@@ -40,6 +40,7 @@ class _ExtractedInfo(BaseModel):
     video_id: str
     url: str
     title: str
+    description: str | None = None
 
     # playlist detection — entries is None for single videos
     is_playlist: bool = False

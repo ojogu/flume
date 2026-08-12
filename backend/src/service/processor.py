@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import subprocess
+import textwrap
 import uuid
 from contextlib import suppress
 from datetime import datetime, timezone
@@ -31,6 +33,24 @@ from src.utils.log import get_logger
 
 logger = get_logger(__name__)
 
+# ── Meme caption font ────────────────────────────────────────────────────────────
+_MEME_FONT_PATHS = [
+    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+]
+
+def _get_meme_font_path() -> str:
+    for path in _MEME_FONT_PATHS:
+        if os.path.exists(path):
+            return path
+    return _MEME_FONT_PATHS[0]
+
+_MEME_BAND_RATIO = 10
+_MEME_MAX_FONT_SIZE = 40
+_MEME_MIN_FONT_SIZE = 18
+_MEME_FONT_COLOR = "black"
+_MEME_BACKGROUND_COLOR = "white"
+
 
 class ProcessorService:
     """FFmpeg execution service. Each operation is a private method that builds an FFmpeg command, runs it via ``_run_ffmpeg``, and on success attaches an ``Artifact`` built from the output file. ``execute_operation`` is the single public entry point used by the ``jobs.media.execute`` Celery task."""
@@ -50,6 +70,7 @@ class ProcessorService:
         "watermark": "_watermark",
         "subtitle": "_subtitle",
         "join": "_join",
+        "meme": "_meme",
     }
 
     def __init__(self, db: AsyncSession):
@@ -843,6 +864,144 @@ class ProcessorService:
             job_id=job_id,
             step_index=step_index,
             operation="join",
+        )
+        return ProcessResult(success=True, output_path=output_path, artifact=artifact)
+
+    # ── Meme caption helpers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _estimate_chars_per_line(font_size: int, band_width: int) -> int:
+        char_width_approx = font_size * 0.6
+        return max(1, int(band_width / char_width_approx))
+
+    @staticmethod
+    def _wrap_caption(text: str, chars_per_line: int) -> str:
+        wrapped = textwrap.fill(text, width=chars_per_line)
+        return wrapped.replace("\n", "\\n")
+
+    @classmethod
+    def _fit_font_size(cls, text: str, band_width: int, band_height: float) -> tuple[int, str]:
+        size = _MEME_MAX_FONT_SIZE
+        while size >= _MEME_MIN_FONT_SIZE:
+            chars_per_line = cls._estimate_chars_per_line(size, band_width)
+            wrapped = cls._wrap_caption(text, chars_per_line)
+            lines = wrapped.count("\\n") + 1
+            line_height = size * 1.2
+            if lines * line_height <= band_height:
+                return size, wrapped
+            size -= 2
+        chars_per_line = cls._estimate_chars_per_line(_MEME_MIN_FONT_SIZE, band_width)
+        wrapped = cls._wrap_caption(text, chars_per_line)
+        max_chars = int(chars_per_line * (band_height / (_MEME_MIN_FONT_SIZE * 1.2))) - 3
+        if max_chars > 0 and len(wrapped) > max_chars:
+            wrapped = wrapped[:max_chars] + "..."
+        return _MEME_MIN_FONT_SIZE, wrapped
+
+    # ── Meme caption ─────────────────────────────────────────────────────────────
+
+    async def _meme(
+        self,
+        input_path: str,
+        workspace: Path,
+        job_id: uuid.UUID,
+        step_index: int,
+        operation: str,
+        params: dict,
+    ) -> ProcessResult:
+        """Overlay a text caption in a white band at top or bottom of the frame."""
+        caption = params.get("caption")
+        if caption:
+            caption = re.sub(r'https?://\S+', '', caption).strip()
+        if not caption:
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="missing_caption",
+                    summary="[meme] No caption provided",
+                    cause="caption param is empty and no description was extracted from the source media",
+                    fix="Provide a caption param or ensure the source has a description",
+                    raw_stderr="",
+                ),
+            )
+        position = params.get("position", "top")
+
+        media = probe_media(input_path)
+        has_video = media.video_codec is not None
+        has_audio = media.audio_codec is not None
+        width = media.width or 1280
+        height = media.height or 720
+        is_gif = input_path.lower().endswith(".gif")
+        is_image = not has_video and not is_gif
+
+        band_height = width // _MEME_BAND_RATIO
+        font_size, wrapped_text = self._fit_font_size(caption, width, band_height)
+
+        output_ext = Path(input_path).suffix.lstrip(".") or ("gif" if is_gif else "mp4")
+        output_path = str(workspace / f"step_{step_index}_output.{output_ext}")
+
+        if is_image:
+            from PIL import Image, ImageDraw, ImageFont
+            img = Image.open(input_path).convert("RGBA")
+            img_w, img_h = img.size
+
+            new_h = img_h + band_height
+            canvas = Image.new("RGBA", (img_w, new_h), _MEME_BACKGROUND_COLOR)
+
+            if position == "top":
+                canvas.paste(img, (0, band_height))
+            else:
+                canvas.paste(img, (0, 0))
+
+            draw = ImageDraw.Draw(canvas)
+            try:
+                font = ImageFont.truetype(_get_meme_font_path(), font_size)
+            except Exception:
+                font = ImageFont.load_default()
+
+            bbox = draw.textbbox((0, 0), wrapped_text.replace("\\n", "\n"), font=font)
+            text_h = bbox[3] - bbox[1]
+            text_x = (img_w - (bbox[2] - bbox[0])) // 2
+            if position == "top":
+                text_y = (band_height - text_h) // 2
+            else:
+                text_y = img_h + (band_height - text_h) // 2
+
+            draw.text((text_x, text_y), wrapped_text.replace("\\n", "\n"), fill=_MEME_FONT_COLOR, font=font)
+            canvas.convert("RGB").save(output_path)
+
+        else:
+            pad_y = height if position == "top" else 0
+            text_y = (band_height - font_size) // 2 if position == "top" else height + (band_height - font_size) // 2
+
+            filter_complex = (
+                f"[0:v]pad=iw:ih+{band_height}:0:{pad_y}:white,"
+                f"drawtext=text='{wrapped_text}':"
+                f"fontfile={_get_meme_font_path()}:"
+                f"fontsize={font_size}:"
+                f"fontcolor={_MEME_FONT_COLOR}:"
+                f"x=(w-text_w)/2:"
+                f"y={text_y}[out]"
+            )
+
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", input_path,
+                "-filter_complex", filter_complex,
+                "-map", "[out]",
+            ]
+            if has_audio and not is_gif:
+                cmd += ["-map", "0:a", "-c:a", "aac"]
+            cmd += [output_path]
+
+            result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
+            if not result.success:
+                return result
+
+        artifact = self._build_output_artifact(
+            output_path=output_path,
+            job_id=job_id,
+            step_index=step_index,
+            operation="meme",
         )
         return ProcessResult(success=True, output_path=output_path, artifact=artifact)
 

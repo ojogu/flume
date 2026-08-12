@@ -225,6 +225,26 @@ REGISTRY: dict[str, OperationDefinition] = {
         params={},
     ),
 
+    "meme": OperationDefinition(
+        name="meme",
+        category=OperationCategory.TRANSFORMATIVE,
+        capability=OperationCapability.TRANSFORM,
+        input_types=[ArtifactType.VIDEO, ArtifactType.AUDIO, ArtifactType.IMAGE],
+        output_type=[ArtifactType.VIDEO, ArtifactType.AUDIO, ArtifactType.IMAGE],
+        params={
+            "caption": ParamDefinition(
+                type=ParamType.STRING,
+                required=False,
+            ),
+            "position": ParamDefinition(
+                type=ParamType.ENUM,
+                required=False,
+                default="top",
+                values=["top", "bottom"],
+            ),
+        },
+    ),
+
     # -------------------------------------------------------------------------
     # COMBINATORY  |  Capability: COMBINE
     # Takes multiple input artifacts, produces one output. Pipeline continues.

@@ -15,9 +15,10 @@ class _ArtifactStatus(str, enum.Enum):
 
 class _SourceInfo(BaseModel):
     platform: str  # platform identifier from yt-dlp extractor key — "youtube", "instagram", etc.
-    video_id: str # unique video/media ID from the platform
+    video_id: str # unique media ID from the platform
     url: str # original URL the user submitted
     title: str | None = None # human-readable title from the platform
+    description: str | None = None # caption/description text extracted from the media
 
 
 
