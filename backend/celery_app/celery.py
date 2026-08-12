@@ -34,7 +34,7 @@ bg_task.config_from_object(CeleryConfig)
 bg_task.conf.beat_schedule = {
     "cleanup-stale-workspaces": {
         "task": "celery_app.cleanup_stale_workspaces",
-        "schedule": crontab(minute="*/15"),
+        "schedule": crontab(minute="*/2"),
     },
 }
 
