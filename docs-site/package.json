@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npm run validate-spec && npm run generate-api && next build",
-    "validate-spec": "tsx scripts/validate-openapi.ts",
-    "generate-api": "tsx scripts/generate-docs.ts",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },

@@ -1,0 +1,141 @@
+---
+title: How Flume Works
+description: What happens to a job from submission to delivery.
+---
+
+# How Flume Works
+
+This page describes the full lifecycle of a job — from the moment your API
+request arrives to when the final artifact is ready for download.
+
+## High-level flow
+
+```
+Your server                 Flume API                   Celery workers
+    |                           |                              |
+    |-- POST /v1/job --------->|                              |
+    |                          |-- validate (5 gates) --------->|
+    |                          |-- persist job (pending) ----->|
+    |                          |-- emit job.created           |
+    |                          |-- dispatch to queue --------|
+    |<- 201 + job.id ---------|                              |
+    |                           |                              |
+    |                           |          |-- job.processing -|
+    |                           |          |-- download ------|
+    |                           |          |-- pipeline steps -|
+    |                           |          |-- job.completed --|
+    |                           |                              |
+    |-- GET /v1/job/{id} -->|                              |
+    |<- status -------------|                              |
+    |                           |                              |
+    |-- GET /v1/job/{id}/download -->|                      |
+    |<- 302 redirect ---------|                              |
+    |<- presigned URL (R2) ---|                              |
+```
+
+---
+
+## 1. Job submission
+
+When `POST /v1/job` arrives, the API server runs five validation gates
+before touching any worker infrastructure:
+
+| Gate | What it checks |
+|------|----------------|
+| 1 — Schema | Pydantic validates the request body |
+| 2 — Registry | Every operation name exists in the registry |
+| 3 — Params | Required params present, types correct, values in bounds |
+| 4 — Type compatibility | Adjacent pipeline steps are type-compatible |
+| 5 — Pipeline spec | Enriched spec built and stored |
+
+If any gate fails, the request is rejected with a `400` and the job is never
+created. If all gates pass, the job is persisted in `pending` state and a
+`job.created` event is emitted to webhook subscribers.
+
+---
+
+## 2. Dispatch to the queue
+
+The API server dispatches a Celery task to the **orchestrator queue** with the
+job ID. From this point the API server is stateless — all further work happens
+in Celery workers.
+
+---
+
+## 3. Orchestrator
+
+A lightweight orchestrator worker picks up the job:
+
+1. **Mark processing** — updates the job status to `processing` and emits a
+   `job.processing` webhook event.
+2. **Detect platform** — if the source URI is a supported platform (YouTube,
+   etc.), yt-dlp extracts metadata. For direct URLs or uploads, this step is
+   skipped.
+3. **Playlist detection** — if the source is a playlist, Flume fans out child
+   jobs per entry and stops processing the parent. Each child job runs
+   independently.
+4. **Dispatch download** — sends the download step to the **media queue**.
+
+---
+
+## 4. Download step
+
+The download step runs as the first step (step 0) in every pipeline, before
+your operations. It fetches the source artifact:
+
+| Source type | Download method |
+|------------|----------------|
+| Public URL | yt-dlp fetches and extracts metadata |
+| `uploads/` path | Direct R2 download (serverless — no bandwidth cost) |
+
+The downloaded artifact is stored in ephemeral durable storage.
+
+---
+
+## 5. Pipeline execution
+
+Your operations run as steps 1, 2, … in order. Each step:
+
+1. Emits a `step.started` event.
+2. Runs an FFmpeg command built from the operation definition.
+3. On success: emits `step.completed` with output artifact metadata.
+4. On failure: emits `step.failed` with an error description, and the job
+   status becomes `failed`.
+
+Steps are atomic — if any step fails, the pipeline stops. The final artifact
+from the last successful step is the job result.
+
+---
+
+## 6. Result delivery
+
+When the final pipeline step completes, Flume:
+
+1. Uploads the final artifact to R2 durable storage.
+2. Generates a presigned download URL (valid for 1 hour).
+3. Updates the job status to `succeeded` or `partial_success`.
+4. Emits a `job.completed` webhook event.
+
+Your client then calls `GET /v1/job/{id}/download` to receive a `302` redirect
+to the presigned R2 URL.
+
+---
+
+## 7. Failure and retry
+
+If a step fails:
+- The job status becomes `failed`.
+- The `error` field on the job record contains the error description.
+- A `job.failed` webhook event is emitted.
+- The worker tries again up to 3 times with exponential back-off.
+- If all retries are exhausted, the job status becomes `dead`.
+
+---
+
+## 8. Cleanup
+
+- **Final artifact**: available for download for at least 1 hour via the presigned
+  URL. After that, it may be cleaned up.
+- **Intermediate artifacts**: deleted after the job completes.
+- **Uploads**: files in `pending` or `unattached` status that are not linked to
+  a job are swept after 24 hours.

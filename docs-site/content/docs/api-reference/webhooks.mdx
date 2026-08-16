@@ -1,0 +1,262 @@
+---
+title: Webhooks
+description: Subscribe to Flume events and receive deliveries at your endpoint.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Webhooks let Flume call your server when things happen — a job changes status,
+a pipeline step finishes, and so on. You create a **subscription** with a URL
+and a list of events to listen for; Flume signs each delivery with an HMAC
+secret so you can verify it came from Flume.
+
+## Event catalog
+
+The full list of event types is available at `GET /v1/utils/events`:
+
+```bash
+curl https://api.flume.ojogulabs.xyz/v1/utils/events
+```
+
+The catalog currently includes 7 events:
+
+| Event | Description |
+|-------|-------------|
+| `job.created` | Job was created and queued |
+| `job.processing` | Worker picked up the job |
+| `job.completed` | Job finished successfully |
+| `job.failed` | Job could not complete |
+| `step.started` | Pipeline step began |
+| `step.completed` | Pipeline step finished |
+| `step.failed` | Pipeline step failed |
+
+<Callout title="Additional events in the enum">
+`job.cancelled`, `job.retried`, and `ping` are defined in the EventType enum
+but are not yet in the static catalog served by `/utils/events`. This is a
+discrepancy to investigate and resolve.
+</Callout>
+
+---
+
+## POST /v1/webhooks
+
+Creates a new webhook subscription. Returns the subscription object and a
+one-time HMAC secret — the secret is shown only at creation time.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `201 Created`
+
+### Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | string | Yes | Your endpoint URL |
+| `events` | list[string] | No | Event types to receive. Defaults to `["*"]` (all events) |
+
+### Example
+
+```bash
+curl -X POST https://api.flume.ojogulabs.xyz/v1/webhooks \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://myapp.com/hooks/flume",
+    "events": ["job.completed", "job.failed"]
+  }'
+```
+
+### Response — WebhookSubscriptionCreatedResponse
+
+```json
+{
+  "status": "success",
+  "message": "Webhook subscription created",
+  "data": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "url": "https://myapp.com/hooks/flume",
+    "events": ["job.completed", "job.failed"],
+    "is_active": true,
+    "secret": "whsec_...",
+    "created_at": "2026-08-16T12:00:00Z",
+    "updated_at": "2026-08-16T12:00:00Z"
+  },
+  "role": null
+}
+```
+
+Store the `secret` — it is shown only once. You need it to verify
+incoming delivery signatures.
+
+---
+
+## GET /v1/webhooks
+
+Lists all webhook subscriptions for the authenticated API key.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK`
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "url": "https://myapp.com/hooks/flume",
+      "events": ["job.completed", "job.failed"],
+      "is_active": true,
+      "created_at": "2026-08-16T12:00:00Z",
+      "updated_at": "2026-08-16T12:00:00Z"
+    }
+  ],
+  "role": null
+}
+```
+
+---
+
+## GET /v1/webhooks/{`subscription_id`}
+
+Returns a single subscription.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK` | `404 Not Found`
+
+---
+
+## PATCH /v1/webhooks/{`subscription_id`}
+
+Updates a subscription's URL, event filter, or active state.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK`
+
+### Request body (all fields optional)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | New endpoint URL |
+| `events` | list[string] | New event filter |
+| `is_active` | boolean | Enable or disable the subscription |
+
+---
+
+## DELETE /v1/webhooks/{`subscription_id`}
+
+Deletes a subscription and its delivery history.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `204 No Content`
+
+Returns no body.
+
+---
+
+## POST /v1/webhooks/{`subscription_id`}/test
+
+Sends a synchronous `ping` event to the subscription URL and returns the
+HTTP response status and body. Use this to verify your endpoint is reachable
+and correctly configured.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK`
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "status_code": 200,
+    "response_body": "OK"
+  },
+  "role": null
+}
+```
+
+---
+
+## GET /v1/webhooks/{`subscription_id`}/deliveries
+
+Returns the delivery history for a subscription — each attempted delivery,
+its HTTP response code and body, and the number of retry attempts.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK`
+
+### Response — list[WebhookDeliveryResponse]
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": [
+    {
+      "id": "...",
+      "subscription_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "event_type": "job.completed",
+      "payload": {
+        "event_type": "job.completed",
+        "timestamp": "2026-08-16T12:05:00Z",
+        "data": {
+          "job_id": "550e8400-e29b-41d4-a716-446655440000",
+          "status": "succeeded",
+          "source_uri": "...",
+          "source_type": "video"
+        }
+      },
+      "status": "delivered",
+      "response_code": 200,
+      "response_body": "OK",
+      "attempts": 1,
+      "next_retry_at": null,
+      "created_at": "2026-08-16T12:05:00Z",
+      "completed_at": "2026-08-16T12:05:01Z"
+    }
+  ],
+  "role": null
+}
+```
+
+### Delivery statuses
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Delivery attempted, awaiting response |
+| `delivered` | Subscriber returned a 2xx response |
+| `exhausted` | All retry attempts failed |
+
+Retries follow an exponential back-off schedule. After the maximum number
+of retries is exhausted, the delivery is marked `exhausted`.
+
+## Verifying signatures
+
+Every delivery request includes an `X-Signature-256` header and an `X-Event-ID` header:
+
+```
+X-Signature-256: sha256=<hex_digest>
+X-Event-ID: <event_uuid>
+```
+
+The digest is HMAC-SHA256 of the raw request body using your subscription's
+secret. The signature value is prefixed with `sha256=`. Verify it like this:
+
+```python
+import hmac
+import hashlib
+
+def verify(body: bytes, secret: str, signature_header: str) -> bool:
+    expected = "sha256=" + hmac.new(
+        secret.encode(), body, hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
+```
+
+Reject any request where the signature does not match.

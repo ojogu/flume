@@ -1,11 +1,10 @@
 {
   "title": "API Reference",
   "pages": [
+    "index",
     "jobs",
     "uploads",
-    "pipelines",
-    "operations",
-    "errors",
-    "rate-limits"
+    "webhooks",
+    "utils"
   ]
 }

@@ -1,8 +1,0 @@
-{
-  "title": "Authentication",
-  "pages": [
-    "index",
-    "api-keys",
-    "rotating-keys"
-  ]
-}

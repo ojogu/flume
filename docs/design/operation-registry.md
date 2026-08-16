@@ -27,7 +27,11 @@ Flume's 12 operations are grouped into 3 categories:
 | **Combinatory** | join |
 | **Conversion** | extract_audio, thumbnail, gif |
 
-The categories exist solely for **operation-level type validation** — they check whether an operation's `input_types` match the previous step's `output_type`. They do **not** constrain where an operation can appear in the pipeline. The pipeline ends when there are no more operations in the list, not because any operation is intrinsically terminal.
+The categories are **descriptive metadata only** — they group operations by behavior for human understanding and downstream tooling (e.g., metrics, logging, routing). They do **not** constrain pipeline placement and are **not consulted during validation**.
+
+Validation checks type compatibility directly via `input_types` and `output_type` fields on each operation. For example, `thumbnail` (Conversion) can be followed by any operation that accepts `image` as input — its category is irrelevant to the validator.
+
+The pipeline ends when the executor reaches the last operation in the list, not because any operation is intrinsically terminal.
 
 ### Transformative
 

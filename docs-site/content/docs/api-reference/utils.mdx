@@ -1,0 +1,136 @@
+---
+title: Utils
+description: Discovery and verification endpoints.
+---
+
+These endpoints provide information about the platform and do not require
+authentication (except `/verify-key`).
+
+---
+
+## GET /v1/utils/platforms
+
+Returns all supported download platforms with their capabilities and
+limitations.
+
+**Requires auth:** None.
+
+**Status:** `200 OK`
+
+### Response — PlatformListResponse
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "platforms": [
+      {
+        "id": "...",
+        "slug": "youtube",
+        "name": "YouTube",
+        "url": "https://youtube.com",
+        "is_active": true,
+        "content_types": ["single", "playlist", "vod"],
+        "requires_login": true,
+        "supports_live": false,
+        "description": "YouTube video and playlist downloader",
+        "limitations": null,
+        "logo_url": "https://...",
+        "sort_order": 1,
+        "created_at": "...",
+        "updated_at": "..."
+      }
+    ],
+    "total": 1
+  },
+  "role": null
+}
+```
+
+---
+
+## GET /v1/utils/events
+
+Returns the full webhook event catalog — every event type Flume can emit,
+with descriptions and the fields included in each event's payload.
+
+**Requires auth:** None.
+
+**Status:** `200 OK`
+
+### Response — EventListResponse
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "events": [
+      {
+        "type": "job.created",
+        "description": "Job was created and queued for processing",
+        "payload_fields": [
+          { "name": "job_id", "type": "UUID", "description": "Unique job identifier" },
+          { "name": "status", "type": "string", "description": "Job status (always 'pending')" },
+          { "name": "source_uri", "type": "string", "description": "Original source URL or upload URI" },
+          { "name": "source_type", "type": "string", "description": "Source media type ('video' or 'audio')" }
+        ]
+      },
+      {
+        "type": "job.processing",
+        "description": "Worker picked up the job for execution",
+        "payload_fields": [
+          { "name": "job_id", "type": "UUID", "description": "Unique job identifier" },
+          { "name": "status", "type": "string", "description": "Job status (always 'processing')" },
+          { "name": "source_uri", "type": "string", "description": "Original source URL or upload URI" },
+          { "name": "source_type", "type": "string", "description": "Source media type ('video' or 'audio')" }
+        ]
+      }
+    ]
+  },
+  "role": null
+}
+```
+
+The catalog currently includes 7 events. See [Webhooks](/docs/api-reference/webhooks)
+for the full list and delivery payload structure.
+
+---
+
+## GET /v1/utils/verify-key
+
+Checks that the `X-API-Key` header contains a valid, non-expired API key
+and returns its metadata.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK` | `403 Forbidden`
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "valid": true,
+    "key_prefix": "flm_C40kpjzb",
+    "name": "my key",
+    "expires_at": null,
+    "last_used_at": "2026-08-16T12:05:00Z",
+    "status": "active"
+  },
+  "role": null
+}
+```
+
+An invalid or expired key returns `403 Forbidden`:
+
+```json
+{
+  "status": "error",
+  "message": "Unauthorized",
+  "error_code": "unauthorized_user",
+  "data": null,
+  "role": null
+}
+```

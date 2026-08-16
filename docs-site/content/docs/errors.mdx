@@ -1,105 +1,144 @@
 ---
 title: Errors
-description: Error format, codes, and the full validation error catalog
+description: Error envelope, codes, and the full validation catalog.
 ---
 
-Flume returns errors in a consistent JSON envelope. Every error response
-has a `400`–`500` status code and the following body:
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Error envelope
+
+Every error response follows the same envelope:
 
 ```json
 {
   "status": "error",
-  "message": "Human-readable description of what went wrong",
-  "error_code": "machine_readable_code"
+  "message": "Human-readable description",
+  "error_code": "machine_readable_code",
+  "resolution": "How to fix it (sometimes)",
+  "data": null,
+  "role": null
 }
 ```
 
-## Validation Error Catalog
+| Field | Always present? | Description |
+|-------|-----------------|-------------|
+| `status` | Yes | Always `"error"` |
+| `message` | Yes | Human-readable description of what went wrong |
+| `error_code` | Yes | Machine-readable code — use this to handle errors programmatically |
+| `resolution` | Sometimes | Hint on how to fix the error |
+| `data` | Varies | Extra detail — null for most errors, contains Pydantic validation details for 422 |
+| `role` | Always | Reserved; always `null` |
 
-All job submission errors are caught at intake time by the
-[six validation gates](/docs/core-concepts#submission-time-validation).
-Each gate produces specific error messages.
+## HTTP status codes
 
-### Gate 1 — Schema Validation (422)
+| Code | When |
+|------|------|
+| `400` | Validation failure (Gate 2–5) |
+| `401` | Invalid or expired auth token |
+| `403` | Missing or invalid API key |
+| `404` | Resource not found |
+| `409` | Conflict — resource already exists or is in use |
+| `422` | Malformed request body (Pydantic schema validation) |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+| `502` | External API error (e.g. downstream service failure) |
 
-Pydantic rejects malformed request bodies before any custom validation runs.
+## Error codes
 
-| Cause | Example Message |
-|-------|----------------|
-| Missing required field | `Field required` |
-| Wrong type | `Input should be a valid list` |
-| Empty pipeline | `List should have at least 1 item after validation` |
-| Invalid source type | `Input should be 'video' or 'audio'` |
+| `error_code` | HTTP | Description |
+|--------------|------|-------------|
+| `unauthorized_user` | 403 | Missing or invalid `X-API-Key` header |
+| `bad_request` | 400 | General validation failure |
+| `validation_error` | 422 | Malformed request body (Pydantic validation) |
+| `not_found` | 404 | Resource not found |
+| `resource_in_use` | 409 | Resource is already in use |
+| `already_exists` | 409 | Resource already exists |
+| `integrity_error` | 409 | Database integrity violation |
+| `server_error` | 500 | Internal server error |
+| `database_error` | 500 | Database error |
+| `environment_variable_missing` | 500 | Server misconfiguration |
+| `external_api_error` | 502 | Downstream service failure |
+| `http_error` | varies | Generic HTTP error — check `message` for detail |
 
-**Fix:** Ensure `source.type` is `video` or `audio`, `source.uri` is a
-valid URI string, and `pipeline` has at least one entry.
+## Validation error catalog
 
-### Gate 2 — Registry Lookup (400)
+All job submission errors are caught at intake time before any worker touches the
+job. Each gate produces specific messages.
 
-| Cause | Example Message |
-|-------|----------------|
-| Unknown operation name | `Unknown operation 'compresss' at position 0. Valid operations: compress, cut, ...` |
+### Gate 1 — Schema (422)
 
-**Fix:** Check the operation name against the
-[operations reference](/docs/operations-reference). Operation names are
-lowercase and use underscores.
+Malformed request body. Pydantic rejects it before any custom validation.
 
-### Gate 3 — Param Validation (400)
+```json
+{
+  "status": "error",
+  "message": "Field required",
+  "error_code": "validation_error",
+  "data": [
+    {
+      "loc": ["body", "source", "type"],
+      "msg": "Field required",
+      "type": "missing"
+    }
+  ]
+}
+```
 
-| Cause | Example Message |
+### Gate 2 — Registry lookup (400)
+
+Unknown operation name.
+
+```
+Unknown operation 'compresss' at position 0. Valid operations: trim, cut, compress, ...
+```
+
+### Gate 3 — Param validation (400)
+
+| Cause | Message pattern |
 |-------|----------------|
 | Missing required param | `Missing required param 'start' for 'trim' at position 0` |
-| Wrong param type | `Param 'width' for 'resize' at position 1 must be an integer` |
+| Wrong type | `Param 'width' for 'resize' at position 0 must be an integer` |
 | Enum value not allowed | `Param 'quality' for 'compress' at position 0 got 'super'. Allowed values: low, medium, high` |
-| Value below minimum | `Param 'start' for 'gif' at position 2 must be >= 0.0, got -1` |
+| Value below minimum | `Param 'start' for 'gif' at position 0 must be >= 0.0, got -1` |
 | Value above maximum | `Param 'width' for 'resize' at position 0 must be <= 7680, got 99999` |
 | Unknown param | `Unknown param 'color' for 'trim' at position 0` |
 | Array too short | `Param 'clips' for 'join' at position 0 must have at least 2 items, got 1` |
 | Array too long | `Param 'segments' for 'cut' at position 0 must have at most 50 items, got 100` |
+| Invalid timecode format | `Param 'start' for 'trim' at position 0 has invalid timecode format 'bad format'` |
+| Timecode below minimum | `Param 'start' for 'trim' at position 0 must be >= 0.0, got -5` |
 
-**Fix:** Check the operation's param definitions in the
-[operations reference](/docs/operations-reference). Ensure all required
-params are present, enum values are spelt correctly, and numeric values
-are within bounds.
+### Gate 4 — Type compatibility (400)
 
-### Gate 4 — Type Compatibility (400)
-
-| Cause | Example Message |
-|-------|----------------|
-| Source type does not match step 0 | `Type mismatch at position 0: 'resize' accepts [video] but previous step produces [audio]` |
+| Cause | Message |
+|-------|---------|
+| Source type does not match step 0 | `Type mismatch at position 0: 'extract_audio' accepts [video] but previous step produces [audio]` |
 | Step output does not match next step input | `Type mismatch at position 1: 'mute' accepts [video] but previous step produces [audio]` |
 
-**Fix:** Ensure the source type is compatible with the first operation's
-input types, and that each step's output type can feed the next step's
-inputs. See the [type system](/docs/core-concepts#artifact) and each
-operation's declared input/output types.
+### Gate 5 — Pipeline spec (500)
 
-### Gate 5 — Terminal Position (400)
+Unexpected error during spec enrichment. This should not occur if Gates 1–4 passed.
 
-| Cause | Example Message |
-|-------|----------------|
-| Terminal operation in non-final position | `Terminal operation 'thumbnail' at position 0 must be the last step in the pipeline` |
+```
+Unexpected validation error
+```
 
-**Fix:** Move terminal operations (`extract_audio`, `thumbnail`, `gif`)
-to the last position in the pipeline array.
+<Callout title="Gate 1.5 — join source.uri check (400)">
+If the pipeline's first operation is `join`, Flume checks that `source.uri` is
+null (clips come from the `clips` param instead):
 
-## HTTP Status Codes
+```
+source.uri is not used for join operation. Please provide 2-10 video URLs via the clips parameter instead.
+```
+</Callout>
 
-| Code | Meaning |
-|------|---------|
-| `201` | Job created successfully |
-| `400` | Validation error — check the message for details |
-| `403` | Missing or invalid API key |
-| `422` | Malformed request body — schema validation failed |
-| `429` | Rate limit exceeded |
-| `500` | Internal server error |
+## Common error scenarios
 
-## Upload Errors
-
-| Cause | Example Message |
-|-------|----------------|
-| Upload not found | `Upload not found` |
-| Upload already attached | `Upload is already attached to a job` |
-
-**Fix:** Ensure the upload UUID is correct and has not been used by another
-job. Each upload can only be attached to one job.
+| Scenario | error_code | Fix |
+|----------|------------|-----|
+| No `X-API-Key` header | `unauthorized_user` (403) | Add the header |
+| Invalid API key | `unauthorized_user` (403) | Check the key is correct and not expired |
+| Malformed JSON body | `validation_error` (422) | Fix the JSON syntax |
+| Unknown operation | `bad_request` (400) | Check operation names in [Operations](/docs/operations) |
+| Wrong param type | `bad_request` (400) | Check param types in [Operations](/docs/operations) |
+| Type mismatch in pipeline | `bad_request` (400) | Ensure adjacent steps are type-compatible |
+| Upload not found | `not_found` (404) | Check the upload ID is correct |

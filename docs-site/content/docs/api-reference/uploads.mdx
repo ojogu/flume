@@ -1,8 +1,149 @@
 ---
-title: Upload API
-description: Documentation for the /uploads endpoint.
+title: Uploads
+description: Upload files directly to Flume storage using presigned URLs.
 ---
 
-# Uploads
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 
-Endpoints for managing media uploads.
+Flume never touches your file bytes. Instead, you request a presigned R2 URL,
+upload the file directly from your client to R2, then tell Flume the upload
+is complete. This keeps your API server stateless and avoids bandwidth costs.
+
+## Upload lifecycle
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Presigned URL issued; file has not been uploaded yet |
+| `unattached` | File confirmed in R2; ready to use in a job |
+| `attached` | Linked to a job; protected from cleanup |
+
+Files not yet `attached` are swept after 24 hours. Attach them to a job
+before the deadline, or they are deleted.
+
+---
+
+## POST /v1/uploads/presign
+
+Issues a short-lived presigned PUT URL. Upload your file directly to that
+URL, then call `POST /v1/uploads/{`upload_id`}/complete`.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `201 Created`
+
+### Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `original_filename` | string | Yes | Original filename — used as a label |
+| `content_type` | string | Yes | MIME type of the file, e.g. `video/mp4` |
+| `file_size` | integer | No | Expected file size in bytes |
+
+### Example
+
+```bash
+curl -X POST https://api.flume.ojogulabs.xyz/v1/uploads/presign \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "original_filename": "footage.mp4",
+    "content_type": "video/mp4",
+    "file_size": 104857600
+  }'
+```
+
+### Response — PresignUploadResponse
+
+```json
+{
+  "status": "success",
+  "message": "Presigned upload URL generated",
+  "data": {
+    "upload_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "presigned_url": "https://...r2.dev/...",
+    "object_key": "uploads/f47ac10b-...",
+    "expires_at": "2026-08-16T13:00:00Z"
+  },
+  "role": null
+}
+```
+
+### Upload the file
+
+Use the `presigned_url` to upload your file. This is a standard S3-style
+presigned PUT — your HTTP client must send the same `content-type` header
+specified in the request:
+
+```bash
+curl -X PUT \
+  -H "Content-Type: video/mp4" \
+  --data-binary @"footage.mp4" \
+  "https://...r2.dev/...?X-Amz-..."
+```
+
+The response from R2 will be `200 OK` with an `etag` header. Save that etag —
+it is recorded when you call `/complete`.
+
+---
+
+## POST /v1/uploads/{`upload_id`}/complete
+
+Confirms that the file was successfully uploaded to R2. Flume verifies the
+object exists via a `head_object` call and flips the upload status to
+`unattached`.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK`
+
+### Path params
+
+| Param | Description |
+|-------|-------------|
+| `/v1/uploads/{upload_id}/complete` | UUID returned by `/presign` |
+
+### Response — UploadResponse
+
+```json
+{
+  "status": "success",
+  "message": "Upload confirmed",
+  "data": {
+    "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "api_key_id": "...",
+    "uri": "uploads/f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "status": "unattached",
+    "original_filename": "footage.mp4",
+    "file_size": 104857600,
+    "content_type": "video/mp4",
+    "etag": "\"abc123...\"",
+    "created_at": "2026-08-16T12:00:00Z",
+    "updated_at": "2026-08-16T12:05:00Z"
+  },
+  "role": null
+}
+```
+
+<Callout title="Use the uri in a job">
+Pass the `uri` field as `source.uri` in `POST /v1/job`:
+
+```json
+{
+  "source": {
+    "type": "video",
+    "uri": "uploads/f47ac10b-58cc-4372-a567-0e02b2c3d479"
+  },
+  "pipeline": [...]
+}
+```
+
+When a job references an `unattached` upload, Flume automatically marks it
+`attached` so cleanup does not delete it while the job is running.
+</Callout>
+
+<Callout title="Alternative: upload to your own R2">
+Instead of using `/presign`, you can upload files to your own R2 bucket and
+pass the full `https://` URL as `source.uri` in the job request. The `/presign`
+flow is optional — it exists to let you upload without your own R2 credentials.
+</Callout>

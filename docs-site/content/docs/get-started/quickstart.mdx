@@ -1,205 +1,164 @@
 ---
 title: Quickstart
-description: Complete a media processing workflow in under five minutes using our canonical HTTP API or official SDKs.
+description: Submit your first media processing job in a few minutes.
 ---
 
 import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Card, Cards } from 'fumadocs-ui/components/card';
-import { Book, Code, CircleHelp, CircleCheck } from 'lucide-react';
 
-# Quickstart <span className="text-display text-brand font-normal ml-1">Journey</span>
+# Quickstart
 
-Complete a media processing workflow in under five minutes using our canonical HTTP API or official SDKs.
+This guide takes a video from a public URL, trims it to the first 10
+seconds, and downloads the result. It uses nothing but `curl`.
 
 <Steps>
 <Step>
-### Install the SDK
-Install the official Flume SDK or use direct API calls. Sandbox keys are ready for use.
+### Get an API key
 
-<Tabs items={['HTTP (cURL)', 'Node.js', 'Python', 'Go']}>
-<Tab value="HTTP (cURL)">
-```bash
-# No installation required for HTTP API.
-curl --version
-```
-</Tab>
-<Tab value="Node.js">
-```bash
-npm install @flume/node
-```
-</Tab>
-<Tab value="Python">
-```bash
-pip install flume-python
-```
-</Tab>
-<Tab value="Go">
-```bash
-go get github.com/flume-media/flume-go
-```
-</Tab>
-</Tabs>
+Create an API key in your dashboard. Keys look like `flm_` followed by a
+random string, for example `flm_C40kpjzbjB8OPChdFWimkRbrsV6...`.
+
+You pass the key in every request as the `X-API-Key` header. See
+[Authentication](/docs/get-started/authentication) for details.
 </Step>
 
 <Step>
-### Initialize & Authenticate
-Authenticate your requests using the `X-API-Key` header. Use your sandbox key (`fl_test_...`) to initialize the client without incurring any costs.
+### Verify your key
 
-<Tabs items={['HTTP (cURL)', 'Node.js', 'Python', 'Go']}>
-<Tab value="HTTP (cURL)">
+Check that the key works before sending a job:
+
 ```bash
-curl -H "X-API-Key: fl_test_..." \
-  https://api.flume.ojogulabs.xyz/v1/auth/verify
+curl https://api.flume.ojogulabs.xyz/v1/utils/verify-key \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
 ```
-</Tab>
-<Tab value="Node.js">
-```javascript
-import { Flume } from '@flume/node';
 
-const flume = new Flume('fl_test_...');
-```
-</Tab>
-<Tab value="Python">
-```python
-from flume import Flume
+A valid key returns metadata about itself:
 
-flume = Flume('fl_test_...')
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "valid": true,
+    "key_prefix": "flm_C40kpjzb",
+    "name": "my key",
+    "expires_at": null,
+    "last_used_at": null,
+    "status": "active"
+  },
+  "role": null
+}
 ```
-</Tab>
-<Tab value="Go">
-```go
-import "github.com/flume-media/flume-go"
-
-client := flume.NewClient("fl_test_...")
-```
-</Tab>
-</Tabs>
 </Step>
 
 <Step>
-### Send Your First Job
-Define a pipeline of operations to transform your source media. We'll trim the first 10 seconds and extract the audio.
+### Create a job
 
-<Tabs items={['HTTP (cURL)', 'Node.js', 'Python', 'Go']}>
-<Tab value="HTTP (cURL)">
+`POST /v1/job` accepts a `source` (the media file) and a `pipeline` (the
+operations to run). This request trims the first 10 seconds:
+
 ```bash
 curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
-  -H "X-API-Key: fl_test_..." \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..." \
   -H "Content-Type: application/json" \
   -d '{
-    "source": "art_UPLOAD_ID",
+    "source": {
+      "type": "video",
+      "uri": "https://storage.example.com/demo.mp4"
+    },
     "pipeline": [
-      { "operation": "trim", "params": { "start": 0, "end": 10 } },
-      { "operation": "extract_audio" }
+      { "operation": "trim", "params": { "start": "0:00", "end": "0:10" } }
     ]
   }'
 ```
-</Tab>
-<Tab value="Node.js">
-```javascript
-const job = await flume.jobs.create({
-  source: 'art_UPLOAD_ID',
-  pipeline: [
-    { operation: 'trim', params: { start: 0, end: 10 } },
-    { operation: 'extract_audio' }
-  ]
-});
+
+Flume validates the request and returns `201 Created` immediately with the
+job's details:
+
+```json
+{
+  "status": "success",
+  "message": "Job created",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "pending",
+    "source_uri": "https://storage.example.com/demo.mp4",
+    "source_type": "video",
+    "pipeline_steps": [
+      {
+        "operation": "download",
+        "params": { "type": "yt-dlp", "format": "best" }
+      },
+      {
+        "operation": "trim",
+        "category": "transformative",
+        "capability": "transform",
+        "input_types": ["video", "audio"],
+        "output_type": ["video", "audio"],
+        "params": { "start": 0.0, "end": 10.0 }
+      }
+    ],
+    "outputs": [
+      { "type": "generate_download_link", "params": {} }
+    ],
+    "created_at": "2026-08-16T12:00:00Z",
+    "updated_at": "2026-08-16T12:00:00Z"
+  },
+  "role": null
+}
 ```
-</Tab>
-<Tab value="Python">
-```python
-job = flume.jobs.create(
-    source="art_UPLOAD_ID",
-    pipeline=[
-        {"operation": "trim", "params": {"start": 0, "end": 10}},
-        {"operation": "extract_audio"}
-    ]
-)
-```
-</Tab>
-<Tab value="Go">
-```go
-job, _ := client.Jobs.Create(context.Background(), flume.JobCreateRequest{
-    Source: "art_UPLOAD_ID",
-    Pipeline: []flume.Operation{
-        {Name: "trim", Params: map[string]interface{}{"start": 0, "end": 10}},
-        {Name: "extract_audio"},
-    },
-})
-```
-</Tab>
-</Tabs>
+
+Notes on this response:
+
+- A `download` step is always injected as step 0 — Flume fetches the source
+  for you before running your operations.
+- The stored pipeline spec is annotated with each operation's category,
+  capability, and input/output types.
+- Timecode strings such as `"0:00"` are stored as numbers in seconds
+  (`0.0`, `10.0`).
 </Step>
 
 <Step>
-### Monitor Progress
-Processing is asynchronous. Poll the job status to know when your results are ready.
+### Poll for completion
 
-<Tabs items={['HTTP (cURL)', 'Node.js', 'Python', 'Go']}>
-<Tab value="HTTP (cURL)">
+Processing is asynchronous. Poll the job until its `status` leaves
+`pending`/`processing`:
+
 ```bash
-curl -H "X-API-Key: fl_test_..." \
-  https://api.flume.ojogulabs.xyz/v1/job/JOB_ID
+curl https://api.flume.ojogulabs.xyz/v1/job/550e8400-e29b-41d4-a716-446655440000 \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
 ```
-</Tab>
-<Tab value="Node.js">
-```javascript
-const status = await flume.jobs.get(job.id);
-console.log(status.status); // 'completed'
-```
-</Tab>
-<Tab value="Python">
-```python
-status = flume.jobs.get(job.id)
-print(status.status) # 'completed'
-```
-</Tab>
-<Tab value="Go">
-```go
-status, _ := client.Jobs.Get(context.Background(), job.ID)
-fmt.Println(status.Status)
-```
-</Tab>
-</Tabs>
+
+The job is done when `data.status` is `succeeded` (or `failed` if something
+went wrong). See [API Reference](/docs/api-reference) for the full list of
+statuses.
 </Step>
 
 <Step>
-### Download the Output
+### Download the output
 
-<div className="bg-brand/10 border border-brand/20 rounded-xl p-6 flex items-start gap-4">
-  <div className="p-2 bg-brand rounded-lg shrink-0">
-    <CircleCheck className="text-white h-6 w-6" />
-  </div>
-  <div>
-    <p className="text-foreground font-medium mb-1">Success! Your media is ready.</p>
-    <p className="text-text-secondary text-sm leading-relaxed">
-      Once the job status is `completed`, the response will contain high-performance presigned download links for your final artifacts.
-    </p>
-  </div>
-</div>
+Once the job is `succeeded`, download the final artifact:
+
+```bash
+curl -L -o trimmed.mp4 \
+  https://api.flume.ojogulabs.xyz/v1/job/550e8400-e29b-41d4-a716-446655440000/download \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+```
+
+This endpoint redirects (`302`) to a presigned URL for the final artifact.
+`curl -L` follows the redirect and saves the file.
 </Step>
 </Steps>
 
-## What's Next?
+<Callout title="Timecodes">
+Operations such as `trim`, `cut`, `gif`, and `thumbnail` take timecode
+params as human-readable strings: `"0:00"`, `"5.0"`, `"01:30:05.500"`.
+See [Operations](/docs/api-reference) for each operation's params.
+</Callout>
 
-<Cards>
-  <Card
-    title="Browse Guides"
-    description="Learn how to solve real problems with task-oriented tutorials."
-    href="/docs/guides"
-    icon={<Book className="h-4 w-4" />}
-  />
-  <Card
-    title="API Reference"
-    description="Explore every endpoint, request parameter, and response shape."
-    href="/docs/api-reference"
-    icon={<Code className="h-4 w-4" />}
-  />
-  <Card
-    title="Support"
-    description="Need help? Our engineers are just an email away."
-    href="mailto:hello@ojogulabs.xyz"
-    icon={<CircleHelp className="h-4 w-4" />}
-  />
-</Cards>
+## Next steps
+
+- [Authentication](/docs/get-started/authentication) — API keys in depth
+- [Concepts](/docs/get-started/concepts) — sources, pipelines, and jobs
+- [API Reference](/docs/api-reference) — every endpoint and field

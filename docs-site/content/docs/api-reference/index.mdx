@@ -1,8 +1,124 @@
 ---
 title: API Reference
-description: Auto-generated from the OpenAPI spec
+description: Flume API endpoint reference.
 ---
+
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # API Reference
 
-Placeholder — auto-generated API reference. Organized by tag, with endpoints grouped from the OpenAPI specification.
+## Base URL
+
+```
+https://api.flume.ojogulabs.xyz/v1
+```
+
+All endpoints are relative to this URL.
+
+## Authentication
+
+Every endpoint that accesses your data requires the `X-API-Key` header:
+
+```
+X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6...
+```
+
+Missing or invalid keys return `403 Forbidden`:
+
+```json
+{
+  "status": "error",
+  "message": "Unauthorized",
+  "error_code": "unauthorized_user",
+  "data": null,
+  "role": null
+}
+```
+
+## Response envelope
+
+Every response follows the same envelope:
+
+```json
+{
+  "status": "success",
+  "message": "Job created",
+  "data": { ... },
+  "role": null
+}
+```
+
+| Field | Always present? | Description |
+|-------|-----------------|-------------|
+| `status` | Yes | `"success"` or `"error"` |
+| `message` | Yes | Human-readable summary |
+| `data` | Usually | The response payload — see each endpoint |
+| `role` | Always | Reserved; always `null` |
+
+Error responses add `error_code` and optionally `resolution`:
+
+```json
+{
+  "status": "error",
+  "message": "Bad request",
+  "error_code": "bad_request",
+  "resolution": "Check the field types and required values in the schema",
+  "data": null,
+  "role": null
+}
+```
+
+## HTTP status codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `201` | Created (job, upload) |
+| `302` | Redirect to download URL |
+| `400` | Validation error — request rejected before processing |
+| `403` | Missing or invalid API key |
+| `404` | Resource not found |
+| `422` | Malformed request body (Pydantic schema validation) |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+
+## Pagination
+
+List endpoints paginate with `page` and `per_page` query params:
+
+| Param | Default | Bounds |
+|-------|---------|--------|
+| `page` | `1` | ≥ 1 |
+| `per_page` | `20` | 1–100 |
+
+Responses include a `total` count alongside the results:
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "total": 47,
+    "page": 1,
+    "per_page": 20,
+    "jobs": [ ... ]
+  },
+  "role": null
+}
+```
+
+## Common error codes
+
+| `error_code` | Meaning |
+|--------------|---------|
+| `unauthorized_user` | Missing or invalid API key (403) |
+| `http_error` | Generic HTTP error — check `message` for detail (404, etc.) |
+| `bad_request` | General validation failure |
+| `validation_error` | Pydantic schema failure (422) |
+
+## Endpoints
+
+| | |
+|---|---|
+| [Jobs](/docs/api-reference/jobs) | Create, list, get, and download jobs |
+| [Uploads](/docs/api-reference/uploads) | Upload files to Flume storage |
