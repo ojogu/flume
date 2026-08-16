@@ -128,6 +128,11 @@ REGISTRY: dict[str, OperationDefinition] = {
                 default="medium",
                 values=["low", "medium", "high"],
             ),
+            "resolution": ParamDefinition(
+                type=ParamType.ENUM,
+                required=False,
+                values=["360p", "480p", "720p", "1080p", "1440p", "4k"],
+            ),
         },
     ),
 
@@ -142,6 +147,11 @@ REGISTRY: dict[str, OperationDefinition] = {
                 type=ParamType.ENUM,
                 required=True,
                 values=["mp4", "webm", "mov"],
+            ),
+            "resolution": ParamDefinition(
+                type=ParamType.ENUM,
+                required=False,
+                values=["360p", "480p", "720p", "1080p", "1440p", "4k"],
             ),
         },
     ),
@@ -168,7 +178,17 @@ REGISTRY: dict[str, OperationDefinition] = {
             "preset": ParamDefinition(
                 type=ParamType.ENUM,
                 required=False,
-                values=["360p", "480p", "720p", "1080p", "4k"],
+                values=["360p", "480p", "720p", "1080p", "1440p", "4k"],
+            ),
+            "orientation": ParamDefinition(
+                type=ParamType.ENUM,
+                required=False,
+                values=["landscape", "portrait", "square"],
+            ),
+            "resolution": ParamDefinition(
+                type=ParamType.ENUM,
+                required=False,
+                values=["360p", "480p", "720p", "1080p", "1440p", "4k"],
             ),
         },
     ),
@@ -263,6 +283,11 @@ REGISTRY: dict[str, OperationDefinition] = {
                 items=ParamDefinition(type=ParamType.URL, required=True),
                 min_items=2,
                 max_items=10,
+            ),
+            "resolution": ParamDefinition(
+                type=ParamType.ENUM,
+                required=False,
+                values=["480p", "720p", "1080p", "1440p", "4k"],
             ),
         },
     ),
