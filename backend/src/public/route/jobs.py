@@ -64,17 +64,28 @@ async def create_job(
         pipeline=[op.model_dump() for op in body.pipeline],
     )
     # inject implicit download as step 0 — always runs first
-    download_type = "r2" if source.uri.startswith("uploads/") else "yt-dlp"
-    spec.insert(
-        0,
-        {
-            "operation": "download",
-            "params": {
-                "type": download_type,
-                "format": source.format.value,
+    if body.pipeline and body.pipeline[0].operation == "join":
+        spec.insert(
+            0,
+            {
+                "operation": "download",
+                "params": {
+                    "clips": body.pipeline[0].params.get("clips", []),
+                },
             },
-        },
-    )
+        )
+    else:
+        download_type = "r2" if source.uri.startswith("uploads/") else "yt-dlp"
+        spec.insert(
+            0,
+            {
+                "operation": "download",
+                "params": {
+                    "type": download_type,
+                    "format": source.format.value,
+                },
+            },
+        )
     logger.info(
         f"Pipeline validation passed — "
         f"{len(spec)} steps: {[s['operation'] for s in spec]}"

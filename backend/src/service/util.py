@@ -86,6 +86,33 @@ EVENT_CATALOG = [
             {"name": "error", "type": "string", "description": "Error description"},
         ],
     },
+    {
+        "type": "job.cancelled",
+        "description": "Job was cancelled before processing completed",
+        "payload_fields": [
+            {"name": "job_id", "type": "UUID", "description": "Unique job identifier"},
+            {"name": "status", "type": "string", "description": "Job status (always 'cancelled')"},
+            {"name": "error", "type": "string|null", "description": "Error description or null"},
+        ],
+    },
+    {
+        "type": "job.retried",
+        "description": "Job was re-queued after a transient failure",
+        "payload_fields": [
+            {"name": "job_id", "type": "UUID", "description": "Unique job identifier"},
+            {"name": "status", "type": "string", "description": "Job status (always 'pending' on retry)"},
+            {"name": "retry_count", "type": "int", "description": "Number of retry attempts so far"},
+            {"name": "source_uri", "type": "string|null", "description": "Original source URL or upload URI"},
+            {"name": "source_type", "type": "string", "description": "Source media type ('video' or 'audio')"},
+        ],
+    },
+    {
+        "type": "ping",
+        "description": "Test event sent by POST /v1/webhooks/{id}/test",
+        "payload_fields": [
+            {"name": "message", "type": "string", "description": "Test message from Flume"},
+        ],
+    },
 ]
 
 

@@ -8,6 +8,8 @@
 # Runs on the **download_queue** (many workers, I/O-bound).
 # ─────────────────────────────────────────────────────
 
+import asyncio
+import json
 import time
 import uuid
 from pathlib import Path
@@ -17,6 +19,8 @@ from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
 from src.model.job import JobStatus, StepStatus
 from src.schema.download import DownloadResult, _ExtractedInfo, _FormatPreference
+import yt_dlp
+
 from src.service.downloader import (
     assert_size_under_limit,
     build_artifact_from_local,
@@ -94,21 +98,26 @@ async def _download_task_async(job_id: str):
             workspace = storage._ensure_workspace(job_uuid)
             logger.info(f"Workspace ready for job {job_id}: {workspace}")
 
-            # download — external URLs via yt-dlp, upload URIs via R2 presigned GET
-            is_upload = job.source_uri.startswith("uploads/")
-            if is_upload:
-                result = await _download_upload_source(job, workspace)
+            # check for clips param (used by join operation)
+            clips = step.params.get("clips")
+            if clips:
+                result = await _download_clips(clips, workspace, job_id)
             else:
-                # get the format from the client, or default to best
-                fmt = _FormatPreference(
-                    job.pipeline_steps[0].get("params", {}).get("format", "best")
-                )
-                result = download(
-                    url=job.source_uri,
-                    workspace_dir=str(workspace),
-                    source_type=job.source_type,
-                    fmt=fmt,
-                )
+                # download — external URLs via yt-dlp, upload URIs via R2 presigned GET
+                is_upload = job.source_uri.startswith("uploads/")
+                if is_upload:
+                    result = await _download_upload_source(job, workspace)
+                else:
+                    # get the format from the client, or default to best
+                    fmt = _FormatPreference(
+                        job.pipeline_steps[0].get("params", {}).get("format", "best")
+                    )
+                    result = download(
+                        url=job.source_uri,
+                        workspace_dir=str(workspace),
+                        source_type=job.source_type,
+                        fmt=fmt,
+                    )
 
             # persist source metadata on the job
             source_meta = result.artifact.model_dump(
@@ -293,3 +302,85 @@ async def _download_upload_source(job, workspace: Path) -> "DownloadResult":
         metadata=metadata,
         artifact=artifact,
     )
+
+
+async def _download_r2_object(object_key: str, workspace: Path, filename: str) -> str:
+    """Fetch any R2 object into the workspace with a given filename.
+
+    Generates a presigned GET URL, streams the file to disk, and verifies the size limit. Returns the local path.
+    """
+    presigned_url = await storage.generate_presigned_download_url(object_key)
+    local_path = str(workspace / filename)
+
+    async with get_http_client(timeout=300.0) as client:
+        async with client.stream("GET", presigned_url) as response:
+            response.raise_for_status()
+            with open(local_path, "wb") as f:
+                async for chunk in response.aiter_bytes():
+                    f.write(chunk)
+
+    assert_size_under_limit(local_path)
+    logger.info(f"R2 download complete — {object_key} -> {local_path}")
+    return local_path
+
+
+async def _download_clips(clips: list[str], workspace: Path, job_id: str) -> "DownloadResult":
+    """Download multiple clips for join operation.
+
+    Each clip URL is downloaded to the workspace. R2 URLs use presigned GET; external URLs use yt-dlp. The list of local paths is written to a JSON file whose path is returned as the result's local_path.
+    """
+    clip_paths: list[str] = []
+
+    for i, clip_url in enumerate(clips):
+        clip_url = clip_url.strip()
+        try:
+            if clip_url.startswith("uploads/"):
+                ext = Path(clip_url).suffix.lstrip(".") or "mp4"
+                filename = f"join_clip_{i}.{ext}"
+                local_path = await _download_r2_object(clip_url, workspace, filename)
+            else:
+                local_path = str(workspace / f"join_clip_{i}.mp4")
+                opts: dict = {
+                    "outtmpl": str(workspace / f"join_clip_{i}.%(ext)s"),
+                    "format": "bestvideo+bestaudio/best",
+                    "quiet": True,
+                    "no_warnings": True,
+                    "merge_output_format": "mp4",
+                }
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(
+                    None, _download_clip_sync, clip_url, str(workspace), i, opts
+                )
+
+            clip_paths.append(local_path)
+        except Exception as exc:
+            logger.error(f"[_download_clips] job={job_id} clip[{i}] failed: {exc}")
+            raise
+
+    json_path = str(workspace / "join_clips.json")
+    with open(json_path, "w") as f:
+        json.dump(clip_paths, f)
+
+    metadata = _ExtractedInfo(
+        platform="internal",
+        video_id="join",
+        url="internal://clips",
+        title="join_clips",
+    )
+    artifact = build_artifact_from_local(
+        json_path,
+        "internal://clips",
+        job_id=job_id,
+    )
+
+    return DownloadResult(
+        local_path=json_path,
+        metadata=metadata,
+        artifact=artifact,
+    )
+
+
+def _download_clip_sync(url: str, workspace_dir: str, index: int, opts: dict):
+    """Synchronous yt-dlp download wrapper for use in executor."""
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.download([url])

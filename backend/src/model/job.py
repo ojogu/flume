@@ -48,7 +48,7 @@ class Job(BaseModel):
         nullable=False,
         default=JobStatus.PENDING.value,
     )
-    source_uri: Mapped[str] = sa.Column(sa.Text, nullable=False)
+    source_uri: Mapped[str | None] = sa.Column(sa.Text, nullable=True)
     source_type: Mapped[str] = sa.Column(sa.String, nullable=False)
     pipeline_steps: Mapped[dict | None] = sa.Column(JSONB, nullable=True)
     outputs: Mapped[dict | None] = sa.Column(JSONB, nullable=True)

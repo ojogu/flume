@@ -22,16 +22,15 @@ class OutputType(str, Enum):
 class SourceObject(BaseModel):
     """Source media — type, URI, optional playlist selection, and quality format preference."""
     type: SourceType
-    uri: str
-    # optional playlist entry filter — surface-level validation only (entries are positive ints);
-    # actual playlist detection and index-bounds checking happen in the async worker
+    uri: str | None = None
     selection: _PlaylistSelection | None = None
-    # download quality preference — "best" by default; resolutions are rejected for audio sources
     format: _FormatPreference = _FormatPreference.BEST
 
     @field_validator("uri")
     @classmethod
-    def _validate_uri(cls, v: str) -> str:
+    def _validate_uri(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
         if v.startswith("uploads/"):
             return v
         parsed = urlparse(v)
