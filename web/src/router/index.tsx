@@ -15,6 +15,7 @@ import { ApiKeysPage } from '@/pages/dashboard/ApiKeysPage'
 import { WebhooksPage } from '@/pages/dashboard/WebhooksPage'
 import { WebhookDetailPage } from '@/pages/dashboard/WebhookDetailPage'
 import { PlatformsPage } from '@/pages/dashboard/PlatformsPage'
+import { SupportPage } from '@/pages/dashboard/SupportPage'
 import { AdminShell } from '@/pages/admin/AdminShell'
 import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
 import { AdminPlatformsPage } from '@/pages/admin/AdminPlatformsPage'
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
           {
             path: 'platforms',
             element: <PlatformsPage />,
+          },
+          {
+            path: 'support',
+            element: <SupportPage />,
           },
           {
             path: '*',

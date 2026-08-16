@@ -25,6 +25,14 @@ export function JobErrorCallout({
           <p className="break-words text-sm leading-relaxed text-[var(--text-secondary)]">
             {message}
           </p>
+          <p className="pt-1 text-sm">
+            <a
+              href="/dashboard/support"
+              className="font-medium text-destructive underline underline-offset-4 hover:text-destructive/80"
+            >
+              Contact support
+            </a>
+          </p>
         </div>
       </div>
     </div>

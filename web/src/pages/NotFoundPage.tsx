@@ -35,7 +35,7 @@ export function NotFoundPage() {
               Go home
             </Link>
             <a
-              href="mailto:support@flume.ai"
+              href="mailto:support@ojogulabs.xyz"
               className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'px-6 gap-2')}
             >
               <Mail className="h-4 w-4" />

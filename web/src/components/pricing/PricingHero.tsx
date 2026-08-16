@@ -41,7 +41,7 @@ const tiers = [
     description: 'Large-scale workloads with SLA guarantees',
     features: ['Unlimited jobs', 'Custom storage', 'SLA guarantee', 'Dedicated support'],
     cta: 'Contact Us',
-    href: 'mailto:hello@flume.dev',
+    href: 'mailto:support@ojogulabs.xyz',
     highlighted: false,
   },
 ]

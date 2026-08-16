@@ -14,7 +14,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         children: (
           <div className="flex items-center gap-3 ml-auto">
             <a 
-              href="https://flume.ojogulabs.xyz/signup" 
+              href="https://flume.ojogulabs.xyz/login" 
               className="hidden md:flex items-center justify-center px-4 py-1.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
             >
               Start processing
@@ -24,7 +24,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       }}
       links={[
         { url: 'https://flume.ojogulabs.xyz/dashboard', text: 'Dashboard' },
-        { url: 'mailto:hello@ojogulabs.xyz', text: 'Support' },
+        { url: '/docs/support', text: 'Support' },
       ]}
       sidebar={{
         defaultOpenLevel: 1,

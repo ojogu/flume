@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, LifeBuoy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function DashboardNotFoundPage() {
@@ -15,12 +15,20 @@ export function DashboardNotFoundPage() {
       <p className="text-sm text-[var(--text-secondary)] max-w-sm mb-8">
         Nothing flowing at this address.
       </p>
-      <Link to="/dashboard/jobs">
-        <Button variant="default" size="sm" className="gap-2">
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Jobs
-        </Button>
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link to="/dashboard/jobs">
+          <Button variant="default" size="sm" className="gap-2">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Jobs
+          </Button>
+        </Link>
+        <Link to="/dashboard/support">
+          <Button variant="outline" size="sm" className="gap-2">
+            <LifeBuoy className="h-3.5 w-3.5" />
+            Contact support
+          </Button>
+        </Link>
+      </div>
     </div>
   )
 }

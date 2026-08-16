@@ -9,12 +9,12 @@ const productLinks = [
 
 const resourceLinks = [
   { href: '/docs', label: 'Docs', internal: false },
-  { href: '#github', label: 'GitHub', internal: false },
+  { href: 'https://github.com/ojogu/flume', label: 'GitHub', internal: false },
 ]
 
 const communityLinks = [
   { href: 'https://t.me/getflume_bot', label: 'Telegram', internal: false, external: true },
-  { href: 'https://wa.me/000000000', label: 'WhatsApp', internal: false, external: true }, // DUMMY LINK: replace with real WhatsApp number before launch
+  { href: 'https://wa.me/2349065011334', label: 'WhatsApp', internal: false, external: true },
 ]
 
 function FooterLink({ href, label, internal, external }: { href: string; label: string; internal?: boolean; external?: boolean }) {

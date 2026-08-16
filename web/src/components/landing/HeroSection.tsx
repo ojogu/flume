@@ -43,8 +43,7 @@ export function HeroSection() {
             ,{' '}
             <a href="https://t.me/getflume_bot" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline underline-offset-4">Telegram</a>
             , and{' '}
-            <a href="https://wa.me/000000000" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline underline-offset-4">WhatsApp</a>
-            {/* DUMMY LINK: replace with real WhatsApp number before launch */}
+            <a href="https://wa.me/2349065011334" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline underline-offset-4">WhatsApp</a>
             {' '}— no setup required.
           </p>
         </div>

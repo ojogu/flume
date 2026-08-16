@@ -60,7 +60,7 @@ def send_magic_link_email(to_email: str, token: str) -> dict | None:
         from celery_app.celery import bg_task
 
         bg_task.send_task(
-            "celery_app.task.send_email_task",
+            "jobs.email.send",
             args=[to_email, subject, html_content],
         )
         logger.info(f"Magic link email enqueued for {to_email}")
@@ -69,3 +69,28 @@ def send_magic_link_email(to_email: str, token: str) -> dict | None:
         logger.error(f"Failed to enqueue magic link email for {to_email}: {e}", exc_info=True)
         # TODO: route to dead letter queue in production to alert the team on enqueue failures
         # fallback: send_email_notification(to_email, subject, html_content)
+
+
+def send_contact_email(name: str, email: str, subject: str, message: str) -> dict | None:
+    """Enqueue a support submission email to the configured support inbox."""
+    html_content = render_email_template(
+        "contact_submission.html",
+        name=name,
+        email=email,
+        subject=subject,
+        message=message,
+        year=2026,
+    )
+    mail_subject = f"[Contact] {subject}"
+    try:
+        from celery_app.celery import bg_task
+
+        bg_task.send_task(
+            "jobs.email.send",
+            args=[config.support_to_email, mail_subject, html_content],
+        )
+        logger.info(f"Contact email enqueued to {config.support_to_email}")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to enqueue contact email: {e}", exc_info=True)
+        return {"error": str(e)}

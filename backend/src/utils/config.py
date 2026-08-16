@@ -22,6 +22,7 @@ class Config(BaseSettings):
     redirect_url:str
     resend_key:str
     resend_mail:str
+    support_to_email: str = "nkangprecious26@gmail.com"
     api_key_prefix:str
     app_env:str = "dev"
     cloudflare_key: str | None = None

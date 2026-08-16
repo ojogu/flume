@@ -78,7 +78,7 @@ export function PlatformsSection() {
                 Send links and voice notes. Flume handles the rest. WhatsApp support is on the way.
               </p>
               <a
-                href="https://wa.me/000000000"
+                href="https://wa.me/2349065011334"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
@@ -94,7 +94,6 @@ export function PlatformsSection() {
             </div>
           </div>
         </div>
-        {/* DUMMY LINK: replace with real WhatsApp number before launch */}
       </div>
     </section>
   )

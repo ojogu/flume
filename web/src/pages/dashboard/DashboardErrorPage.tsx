@@ -1,5 +1,5 @@
 import { useRouteError, Link } from 'react-router-dom'
-import { RefreshCw, ArrowLeft } from 'lucide-react'
+import { RefreshCw, ArrowLeft, LifeBuoy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function DashboardErrorPage() {
@@ -32,6 +32,12 @@ export function DashboardErrorPage() {
           <Button variant="outline" size="sm" className="gap-2">
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Jobs
+          </Button>
+        </Link>
+        <Link to="/dashboard/support">
+          <Button variant="outline" size="sm" className="gap-2">
+            <LifeBuoy className="h-3.5 w-3.5" />
+            Contact support
           </Button>
         </Link>
       </div>

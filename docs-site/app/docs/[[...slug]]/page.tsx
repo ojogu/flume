@@ -3,6 +3,7 @@ import { DocsPage, DocsBody, DocsTitle, DocsDescription } from 'fumadocs-ui/page
 import { notFound } from 'next/navigation';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { createOpenAPI } from 'fumadocs-openapi/server';
+import { ContactForm } from '@/components/common/ContactForm';
 
 const { APIPage } = createOpenAPI();
 
@@ -20,7 +21,7 @@ export default async function Page(props: {
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <MDX components={{ ...defaultMdxComponents, APIPage }} />
+        <MDX components={{ ...defaultMdxComponents, APIPage, ContactForm }} />
       </DocsBody>
     </DocsPage>
   );

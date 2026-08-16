@@ -46,7 +46,7 @@ export function CTASection() {
             </a>
 
             <a
-              href="https://wa.me/000000000"
+              href="https://wa.me/2349065011334"
               target="_blank"
               rel="noopener noreferrer"
               className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'px-6 gap-2')}
@@ -75,7 +75,7 @@ export function CTASection() {
           </a>
 
           <a
-            href="https://wa.me/000000000"
+            href="https://wa.me/2349065011334"
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
@@ -88,7 +88,6 @@ export function CTASection() {
           </a>
         </div>
       </div>
-      {/* DUMMY LINK: replace with real WhatsApp number before launch */}
     </section>
   )
 }
