@@ -1,0 +1,296 @@
+---
+title: Operations
+description: Complete reference for all 13 pipeline operations.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Flume has 13 operations. Each declares the artifact types it accepts as input
+(`input_types`) and the type it produces as output (`output_type`). Adjacent
+steps in a pipeline must be type-compatible — a step's output type must be
+accepted by the next step's input types.
+
+## Categories
+
+| Category | Count | Behavior |
+|----------|-------|----------|
+| Transformative | 9 | One input, one output of the same media type |
+| Combinatory | 1 | Multiple inputs merged into one |
+| Conversion | 3 | Changes the media type (e.g. video → audio) |
+
+<Callout title="Timecodes">
+Params of type `timecode` accept human-readable strings such as `"0:00"`,
+`"5.0"`, or `"01:30:05.500"`. They are stored as floating-point seconds
+internally.
+</Callout>
+
+---
+
+## trim
+
+Cut a range from the start of the media.
+
+**Category:** Transformative | **Input:** video, audio | **Output:** video, audio
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `start` | timecode | Yes | — | Start of the clip (seconds) |
+| `end` | timecode | No | — | End of the clip. Omit to process to the end |
+
+**Example:**
+```json
+{ "operation": "trim", "params": { "start": "0:00", "end": "0:30" } }
+```
+
+---
+
+## cut
+
+Keep only the specified segments, discarding everything else. Produces a
+single output by concatenating the selected ranges in order.
+
+**Category:** Transformative | **Input:** video, audio | **Output:** video, audio
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `segments` | array[object] | Yes | — | Objects with `start` and `end` timecodes. Min 1, max 50 |
+
+Each segment object:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `start` | timecode | Segment start |
+| `end` | timecode | Segment end |
+
+**Example:**
+```json
+{
+  "operation": "cut",
+  "params": {
+    "segments": [
+      { "start": "0:00", "end": "0:10" },
+      { "start": "0:30", "end": "0:45" }
+    ]
+  }
+}
+```
+
+---
+
+## compress
+
+Reduce file size by lowering quality and/or resolution.
+
+**Category:** Transformative | **Input:** video, audio | **Output:** video, audio
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `quality` | enum | No | `medium` | `low`, `medium`, or `high` |
+| `resolution` | enum | No | — | `360p`, `480p`, `720p`, `1080p`, `1440p`, `4k` |
+
+**Example:**
+```json
+{ "operation": "compress", "params": { "quality": "medium", "resolution": "720p" } }
+```
+
+---
+
+## transcode
+
+Convert to a different container and codec.
+
+**Category:** Transformative | **Input:** video | **Output:** video
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `format` | enum | Yes | — | Output container: `mp4`, `webm`, `mov` |
+| `resolution` | enum | No | — | `360p`, `480p`, `720p`, `1080p`, `1440p`, `4k` |
+
+**Example:**
+```json
+{ "operation": "transcode", "params": { "format": "mp4", "resolution": "1080p" } }
+```
+
+---
+
+## resize
+
+Change the dimensions of a video. All dimensions are optional — unspecified
+dimensions are derived from the source aspect ratio.
+
+**Category:** Transformative | **Input:** video | **Output:** video
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `width` | integer | No | — | Output width in pixels (1–7680) |
+| `height` | integer | No | — | Output height in pixels (1–4320) |
+| `preset` | enum | No | — | Shortcut resolution: `360p`, `480p`, `720p`, `1080p`, `1440p`, `4k` |
+| `orientation` | enum | No | — | Force orientation: `landscape`, `portrait`, `square` |
+| `resolution` | enum | No | — | Target resolution: `360p`, `480p`, `720p`, `1080p`, `1440p`, `4k` |
+
+**Example:**
+```json
+{ "operation": "resize", "params": { "width": 1280, "height": 720 } }
+```
+
+---
+
+## watermark
+
+Overlay an image on top of the video.
+
+**Category:** Transformative | **Input:** video | **Output:** video
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `image_url` | url | Yes | — | URL of the overlay image |
+| `position` | enum | No | `bottom_right` | `top_left`, `top_right`, `bottom_left`, `bottom_right`, `center` |
+
+**Example:**
+```json
+{ "operation": "watermark", "params": { "image_url": "https://myapp.com/logo.png", "position": "bottom_right" } }
+```
+
+---
+
+## subtitle
+
+Add subtitles to a video. Either provide a subtitle file URL or request
+automatic transcription.
+
+**Category:** Transformative | **Input:** video | **Output:** video
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `file_url` | url | No | — | URL of a subtitle file |
+| `auto` | boolean | No | `false` | Generate subtitles automatically from the audio track |
+
+**Example:**
+```json
+{ "operation": "subtitle", "params": { "auto": true } }
+```
+
+---
+
+## mute
+
+Remove the audio track from a video.
+
+**Category:** Transformative | **Input:** video | **Output:** video
+
+No params.
+
+**Example:**
+```json
+{ "operation": "mute" }
+```
+
+---
+
+## meme
+
+Overlay a text caption on the media. Works on video, audio, and image sources.
+
+**Category:** Transformative | **Input:** video, audio, image | **Output:** video, audio, image
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `caption` | string | No | — | Text to overlay |
+| `position` | enum | No | `top` | `top` or `bottom` |
+
+**Example:**
+```json
+{ "operation": "meme", "params": { "caption": "When it works in production", "position": "bottom" } }
+```
+
+<Callout title="Note on the Gate-2 error message">
+The error message shown when an unknown operation is submitted lists only 12
+operations — `meme` is missing from that list even though it is a valid
+operation in the registry. This is a code bug in `service/validation.py`.
+The operation itself is accepted correctly; only the error message is wrong.
+</Callout>
+
+---
+
+## join
+
+Concatenate multiple media files into one. Each clip is a URL; Flume
+downloads and merges them in order.
+
+**Category:** Combinatory | **Input:** video, audio | **Output:** video, audio
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `clips` | array[url] | Yes | — | URLs of the clips to join. Min 2, max 10 |
+| `resolution` | enum | No | — | Output resolution: `480p`, `720p`, `1080p`, `1440p`, `4k` |
+
+**Example:**
+```json
+{
+  "operation": "join",
+  "params": {
+    "clips": [
+      "https://storage.example.com/clip1.mp4",
+      "https://storage.example.com/clip2.mp4"
+    ],
+    "resolution": "1080p"
+  }
+}
+```
+
+Note: `source.uri` is not used for `join`; clips are provided entirely via
+the `clips` param. The first clip's media type determines whether the result
+is video or audio.
+
+---
+
+## extract_audio
+
+Strip the audio track from a video and encode it as a standalone audio file.
+
+**Category:** Conversion | **Input:** video | **Output:** audio
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `format` | enum | No | `mp3` | Output format: `mp3` or `aac` |
+
+**Example:**
+```json
+{ "operation": "extract_audio", "params": { "format": "mp3" } }
+```
+
+---
+
+## thumbnail
+
+Capture a single frame from a video at a given timestamp.
+
+**Category:** Conversion | **Input:** video | **Output:** image
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `timestamp` | timecode | Yes | — | Point in the video to capture |
+
+**Example:**
+```json
+{ "operation": "thumbnail", "params": { "timestamp": "0:05" } }
+```
+
+---
+
+## gif
+
+Convert a range of a video into an animated GIF.
+
+**Category:** Conversion | **Input:** video | **Output:** gif
+
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `start` | timecode | Yes | — | Start of the GIF |
+| `end` | timecode | No | — | End of the GIF. Omit to use the last available frame |
+| `fps` | integer | No | `15` | Frame rate (1–30) |
+
+**Example:**
+```json
+{ "operation": "gif", "params": { "start": "0:00", "end": "0:05", "fps": 15 } }
+```

@@ -1,218 +1,172 @@
 ---
 title: Concepts
-description: Understand the fundamental building blocks of Flume's media processing infrastructure.
+description: Jobs, sources, pipelines, operations, and results.
 ---
 
-import { Card, Cards } from 'fumadocs-ui/components/card';
-import { FolderSymlink, GitMerge, Cpu, FileCheck, Sparkles, ChevronRight, Check } from 'lucide-react';
+import { Callout } from 'fumadocs-ui/components/callout';
 
-# Core <span className="text-display text-brand font-normal ml-1">Concepts</span>
+# Concepts
 
-Understand the fundamental building blocks of Flume's media processing infrastructure. Our declarative model allows you to focus on the "what" while we handle the "how".
+Flume's model has four parts: a **source**, a **pipeline** of operations
+run as a **job**, and a **result** you download.
 
-<div className="py-12 relative overflow-hidden">
-  {/* Horizontal Diagram - Desktop */}
-  <div className="flex flex-col lg:flex-row items-stretch justify-between gap-6 relative">
-    {/* Step 1: Source */}
-    <div className="flex-1 flex flex-col p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group relative z-10">
-      <div className="absolute -top-3 left-8 w-8 h-8 bg-brand rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-brand/20">1</div>
-      <div className="w-14 h-14 bg-brand/10 border border-brand/20 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(29,158,117,0.1)] group-hover:bg-brand/20 transition-colors">
-        <FolderSymlink className="h-7 w-7 text-brand" />
-      </div>
-      <h3 className="text-xl font-bold mb-3">Source</h3>
-      <p className="text-text-secondary text-sm leading-relaxed">
-        Input comes from a URL or object storage. This is the raw media file you want to process.
-      </p>
-    </div>
+## Source
 
-    {/* Connector 1 */}
-    <div className="hidden lg:flex items-center flex-grow min-w-[30px] relative h-[1px] bg-border mt-[64px]">
-      <div className="absolute top-[-2px] w-[6px] h-[6px] bg-brand rounded-full shadow-[0_0_8px_var(--color-brand)] animate-[flow_3s_infinite_linear]" />
-    </div>
+The **source** is the input media. It is described by a small object:
 
-    {/* Step 2: Pipeline */}
-    <div className="flex-1 flex flex-col p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group relative z-10">
-      <div className="absolute -top-3 left-8 w-8 h-8 bg-brand rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-brand/20">2</div>
-      <div className="w-14 h-14 bg-brand/10 border border-brand/20 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(29,158,117,0.1)] group-hover:bg-brand/20 transition-colors">
-        <GitMerge className="h-7 w-7 text-brand" />
-      </div>
-      <h3 className="text-xl font-bold mb-3">Pipeline</h3>
-      <p className="text-text-secondary text-sm leading-relaxed">
-        A list of operations that transform the input step by step. Pipelines are declarative and reusable.
-      </p>
-    </div>
+```json
+{
+  "type": "video",
+  "uri": "https://storage.example.com/video.mp4"
+}
+```
 
-    {/* Connector 2 */}
-    <div className="hidden lg:flex items-center flex-grow min-w-[30px] relative h-[1px] bg-border mt-[64px]">
-      <div className="absolute top-[-2px] w-[6px] h-[6px] bg-brand rounded-full shadow-[0_0_8px_var(--color-brand)] animate-[flow_3s_infinite_linear_0.75s]" />
-    </div>
+| Field | Description |
+|-------|-------------|
+| `type` | `video` or `audio` |
+| `uri` | A public `http(s)` URL, or an `uploads/` path returned by the upload API |
+| `format` | Format preference — `best` (default), `smallest`, or a resolution (`480p`, `720p`, `1080p`, `4k`). Resolutions are only valid for video sources. |
+| `selection` | For playlists — pick specific entries by 1-indexed position, e.g. `{ "entries": [1, 3] }` |
 
-    {/* Step 3: Job */}
-    <div className="flex-1 flex flex-col p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group relative z-10">
-      <div className="absolute -top-3 left-8 w-8 h-8 bg-brand rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-brand/20">3</div>
-      <div className="w-14 h-14 bg-brand/10 border border-brand/20 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(29,158,117,0.1)] group-hover:bg-brand/20 transition-colors">
-        <Cpu className="h-7 w-7 text-brand" />
-      </div>
-      <h3 className="text-xl font-bold mb-3">Job</h3>
-      <p className="text-text-secondary text-sm leading-relaxed">
-        The pipeline is executed as a job. We track its status from start to finish across our global infrastructure.
-      </p>
-    </div>
+`uri` is optional: a `join` pipeline takes its inputs from the operation's
+`clips` param instead, and a job with no pipeline (download-only) also has
+no required URI logic of its own.
 
-    {/* Connector 3 */}
-    <div className="hidden lg:flex items-center flex-grow min-w-[30px] relative h-[1px] bg-border mt-[64px]">
-      <div className="absolute top-[-2px] w-[6px] h-[6px] bg-brand rounded-full shadow-[0_0_8px_var(--color-brand)] animate-[flow_3s_infinite_linear_1.5s]" />
-    </div>
+## Pipeline
 
-    {/* Step 4: Result */}
-    <div className="flex-1 flex flex-col p-8 rounded-3xl bg-card border border-border hover:border-brand-mid/50 transition-all group relative z-10">
-      <div className="absolute -top-3 left-8 w-8 h-8 bg-brand rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-brand/20">4</div>
-      <div className="w-14 h-14 bg-brand/10 border border-brand/20 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(29,158,117,0.1)] group-hover:bg-brand/20 transition-colors">
-        <FileCheck className="h-7 w-7 text-brand" />
-      </div>
-      <h3 className="text-xl font-bold mb-3">Result</h3>
-      <p className="text-text-secondary text-sm leading-relaxed">
-        The output is stored and made available with metadata. Final artifacts are delivered to your target destination.
-      </p>
-    </div>
-  </div>
+A **pipeline** is an ordered list of operations applied to the source:
 
-  <div className="mt-12 bg-brand/5 border-l-4 border-brand rounded-r-3xl p-8 flex items-start sm:items-center gap-6 relative group">
-    <div className="absolute inset-0 bg-brand/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-    <Sparkles className="h-8 w-8 text-brand shrink-0 animate-pulse" />
-    <p className="text-lg md:text-xl font-medium leading-relaxed relative z-10">
-      You provide a <span className="text-brand font-bold">source</span> and a <span className="text-brand font-bold">pipeline</span>. We run it as a <span className="text-brand font-bold">job</span> and deliver the <span className="text-brand font-bold">result</span>.
-    </p>
-  </div>
-</div>
+```json
+"pipeline": [
+  { "operation": "trim", "params": { "start": "0:00", "end": "0:30" } },
+  { "operation": "compress", "params": { "quality": "medium" } }
+]
+```
 
-<style>
-{`
-  @keyframes flow {
-    0% { left: 0; opacity: 0; }
-    20% { opacity: 1; }
-    80% { opacity: 1; }
-    100% { left: 100%; opacity: 0; }
-  }
-`}
-</style>
+| Field | Type | Description |
+|-------|------|-------------|
+| `operation` | string | An operation name from the registry (see below) |
+| `params` | object | Configuration for this operation — optional if the operation has defaults |
 
-## Deep Dive
+Rules:
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-20 mt-16">
-  <div>
-    <h3 className="text-2xl font-bold mb-6 flex items-center gap-4">
-      <span className="text-text-muted text-lg font-mono opacity-50">01</span> Source
-    </h3>
-    <p className="text-text-secondary leading-relaxed mb-8">
-      Every processing task begins with a Source. Flume supports public HTTP URLs, presigned S3/R2 links, and files uploaded directly to our temporary storage. We automatically resolve the media type and extract initial metadata before processing begins.
-    </p>
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Public URLs
-      </div>
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Direct Uploads
-      </div>
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Cloud Storage Integration
-      </div>
-    </div>
-  </div>
+1. **Steps run in order.** Step 0 runs first, then step 1, and so on.
+2. **The output of step N feeds step N+1.** You don't wire steps together;
+   Flume does.
+3. **An implicit `download` step is prepended as step 0.** Flume fetches
+   the source before running your operations.
+4. **Adjacent steps must be type-compatible.** Each operation declares the
+   artifact types it accepts and produces; a step's output type must be
+   accepted by the next step's input types. This is validated at submission
+   time.
 
-  <div>
-    <h3 className="text-2xl font-bold mb-6 flex items-center gap-4">
-      <span className="text-text-muted text-lg font-mono opacity-50">02</span> Pipeline
-    </h3>
-    <p className="text-text-secondary leading-relaxed mb-8">
-      A Pipeline is a declarative sequence of operations. Instead of writing complex FFmpeg commands or managing worker logic, you define a JSON array of what you want to happen. Our orchestrator validates the pipeline for data compatibility between steps.
-    </p>
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Declarative JSON Schema
-      </div>
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Automatic Validation
-      </div>
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Composable Operations
-      </div>
-    </div>
-  </div>
+<Callout title="Download-only jobs">
+The `pipeline` field is optional. A job with no pipeline simply downloads
+the source file. Most jobs have at least one operation.
+</Callout>
 
-  <div>
-    <h3 className="text-2xl font-bold mb-6 flex items-center gap-4">
-      <span className="text-text-muted text-lg font-mono opacity-50">03</span> Job
-    </h3>
-    <p className="text-text-secondary leading-relaxed mb-8">
-      When you submit a request, it is persisted as a Job. Jobs are asynchronous and lifecycle-managed. You can poll for status or receive real-time updates via Webhooks as the job moves from pending to completed.
-    </p>
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Asynchronous Execution
-      </div>
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Real-time Monitoring
-      </div>
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Webhook Notifications
-      </div>
-    </div>
-  </div>
+## Operation
 
-  <div>
-    <h3 className="text-2xl font-bold mb-6 flex items-center gap-4">
-      <span className="text-text-muted text-lg font-mono opacity-50">04</span> Result
-    </h3>
-    <p className="text-text-secondary leading-relaxed mb-8">
-      The Result is the culmination of your pipeline. Flume generates high-performance presigned download links for all generated artifacts. Every result includes detailed post-processing metadata such as final resolution, bitrate, and duration.
-    </p>
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Presigned Download URLs
-      </div>
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        Enriched Metadata
-      </div>
-      <div className="flex items-center gap-3 text-sm font-medium text-text-secondary">
-        <div className="w-5 h-5 rounded-full bg-brand/10 flex items-center justify-center">
-          <Check className="h-3 w-3 text-brand" />
-        </div>
-        24-hour Retention
-      </div>
-    </div>
-  </div>
-</div>
+An **operation** is one processing step from the registry. There are 13
+operations across 3 categories:
+
+| Category | Behavior | Operations |
+|----------|----------|------------|
+| Transformative | One input, one output of the same media type | `trim`, `cut`, `compress`, `transcode`, `resize`, `watermark`, `subtitle`, `mute`, `meme` |
+| Combinatory | Multiple inputs merged into one output | `join` |
+| Conversion | Changes the media type (video → audio, video → image) | `extract_audio`, `thumbnail`, `gif` |
+
+Each operation declares what it consumes, what it produces, and which
+params it accepts:
+
+- **input types** — `video`, `audio`, and/or `image`
+- **output types** — `video`, `audio`, `image`, or `gif`
+- **params** — name, type, required/optional, default, and bounds
+
+For example, `extract_audio` accepts `video` and produces `audio`; `mute`
+accepts `video` and produces `video`; `thumbnail` accepts `video` and
+produces `image`. A step that produces `image` can only be followed by a
+step that accepts `image`.
+
+> The category labels are descriptive and do not constrain pipeline
+> placement. The only structural rule is type compatibility between
+> adjacent steps.
+
+The full registry — every operation, param, default, and bound — is
+documented in the Operations reference.
+
+## Artifact
+
+An **artifact** is a typed file produced by a pipeline step:
+
+| Type | Produced by |
+|------|-------------|
+| `video` | Most transformative operations |
+| `audio` | `extract_audio` |
+| `image` | `thumbnail` |
+| `gif` | `gif` |
+
+The final artifact is delivered according to the job's `outputs` field,
+which defaults to `[{ "type": "generate_download_link" }]`.
+
+## Job
+
+A **job** is a submitted request — the source, pipeline, and outputs,
+persisted with an id and lifecycle status.
+
+Jobs are created with `POST /v1/job` and are **asynchronous**: creation
+returns immediately with the job's id, and processing happens in the
+background. A job moves through these statuses:
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Created, waiting for a worker |
+| `processing` | A worker is running the pipeline |
+| `succeeded` | All steps finished successfully |
+| `partial_success` | Some steps succeeded, some did not |
+| `failed` | A step encountered an error |
+| `dead` | The job could not run (e.g. exceeded a retry limit) |
+
+You discover the final status by polling `GET /v1/job/{id}`, and each step
+in the response carries its own status (`pending`, `running`, `complete`,
+`failed`). You can also be notified of lifecycle changes via
+[webhooks](/docs/webhooks) instead of polling.
+
+## Result
+
+When a job reaches `succeeded`, its final artifact is ready. With the
+default `generate_download_link` output, you download it from:
+
+```
+GET /v1/job/{job_id}/download
+```
+
+This returns a `302` redirect to a presigned URL for the artifact.
+
+## Webhooks
+
+Webhooks let Flume call your endpoint when things happen. You create a
+subscription with a URL and a list of events; Flume signs each delivery
+with an HMAC secret so you can verify it came from Flume.
+
+Events cover the job lifecycle (`job.created`, `job.processing`,
+`job.completed`, `job.failed`, `job.cancelled`, `job.retried`) and step
+lifecycle (`step.started`, `step.completed`, `step.failed`). See
+[Webhooks](/docs/webhooks) for the full catalog.
+
+## Validation
+
+Every job is validated at submission time — before any worker touches it.
+If validation fails, the request is rejected with a `400` (or `422` for a
+malformed body) and no job is created. Validation runs five gates:
+
+| Gate | What it checks |
+|------|----------------|
+| 1 — Schema | Request body is well-formed (Pydantic) |
+| 2 — Registry | Every operation name exists in the registry |
+| 3 — Params | Required params present, types correct, values in bounds |
+| 4 — Type compatibility | Source type matches step 0; each step's output is accepted by the next step |
+| 5 — Pipeline spec | Enriched spec is built and stored |
+
+The error envelope and the messages each gate produces are documented in
+the Errors reference.

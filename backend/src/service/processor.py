@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
 import re
 import subprocess
@@ -15,7 +14,6 @@ from pathlib import Path
 from typing import ClassVar
 
 import requests
-import yt_dlp
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.schema.artifact import (
@@ -26,10 +24,9 @@ from src.schema.artifact import (
 )
 from src.schema.processor import ProcessError, ProcessResult
 from src.service.llm_error_summarizer import summarize_ffmpeg_error
-from src.service.storage import storage
 from src.utils.ffprobe import probe_media
-from src.utils.http_client import get_http_client
 from src.utils.log import get_logger
+from src.utils.resolution import DEFAULT_PRESET, derive_aspect_ratio, derive_orientation, get_dimensions
 
 logger = get_logger(__name__)
 
@@ -336,19 +333,50 @@ class ProcessorService:
         operation: str,
         params: dict,
     ) -> ProcessResult:
-        """Re-encode video at a lower CRF to reduce file size. Audio is re-encoded to AAC."""
+        """Re-encode video at a lower CRF to reduce file size. Audio is re-encoded to AAC.
+
+        If params.resolution is set, the video is scaled to the target resolution before
+        CRF compression is applied.
+        """
         quality = params.get("quality", "medium")
         crf = self._CRF_MAP[quality]
+        resolution = params.get("resolution")
+
         output_path = str(workspace / f"step_{step_index}_output.mp4")
         cmd = [
             "ffmpeg", "-y",
             "-i", input_path,
+        ]
+
+        # If resolution is specified, scale to target dimensions first.
+        if resolution:
+            media = probe_media(input_path)
+            if media.width is None or media.height is None:
+                return ProcessResult(
+                    success=False,
+                    error=ProcessError(
+                        code="invalid_input",
+                        summary="[compress] Cannot determine source resolution",
+                        cause="Input video has no video stream.",
+                        fix="Provide a valid video file.",
+                        raw_stderr="",
+                    ),
+                )
+            ar = derive_aspect_ratio(media.width, media.height)
+            dims = get_dimensions(ar, resolution)
+            width, height = dims["width"], dims["height"]
+            cmd.extend([
+                "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease",
+            ])
+
+        cmd.extend([
             "-c:v", "libx264",
             "-crf", str(crf),
-            "-preset", "medium",  # balance between encoding speed and compression
+            "-preset", "medium",
             "-c:a", "aac",
             output_path,
-        ]
+        ])
+
         result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
         if not result.success:
             return result
@@ -361,14 +389,6 @@ class ProcessorService:
         )
         return ProcessResult(success=True, output_path=output_path, artifact=artifact)
 
-    _RESIZE_PRESETS: ClassVar[dict[str, tuple[int, int]]] = {
-        "360p": (640, 360),
-        "480p": (854, 480),
-        "720p": (1280, 720),
-        "1080p": (1920, 1080),
-        "4k": (3840, 2160),
-    }
-
     async def _resize(
         self,
         input_path: str,
@@ -378,37 +398,67 @@ class ProcessorService:
         operation: str,
         params: dict,
     ) -> ProcessResult:
-        """Scale video to a target resolution using a preset or explicit width/height."""
-        job_id_str = str(job_id)
-        preset = params.get("preset")
-        if preset:
-            width, height = self._RESIZE_PRESETS.get(preset, (1280, 720))
-        else:
-            width = params.get("width")
-            height = params.get("height")
-            if not width and not height:
-                logger.warning(
-                    f"[{operation}] job={job_id_str} step={step_index} — "
-                    f"neither preset nor width/height provided in params={params}"
-                )
+        """Scale video to a target resolution.
+
+        Resolution is determined by the following priority:
+        1. Explicit width/height — use directly (escape hatch for arbitrary dimensions)
+        2. orientation + resolution — lookup in table for exact dimensions
+        3. Only orientation — lookup with DEFAULT_PRESET (1080p)
+        4. Only resolution — probe source for aspect ratio, then lookup
+        5. Neither specified — keep source as-is
+        """
+        width = params.get("width")
+        height = params.get("height")
+        orientation = params.get("orientation")
+        resolution = params.get("resolution")
+
+        # Case 1: explicit width/height (escape hatch)
+        if width is not None or height is not None:
+            width = width or -1
+            height = height or -1
+        # Case 2: orientation + resolution — lookup directly
+        elif orientation and resolution:
+            dims = get_dimensions(orientation, resolution)
+            width, height = dims["width"], dims["height"]
+        # Case 3: only orientation — lookup with DEFAULT_PRESET
+        elif orientation:
+            dims = get_dimensions(orientation, DEFAULT_PRESET)
+            width, height = dims["width"], dims["height"]
+        # Case 4: only resolution — probe source for aspect ratio
+        elif resolution:
+            media = probe_media(input_path)
+            if media.width is None or media.height is None:
                 return ProcessResult(
                     success=False,
                     error=ProcessError(
-                        code="invalid_params",
-                        summary="[resize] Either 'preset' or 'width'/'height' must be provided.",
-                        cause="No resize target specified.",
-                        fix="Provide preset=720p or width=1280&height=720.",
+                        code="invalid_input",
+                        summary="[resize] Cannot determine source resolution",
+                        cause="Input video has no video stream.",
+                        fix="Provide explicit width/height instead.",
                         raw_stderr="",
                     ),
                 )
-            width = width or -1  # -1 tells FFmpeg to infer this dimension from the other and preserve aspect
-            height = height or -1
+            ar = derive_aspect_ratio(media.width, media.height)
+            dims = get_dimensions(ar, resolution)
+            width, height = dims["width"], dims["height"]
+        # Case 5: neither specified — keep source as-is
+        else:
+            # No-op: source dimensions preserved
+            return ProcessResult(
+                success=True,
+                output_path=input_path,
+                artifact=self._build_output_artifact(
+                    output_path=input_path,
+                    job_id=job_id,
+                    step_index=step_index,
+                    operation="resize",
+                ),
+            )
 
         output_path = str(workspace / f"step_{step_index}_output.mp4")
         cmd = [
             "ffmpeg", "-y",
             "-i", input_path,
-            # Reduce only the dimension that exceeds target; the other scales automatically to preserve aspect
             "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease",
             "-c:v", "libx264",
             "-c:a", "aac",
@@ -442,17 +492,48 @@ class ProcessorService:
         operation: str,
         params: dict,
     ) -> ProcessResult:
-        """Convert video to a different container/codec format (mp4, webm, or mov)."""
+        """Convert video to a different container/codec format (mp4, webm, or mov).
+
+        If params.resolution is set, the video is scaled to the target resolution
+        before being re-encoded in the target format.
+        """
         fmt = params["format"]  # required=true, validated by Gate 3
         vcodec, acodec, ext = self._TRANSCODE_CODEC_MAP[fmt]
+        resolution = params.get("resolution")
+
         output_path = str(workspace / f"step_{step_index}_output.{ext}")
         cmd = [
             "ffmpeg", "-y",
             "-i", input_path,
+        ]
+
+        # If resolution is specified, scale to target dimensions first.
+        if resolution:
+            media = probe_media(input_path)
+            if media.width is None or media.height is None:
+                return ProcessResult(
+                    success=False,
+                    error=ProcessError(
+                        code="invalid_input",
+                        summary="[transcode] Cannot determine source resolution",
+                        cause="Input video has no video stream.",
+                        fix="Provide a valid video file.",
+                        raw_stderr="",
+                    ),
+                )
+            ar = derive_aspect_ratio(media.width, media.height)
+            dims = get_dimensions(ar, resolution)
+            width, height = dims["width"], dims["height"]
+            cmd.extend([
+                "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease",
+            ])
+
+        cmd.extend([
             "-c:v", vcodec,
             "-c:a", acodec,
             output_path,
-        ]
+        ])
+
         result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
         if not result.success:
             return result
@@ -778,68 +859,90 @@ class ProcessorService:
         operation: str,
         params: dict,
     ) -> ProcessResult:
-        """Concatenate multiple video clips into one output using the FFmpeg concat filter."""
-        job_id_str = str(job_id)
-        clips = params["clips"]  # list of URLs; min 2, max 10 — validated by Gate 3
-        n = len(clips)
-        clip_paths: list[str] = []
+        """Concatenate multiple video clips into one output using the FFmpeg concat filter.
 
-        for i, clip_url in enumerate(clips):
-            clip_url = clip_url.strip()
+        The clip local paths are read from input_path, which is a JSON file produced by the
+        download step when clips are provided via params.clips.
+
+        If params.resolution is set, all clips are scaled to match the first clip's aspect
+        ratio at the target preset before concatenating. Otherwise a simple concat filter is
+        used (all clips must already have the same resolution).
+        """
+        import json
+
+        try:
+            with open(input_path, "r") as f:
+                clip_paths = json.load(f)
+        except Exception as exc:
+            logger.exception(f"[{operation}] job={job_id} failed to read clip paths from {input_path}")
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="invalid_input",
+                    summary=f"[join] Failed to read clip paths: {exc}",
+                    cause="The download step did not produce a valid clip list.",
+                    fix="Verify the download step completed successfully.",
+                    raw_stderr=str(exc),
+                ),
+            )
+
+        n = len(clip_paths)
+        preset:str = params.get("resolution")
+
+        # Determine output path and filter complex based on whether resolution is specified.
+        if preset:
+            # Probe first clip to determine target aspect ratio.
             try:
-                if clip_url.startswith("uploads/"):
-                    # R2 presigned GET — stream download asynchronously
-                    ext = Path(clip_url).suffix.lstrip(".") or "mp4"
-                    local_path = str(workspace / f"join_clip_{i}.{ext}")
-                    presigned = await storage.generate_presigned_download_url(clip_url)
-                    client = get_http_client(timeout=300.0)
-                    async with client.stream("GET", presigned) as resp:
-                        resp.raise_for_status()
-                        with open(local_path, "wb") as f:
-                            async for chunk in resp.aiter_bytes():
-                                f.write(chunk)
-                    await client.aclose()
-                else:
-                    # Platform URL — yt-dlp with custom output name to avoid collision
-                    local_path = str(workspace / f"join_clip_{i}.mp4")
-                    opts: dict = {
-                        "outtmpl": str(workspace / f"join_clip_{i}.%(ext)s"),
-                        "format": "bestvideo+bestaudio/best",
-                        "quiet": True,
-                        "no_warnings": True,
-                        "merge_output_format": "mp4",
-                    }
-                    loop = asyncio.get_event_loop()
-                    await loop.run_in_executor(None, self._download_clip_sync, clip_url, str(workspace), i, opts)
-
-                clip_paths.append(local_path)
+                first_media = probe_media(clip_paths[0])
             except Exception as exc:
-                logger.warning(
-                    f"[{operation}] job={job_id_str} step={step_index} clip[{i}] download failed: {exc} | url={clip_url}"
-                )
-                logger.exception(
-                    f"[{operation}] job={job_id_str} step={step_index} clip[{i}] download failed"
-                )
-                # Clean up any partial clip files
-                for p in clip_paths:
-                    with suppress(OSError):
-                        os.remove(p)
+                logger.exception(f"[{operation}] job={job_id} failed to probe first clip")
                 return ProcessResult(
                     success=False,
                     error=ProcessError(
-                        code="download_failed",
-                        summary=f"[join] Failed to download clip {i+1}/{n}: {exc}",
-                        cause=f"Clip {i+1} at '{clip_url}' could not be downloaded.",
-                        fix="Verify all clip URLs are accessible.",
+                        code="probe_failed",
+                        summary=f"[join] Failed to probe first clip: {exc}",
+                        cause="Could not read metadata from the first clip.",
+                        fix="Verify all clip URLs are valid media files.",
                         raw_stderr=str(exc),
                     ),
                 )
 
-        # Build concat filter complex — re-encodes all clips to a common format
-        filter_complex = (
-            "".join(f"[{i}:v][{i}:a]" for i in range(n))
-            + f"concat=n={n}:v=1:a=1[vout][aout]"
-        )
+            if first_media.width is None or first_media.height is None:
+                return ProcessResult(
+                    success=False,
+                    error=ProcessError(
+                        code="invalid_input",
+                        summary="[join] First clip has no video stream",
+                        cause="Cannot determine resolution for join operation.",
+                        fix="Verify all clips are valid video files.",
+                        raw_stderr="",
+                    ),
+                )
+
+            aspect_ratio = derive_aspect_ratio(first_media.width, first_media.height)
+            target_dims = get_dimensions(aspect_ratio, preset)
+            target_w, target_h = target_dims["width"], target_dims["height"]
+
+            # Build scale+pad filter for each clip, then concat.
+            filter_parts = []
+            for i in range(n):
+                filter_parts.append(
+                    f"[{i}:v]scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,"
+                    f"pad={target_w}:{target_h}:-1:-1[{i}:v_scaled]"
+                )
+                filter_parts.append(f"[{i}:v_scaled][{i}:a]")
+
+            filter_complex = (
+                ";".join(filter_parts)
+                + f"concat=n={n}:v=1:a=1[vout][aout]"
+            )
+        else:
+            # No resolution specified — simple concat (all clips must already match).
+            filter_complex = (
+                "".join(f"[{i}:v][{i}:a]" for i in range(n))
+                + f"concat=n={n}:v=1:a=1[vout][aout]"
+            )
+
         output_path = str(workspace / f"step_{step_index}_output.mp4")
         cmd = [
             "ffmpeg", "-y",
@@ -853,9 +956,11 @@ class ProcessorService:
         ]
         result = await self._run_ffmpeg(cmd, operation, params, input_path, output_path, job_id, step_index)
 
+        # Clean up downloaded clip files.
         for p in clip_paths:
             with suppress(OSError):
                 os.remove(p)
+
         if not result.success:
             return result
 
@@ -1004,11 +1109,6 @@ class ProcessorService:
             operation="meme",
         )
         return ProcessResult(success=True, output_path=output_path, artifact=artifact)
-
-    @staticmethod
-    def _download_clip_sync(url: str, workspace_dir: str, index: int, opts: dict) -> None:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            ydl.download([url])
 
     # ── FFmpeg subprocess primitive ─────────────────────────────────────────
 

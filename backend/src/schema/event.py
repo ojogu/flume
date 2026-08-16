@@ -15,7 +15,7 @@ class JobCreatedData(BaseModel):
 
     job_id: str
     status: str
-    source_uri: str
+    source_uri: str | None
     source_type: str
 
 
@@ -24,7 +24,7 @@ class JobProcessingData(BaseModel):
 
     job_id: str
     status: str
-    source_uri: str
+    source_uri: str | None
     source_type: str
 
 
@@ -33,7 +33,7 @@ class JobCompletedData(BaseModel):
 
     job_id: str
     status: str
-    source_uri: str
+    source_uri: str | None
     source_type: str
     source_metadata: dict[str, Any] | None = None
     error: str | None = None
@@ -62,7 +62,7 @@ class JobRetriedData(BaseModel):
     job_id: str
     status: str
     retry_count: int
-    source_uri: str
+    source_uri: str | None
     source_type: str
 
 

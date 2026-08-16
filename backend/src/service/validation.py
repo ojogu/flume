@@ -42,7 +42,7 @@ def validate_registry(pipeline: list[dict]) -> None:
             # Build the valid-ops string separately so the f-string expression doesn't span multiple lines — Python 3.10's tokenizer chokes on newlines inside a single f"...".
             valid_ops = ', '.join(sorted([
                 'trim', 'cut', 'compress', 'transcode', 'resize',
-                'watermark', 'subtitle', 'mute',
+                'watermark', 'subtitle', 'mute', 'meme',
                 'join', 'extract_audio', 'thumbnail', 'gif',
             ]))
             raise BadRequest(
@@ -251,14 +251,14 @@ def build_pipeline_spec(pipeline: list[dict]) -> list[dict]:
 
 # ── Orchestrator ─────────────────────────────────────────────────────────
 def validate_and_build_pipeline(
-    source: str, #already validated by pydantic 
+    source: str | None,
     source_type: str,
     pipeline: list[dict],
 ) -> list[dict]:
-    """Run all five gates in sequence.
+    """Run all six gates in sequence.
 
     Args:
-        source: Source URL string (already validated as HttpUrl by Pydantic).
+        source: Source URL string (already validated by Pydantic). May be None for join operations.
         source_type: "video" or "audio" — the type of the source artifact.
         pipeline: List of {operation, params} dicts from the request body.
 
@@ -274,6 +274,13 @@ def validate_and_build_pipeline(
     try:
         # Gate 2: Registry
         validate_registry(pipeline)
+
+        # Gate 1.5: Join-specific — source.uri must be null when first op is join
+        if pipeline and pipeline[0].get("operation") == "join" and source is not None:
+            raise BadRequest(
+                "source.uri is not used for join operation. "
+                "Please provide 2-10 video URLs via the clips parameter instead."
+            )
 
         # Gate 3: Params
         validate_params(pipeline)

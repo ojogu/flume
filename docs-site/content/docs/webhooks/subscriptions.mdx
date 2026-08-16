@@ -7,13 +7,13 @@ description: Creating and managing webhook endpoints
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/webhooks` | Create subscription |
-| `GET` | `/webhooks` | List all subscriptions |
-| `GET` | `/webhooks/{id}` | Get subscription details |
-| `PATCH` | `/webhooks/{id}` | Update subscription |
-| `DELETE` | `/webhooks/{id}` | Delete subscription |
-| `POST` | `/webhooks/{id}/test` | Send test ping |
-| `GET` | `/webhooks/{id}/deliveries` | List delivery history |
+| `POST` | `/v1/webhooks` | Create subscription |
+| `GET` | `/v1/webhooks` | List all subscriptions |
+| `GET` | `/v1/webhooks/{id}` | Get subscription details |
+| `PATCH` | `/v1/webhooks/{id}` | Update subscription |
+| `DELETE` | `/v1/webhooks/{id}` | Delete subscription |
+| `POST` | `/v1/webhooks/{id}/test` | Send test ping |
+| `GET` | `/v1/webhooks/{id}/deliveries` | List delivery history |
 
 All endpoints require `X-API-Key` header.
 
@@ -21,7 +21,7 @@ All endpoints require `X-API-Key` header.
 
 ## Create Subscription
 
-**POST** `/webhooks`
+**POST** `/v1/webhooks`
 
 Creates a new webhook subscription. Returns the HMAC secret **once** — store it securely.
 
@@ -58,7 +58,7 @@ Creates a new webhook subscription. Returns the HMAC secret **once** — store i
 
 ## List Subscriptions
 
-**GET** `/webhooks`
+**GET** `/v1/webhooks`
 
 Returns all webhook subscriptions for your API key.
 
@@ -80,7 +80,7 @@ Returns all webhook subscriptions for your API key.
 
 ## Get Subscription
 
-**GET** `/webhooks/{id}`
+**GET** `/v1/webhooks/{id}`
 
 Returns a single subscription by ID.
 
@@ -101,7 +101,7 @@ Returns a single subscription by ID.
 
 ## Update Subscription
 
-**PATCH** `/webhooks/{id}`
+**PATCH** `/v1/webhooks/{id}`
 
 Updates a subscription. All fields are optional.
 
@@ -138,7 +138,7 @@ Updates a subscription. All fields are optional.
 
 ## Delete Subscription
 
-**DELETE** `/webhooks/{id}`
+**DELETE** `/v1/webhooks/{id}`
 
 Deletes a subscription. This action is irreversible.
 
@@ -150,7 +150,7 @@ No content.
 
 ## Test Subscription
 
-**POST** `/webhooks/{id}/test`
+**POST** `/v1/webhooks/{id}/test`
 
 Sends a synchronous `ping` event to verify connectivity.
 
@@ -174,7 +174,7 @@ Sends a synchronous `ping` event to verify connectivity.
 
 ## List Deliveries
 
-**GET** `/webhooks/{id}/deliveries`
+**GET** `/v1/webhooks/{id}/deliveries`
 
 Returns delivery history for a subscription.
 

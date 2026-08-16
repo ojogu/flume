@@ -1,13 +1,257 @@
 ---
 title: Jobs
-description: Documentation for the /jobs endpoint.
+description: Create, list, get, and download media processing jobs.
 ---
 
-# Jobs
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-Create and manage media processing jobs.
+## POST /v1/job
 
-- [Create Job](/docs/api-reference/jobs/create)
-- [Get Job](/docs/api-reference/jobs/get)
-- [List Jobs](/docs/api-reference/jobs/list)
-- [Cancel Job](/docs/api-reference/jobs/cancel)
+Creates a new media processing job. The job is validated, persisted in
+`pending` state, and dispatched to the worker queue immediately. Processing
+happens asynchronously.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `201 Created`
+
+### Request body
+
+```json
+{
+  "source": { ... },
+  "pipeline": [ ... ],
+  "outputs": [ ... ]
+}
+```
+
+All three fields are optional except `source.type`.
+
+#### `source` — SourceObject
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | `video` \| `audio` | Yes | Media type of the source |
+| `uri` | string | No | Public `https://` URL, or an `uploads/` path from the upload API. Required unless the pipeline starts with `join` |
+| `format` | string | No | Quality preference: `best` (default), `smallest`, or a resolution: `480p`, `720p`, `1080p`, `4k`. Resolutions are video-only |
+| `selection` | object | No | For playlists — `{ "entries": [1, 3] }` (1-indexed positions) |
+
+#### `pipeline` — list[PipelineOperation]
+
+Optional. An empty pipeline downloads the source file without processing it.
+Each entry:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `operation` | string | Yes | Operation name, e.g. `trim`, `compress` |
+| `params` | object | No | Operation-specific params |
+
+#### `outputs` — list[OutputBody]
+
+Optional. Defaults to `[{ "type": "generate_download_link" }]`.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | Yes | `generate_download_link` (default) or `upload` |
+| `params` | object | No | Delivery-specific config |
+
+### Example
+
+```bash
+curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": {
+      "type": "video",
+      "uri": "https://storage.example.com/demo.mp4"
+    },
+    "pipeline": [
+      { "operation": "trim", "params": { "start": "0:00", "end": "0:10" } },
+      { "operation": "compress", "params": { "quality": "medium" } }
+    ]
+  }'
+```
+
+### Response — JobResponse
+
+```json
+{
+  "status": "success",
+  "message": "Job created",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "api_key_id": "...",
+    "status": "pending",
+    "source_uri": "https://storage.example.com/demo.mp4",
+    "source_type": "video",
+    "pipeline_steps": [
+      { "operation": "download", "params": { "type": "yt-dlp", "format": "best" } },
+      {
+        "operation": "trim",
+        "category": "transformative",
+        "capability": "transform",
+        "input_types": ["video", "audio"],
+        "output_type": ["video", "audio"],
+        "params": { "start": 0.0, "end": 10.0 }
+      },
+      {
+        "operation": "compress",
+        "category": "transformative",
+        "capability": "transform",
+        "input_types": ["video", "audio"],
+        "output_type": ["video", "audio"],
+        "params": { "quality": "medium" }
+      }
+    ],
+    "outputs": [{ "type": "generate_download_link", "params": {} }],
+    "selection": null,
+    "source_metadata": null,
+    "title": "demo.mp4",
+    "error": null,
+    "parent_job_id": null,
+    "playlist_entry_index": null,
+    "completed_at": null,
+    "created_at": "2026-08-16T12:00:00Z",
+    "updated_at": "2026-08-16T12:00:00Z"
+  },
+  "role": null
+}
+```
+
+<Callout title="pipeline_steps is enriched">
+The `pipeline_steps` stored in the job are not the raw request pipeline. They are
+the validated, type-annotated spec with category, capability, input_types, and
+output_type added from the registry. A `download` step is always prepended as
+step 0.
+</Callout>
+
+<Callout title="Timecodes are normalized">
+Timecode strings like `"0:00"` and `"01:30:05.500"` are stored as floating-point
+seconds (`0.0`, `5425.5`) in the pipeline spec.
+</Callout>
+
+---
+
+## GET /v1/job
+
+Lists jobs for the authenticated API key, most recent first. Supports
+filtering by status and creation date.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK`
+
+### Query params
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `status` | string | — | Filter by job status |
+| `created_after` | ISO 8601 datetime | — | Return only jobs created after this time |
+| `page` | integer | `1` | Page number (≥ 1) |
+| `per_page` | integer | `20` | Results per page (1–100) |
+
+### Response
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "total": 47,
+    "page": 1,
+    "per_page": 20,
+    "jobs": [ ... ]
+  },
+  "role": null
+}
+```
+
+---
+
+## GET /v1/job/{`job_id`}
+
+Returns a single job with its pipeline steps. The steps array shows each
+operation's status (`pending`, `running`, `complete`, `failed`) and any error
+detail.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK` | `404 Not Found`
+
+### Response — JobDetailResponse
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "succeeded",
+    "pipeline_steps": [ ... ],
+    "steps": [
+      {
+        "id": "...",
+        "job_id": "...",
+        "step_index": 0,
+        "operation": "download",
+        "status": "complete",
+        "input_artifact": null,
+        "output_artifact": { ... },
+        "error": null,
+        "started_at": "...",
+        "completed_at": "...",
+        "created_at": "...",
+        "updated_at": "..."
+      }
+    ],
+    ...
+  },
+  "role": null
+}
+```
+
+A `404` returns:
+
+```json
+{
+  "status": "error",
+  "message": "Job not found",
+  "error_code": "http_error",
+  "data": null,
+  "role": null
+}
+```
+
+---
+
+## GET /v1/job/{`job_id`}/download
+
+Redirects to a presigned R2 URL for the job's final artifact. Only valid
+once the job has reached a terminal status (`succeeded`, `partial_success`,
+`failed`, or `dead`).
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `302 Found`
+
+The `Location` header points to the presigned URL. Use `curl -L` or a
+redirect-following HTTP client:
+
+```bash
+curl -L -o output.mp4 \
+  https://api.flume.ojogulabs.xyz/v1/job/550e8400-e29b-41d4-a716-446655440000/download \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+```
+
+## Job statuses
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Queued, waiting for a worker |
+| `processing` | Worker is running the pipeline |
+| `succeeded` | All steps completed successfully |
+| `partial_success` | Some steps succeeded, some failed |
+| `failed` | A step failed before completion |
+| `dead` | Job could not be processed (e.g. exceeded retry limit) |

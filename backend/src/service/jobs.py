@@ -153,7 +153,7 @@ class JobService:
     async def create_job(
         self,
         api_key_id: uuid.UUID,
-        source_uri: str,
+        source_uri: str | None,
         source_type: str,
         pipeline_spec: list[dict] | None = None,
         outputs: list[dict] | None = None,

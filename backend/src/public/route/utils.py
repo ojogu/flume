@@ -48,9 +48,8 @@ async def verify_api_key(
 ):
     """Verify the API key from the X-API-Key header and return its metadata.
 
-    This is a read-only check — it does NOT update last_used_at.
-    The key is already resolved by get_api_key_from_header; we just
-    return its metadata without touching the database.
+    The key is resolved by get_api_key_from_header, which updates last_used_at
+    on every successful authentication. We return its metadata after that.
     """
     return success(
         data=VerifyKeyResponse(

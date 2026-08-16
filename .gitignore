@@ -61,3 +61,12 @@ deno.lock
 
 # Error output dumps
 error.txt
+
+# Build artifacts
+.next/
+
+# Local media
+ojogu.jpg
+
+# Marketing video project
+flume-marketing-video/

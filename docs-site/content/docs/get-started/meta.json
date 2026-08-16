@@ -2,8 +2,7 @@
   "title": "Getting Started",
   "pages": [
     "quickstart",
-    "concepts",
     "authentication",
-    "uploads"
+    "concepts"
   ]
 }

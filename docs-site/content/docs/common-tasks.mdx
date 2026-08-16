@@ -1,0 +1,181 @@
+---
+title: Common Tasks
+description: Step-by-step recipes for common media processing workflows.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+These examples show complete end-to-end workflows: create a job, poll for
+completion, and download the result.
+
+## Trim and compress a video
+
+Reduce a video to the first 30 seconds and compress it to 720p medium quality.
+
+### Create the job
+
+```bash
+curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": {
+      "type": "video",
+      "uri": "https://storage.example.com/raw_footage.mp4"
+    },
+    "pipeline": [
+      { "operation": "trim", "params": { "start": "0:00", "end": "0:30" } },
+      { "operation": "compress", "params": { "quality": "medium", "resolution": "720p" } }
+    ]
+  }'
+```
+
+`201 Created` response:
+
+```json
+{
+  "status": "success",
+  "message": "Job created",
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "pending",
+    "source_uri": "https://storage.example.com/raw_footage.mp4",
+    "source_type": "video",
+    "pipeline_steps": [
+      { "operation": "download", "params": { "type": "yt-dlp", "format": "best" } },
+      { "operation": "trim", "params": { "start": 0.0, "end": 30.0 }, ... },
+      { "operation": "compress", "params": { "quality": "medium", "resolution": "720p" }, ... }
+    ],
+    "created_at": "2026-08-16T12:00:00Z"
+  },
+  "role": null
+}
+```
+
+### Poll until done
+
+```bash
+curl https://api.flume.ojogulabs.xyz/v1/job/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+```
+
+Poll every 5–10 seconds. The job is done when `status` is `succeeded` or
+`failed`.
+
+### Download the result
+
+```bash
+curl -L -o trimmed_compressed.mp4 \
+  https://api.flume.ojogulabs.xyz/v1/job/a1b2c3d4-e5f6-7890-abcd-ef1234567890/download \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+```
+
+---
+
+## Extract audio from a video
+
+Pull the audio track out of a video and encode it as an MP3.
+
+### Create the job
+
+```bash
+curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": {
+      "type": "video",
+      "uri": "https://storage.example.com/presentation.mp4"
+    },
+    "pipeline": [
+      { "operation": "extract_audio", "params": { "format": "mp3" } }
+    ]
+  }'
+```
+
+The response includes a `job.id`. Save it for polling.
+
+### Poll and download
+
+```bash
+# Poll
+curl https://api.flume.ojogulabs.xyz/v1/job/{job_id} \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+
+# Download once status is "succeeded"
+curl -L -o audio.mp3 \
+  https://api.flume.ojogulabs.xyz/v1/job/{job_id}/download \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+```
+
+`extract_audio` produces an audio artifact, so the download will be an `.mp3`
+file.
+
+---
+
+## Generate a thumbnail
+
+Capture a frame at a specific timestamp and save it as an image.
+
+### Create the job
+
+```bash
+curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": {
+      "type": "video",
+      "uri": "https://storage.example.com/intro.mp4"
+    },
+    "pipeline": [
+      { "operation": "thumbnail", "params": { "timestamp": "0:05" } }
+    ]
+  }'
+```
+
+### Poll and download
+
+```bash
+# Poll
+curl https://api.flume.ojogulabs.xyz/v1/job/{job_id} \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+
+# Download — the result is a JPEG image
+curl -L -o thumbnail.jpg \
+  https://api.flume.ojogulabs.xyz/v1/job/{job_id}/download \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+```
+
+<Callout title="Timecode format">
+`timestamps` are timecode strings: `"0:05"`, `"1:30"`, `"00:01:30.500"`.
+They are stored as floating-point seconds internally.
+</Callout>
+
+---
+
+## What to do if something goes wrong
+
+If a job returns `failed` status, check the `error` field on the job response:
+
+```json
+{
+  "status": "error",
+  "message": "Bad request",
+  "error_code": "bad_request",
+  ...
+}
+```
+
+Common causes:
+
+- **Validation error** — check the error `message` for the specific gate that
+  failed. See [Errors](/docs/errors) for the full validation catalog.
+- **Type mismatch** — e.g. using `extract_audio` (video → audio) followed by
+  `resize` (video only). Check [Operations](/docs/operations) for each
+  operation's input and output types.
+- **External error** — the source URL was unreachable or returned an error
+  during download (`502 External API error`).
+
+Use [webhooks](/docs/webhooks) to be notified of status changes instead of
+polling.

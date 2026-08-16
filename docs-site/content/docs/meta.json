@@ -2,14 +2,12 @@
   "pages": [
     "index",
     "get-started",
-    "guides",
-    "recipes",
-    "operations",
     "api-reference",
-    "sdks",
+    "operations",
+    "common-tasks",
+    "errors",
     "architecture",
-    "deployment",
-    "examples",
+    "webhooks",
     "changelog"
   ]
 }
