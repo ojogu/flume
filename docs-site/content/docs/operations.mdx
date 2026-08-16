@@ -1,22 +1,24 @@
 ---
 title: Operations
-description: Complete reference for all 13 pipeline operations.
+description: Complete reference for Flume's pipeline operations.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Flume has 13 operations. Each declares the artifact types it accepts as input
+Flume's operation catalog grows over time — new operations are added as
+the platform evolves. This reference documents the current set. Each
+operation declares the artifact types it accepts as input
 (`input_types`) and the type it produces as output (`output_type`). Adjacent
 steps in a pipeline must be type-compatible — a step's output type must be
 accepted by the next step's input types.
 
 ## Categories
 
-| Category | Count | Behavior |
-|----------|-------|----------|
-| Transformative | 9 | One input, one output of the same media type |
-| Combinatory | 1 | Multiple inputs merged into one |
-| Conversion | 3 | Changes the media type (e.g. video → audio) |
+| Category | Behavior | Operations |
+|----------|----------|------------|
+| Transformative | One input, one output of the same media type | `trim`, `cut`, `compress`, `transcode`, `resize`, `watermark`, `subtitle`, `mute`, `meme` |
+| Combinatory | Multiple inputs merged into one | `join` |
+| Conversion | Changes the media type (e.g. video → audio) | `extract_audio`, `thumbnail`, `gif` |
 
 <Callout title="Timecodes">
 Params of type `timecode` accept human-readable strings such as `"0:00"`,
@@ -202,13 +204,6 @@ Overlay a text caption on the media. Works on video, audio, and image sources.
 ```json
 { "operation": "meme", "params": { "caption": "When it works in production", "position": "bottom" } }
 ```
-
-<Callout title="Note on the Gate-2 error message">
-The error message shown when an unknown operation is submitted lists only 12
-operations — `meme` is missing from that list even though it is a valid
-operation in the registry. This is a code bug in `service/validation.py`.
-The operation itself is accepted correctly; only the error message is wrong.
-</Callout>
 
 ---
 

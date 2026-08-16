@@ -7,6 +7,9 @@ const config = {
   assetPrefix: '/docs',
   output: 'standalone',
   reactStrictMode: true,
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default withMDX(config);

@@ -5,7 +5,7 @@ description: Verifying your webhook endpoint
 
 ## Test Endpoint
 
-**POST** `/webhooks/{id}/test`
+**POST** `/v1/webhooks/{id}/test`
 
 Sends a synchronous `ping` event to your endpoint immediately.
 
@@ -43,8 +43,8 @@ The test event has this structure:
 ## Example Request
 
 ```bash
-curl -X POST https://api.flume.example.com/webhooks/550e8400-e29b-41d4-a716-446655440000/test \
-  -H "X-API-Key: your-api-key"
+curl -X POST https://api.flume.ojogulabs.xyz/v1/webhooks/550e8400-e29b-41d4-a716-446655440000/test \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
 ```
 
 ## Interpreting Results

@@ -33,7 +33,7 @@ All three fields are optional except `source.type`.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `type` | `video` \| `audio` | Yes | Media type of the source |
-| `uri` | string | No | Public `https://` URL, or an `uploads/` path from the upload API. Required unless the pipeline starts with `join` |
+| `uri` | string | No | Public `https://` URL, or an `uploads/` path from the [upload API](/docs/api-reference/uploads). Required unless the pipeline starts with `join` |
 | `format` | string | No | Quality preference: `best` (default), `smallest`, or a resolution: `480p`, `720p`, `1080p`, `4k`. Resolutions are video-only |
 | `selection` | object | No | For playlists — `{ "entries": [1, 3] }` (1-indexed positions) |
 

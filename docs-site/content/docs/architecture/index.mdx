@@ -3,42 +3,19 @@ title: How Flume Works
 description: What happens to a job from submission to delivery.
 ---
 
-# How Flume Works
-
 This page describes the full lifecycle of a job — from the moment your API
 request arrives to when the final artifact is ready for download.
 
 ## High-level flow
 
-```
-Your server                 Flume API                   Celery workers
-    |                           |                              |
-    |-- POST /v1/job --------->|                              |
-    |                          |-- validate (5 gates) --------->|
-    |                          |-- persist job (pending) ----->|
-    |                          |-- emit job.created           |
-    |                          |-- dispatch to queue --------|
-    |<- 201 + job.id ---------|                              |
-    |                           |                              |
-    |                           |          |-- job.processing -|
-    |                           |          |-- download ------|
-    |                           |          |-- pipeline steps -|
-    |                           |          |-- job.completed --|
-    |                           |                              |
-    |-- GET /v1/job/{id} -->|                              |
-    |<- status -------------|                              |
-    |                           |                              |
-    |-- GET /v1/job/{id}/download -->|                      |
-    |<- 302 redirect ---------|                              |
-    |<- presigned URL (R2) ---|                              |
-```
+![High-level flow](/images/architecture.png)
 
 ---
 
 ## 1. Job submission
 
-When `POST /v1/job` arrives, the API server runs five validation gates
-before touching any worker infrastructure:
+When `POST /v1/job` arrives, the API server runs [five validation
+gates](/docs/errors) before touching any worker infrastructure:
 
 | Gate | What it checks |
 |------|----------------|
@@ -50,7 +27,7 @@ before touching any worker infrastructure:
 
 If any gate fails, the request is rejected with a `400` and the job is never
 created. If all gates pass, the job is persisted in `pending` state and a
-`job.created` event is emitted to webhook subscribers.
+`job.created` event is emitted to [webhook subscribers](/docs/webhooks).
 
 ---
 

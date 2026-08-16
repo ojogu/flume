@@ -7,8 +7,6 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-# Quickstart
-
 This guide takes a video from a public URL, trims it to the first 10
 seconds, and downloads the result. It uses nothing but `curl`.
 
@@ -16,7 +14,7 @@ seconds, and downloads the result. It uses nothing but `curl`.
 <Step>
 ### Get an API key
 
-Create an API key in your dashboard. Keys look like `flm_` followed by a
+Create an API key in your [dashboard](https://flume.ojogulabs.xyz/dashboard). Keys look like `flm_` followed by a
 random string, for example `flm_C40kpjzbjB8OPChdFWimkRbrsV6...`.
 
 You pass the key in every request as the `X-API-Key` header. See
@@ -154,7 +152,7 @@ This endpoint redirects (`302`) to a presigned URL for the final artifact.
 <Callout title="Timecodes">
 Operations such as `trim`, `cut`, `gif`, and `thumbnail` take timecode
 params as human-readable strings: `"0:00"`, `"5.0"`, `"01:30:05.500"`.
-See [Operations](/docs/api-reference) for each operation's params.
+See [Operations](/docs/operations) for each operation's params.
 </Callout>
 
 ## Next steps

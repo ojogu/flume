@@ -13,6 +13,11 @@ authentication (except `/verify-key`).
 Returns all supported download platforms with their capabilities and
 limitations.
 
+The catalog is curated and tested by Flume's team — platforms are added
+after validation rather than mirrored automatically. Always query this
+endpoint rather than trusting a hardcoded list.
+See [Supported Platforms](/docs/platforms) for more.
+
 **Requires auth:** None.
 
 **Status:** `200 OK`
@@ -93,7 +98,7 @@ with descriptions and the fields included in each event's payload.
 }
 ```
 
-The catalog currently includes 7 events. See [Webhooks](/docs/api-reference/webhooks)
+The catalog currently includes 10 events. See [Webhooks](/docs/api-reference/webhooks)
 for the full list and delivery payload structure.
 
 ---

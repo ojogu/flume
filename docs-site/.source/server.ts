@@ -1,25 +1,26 @@
 // @ts-nocheck
-import { default as __fd_glob_25 } from "../content/docs/webhooks/meta.json?collection=meta"
-import { default as __fd_glob_24 } from "../content/docs/get-started/meta.json?collection=meta"
-import { default as __fd_glob_23 } from "../content/docs/api-reference/meta.json?collection=meta"
-import { default as __fd_glob_22 } from "../content/docs/meta.json?collection=meta"
-import * as __fd_glob_21 from "../content/docs/webhooks/testing.mdx?collection=docs"
-import * as __fd_glob_20 from "../content/docs/webhooks/subscriptions.mdx?collection=docs"
-import * as __fd_glob_19 from "../content/docs/webhooks/security.mdx?collection=docs"
-import * as __fd_glob_18 from "../content/docs/webhooks/payload.mdx?collection=docs"
-import * as __fd_glob_17 from "../content/docs/webhooks/index.mdx?collection=docs"
-import * as __fd_glob_16 from "../content/docs/webhooks/event-catalog.mdx?collection=docs"
-import * as __fd_glob_15 from "../content/docs/webhooks/delivery.mdx?collection=docs"
-import * as __fd_glob_14 from "../content/docs/get-started/uploads.mdx?collection=docs"
-import * as __fd_glob_13 from "../content/docs/get-started/quickstart.mdx?collection=docs"
-import * as __fd_glob_12 from "../content/docs/get-started/concepts.mdx?collection=docs"
-import * as __fd_glob_11 from "../content/docs/get-started/authentication.mdx?collection=docs"
-import * as __fd_glob_10 from "../content/docs/architecture/index.mdx?collection=docs"
-import * as __fd_glob_9 from "../content/docs/api-reference/webhooks.mdx?collection=docs"
-import * as __fd_glob_8 from "../content/docs/api-reference/utils.mdx?collection=docs"
-import * as __fd_glob_7 from "../content/docs/api-reference/uploads.mdx?collection=docs"
-import * as __fd_glob_6 from "../content/docs/api-reference/jobs.mdx?collection=docs"
-import * as __fd_glob_5 from "../content/docs/api-reference/index.mdx?collection=docs"
+import { default as __fd_glob_26 } from "../content/docs/webhooks/meta.json?collection=meta"
+import { default as __fd_glob_25 } from "../content/docs/get-started/meta.json?collection=meta"
+import { default as __fd_glob_24 } from "../content/docs/api-reference/meta.json?collection=meta"
+import { default as __fd_glob_23 } from "../content/docs/meta.json?collection=meta"
+import * as __fd_glob_22 from "../content/docs/webhooks/testing.mdx?collection=docs"
+import * as __fd_glob_21 from "../content/docs/webhooks/subscriptions.mdx?collection=docs"
+import * as __fd_glob_20 from "../content/docs/webhooks/security.mdx?collection=docs"
+import * as __fd_glob_19 from "../content/docs/webhooks/payload.mdx?collection=docs"
+import * as __fd_glob_18 from "../content/docs/webhooks/index.mdx?collection=docs"
+import * as __fd_glob_17 from "../content/docs/webhooks/event-catalog.mdx?collection=docs"
+import * as __fd_glob_16 from "../content/docs/webhooks/delivery.mdx?collection=docs"
+import * as __fd_glob_15 from "../content/docs/get-started/quickstart.mdx?collection=docs"
+import * as __fd_glob_14 from "../content/docs/get-started/concepts.mdx?collection=docs"
+import * as __fd_glob_13 from "../content/docs/get-started/authentication.mdx?collection=docs"
+import * as __fd_glob_12 from "../content/docs/architecture/index.mdx?collection=docs"
+import * as __fd_glob_11 from "../content/docs/api-reference/webhooks.mdx?collection=docs"
+import * as __fd_glob_10 from "../content/docs/api-reference/utils.mdx?collection=docs"
+import * as __fd_glob_9 from "../content/docs/api-reference/uploads.mdx?collection=docs"
+import * as __fd_glob_8 from "../content/docs/api-reference/jobs.mdx?collection=docs"
+import * as __fd_glob_7 from "../content/docs/api-reference/index.mdx?collection=docs"
+import * as __fd_glob_6 from "../content/docs/support.mdx?collection=docs"
+import * as __fd_glob_5 from "../content/docs/platforms.mdx?collection=docs"
 import * as __fd_glob_4 from "../content/docs/operations.mdx?collection=docs"
 import * as __fd_glob_3 from "../content/docs/index.mdx?collection=docs"
 import * as __fd_glob_2 from "../content/docs/errors.mdx?collection=docs"
@@ -33,6 +34,6 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});
 
-export const docs = await create.doc("docs", "content/docs", {"changelog.mdx": __fd_glob_0, "common-tasks.mdx": __fd_glob_1, "errors.mdx": __fd_glob_2, "index.mdx": __fd_glob_3, "operations.mdx": __fd_glob_4, "api-reference/index.mdx": __fd_glob_5, "api-reference/jobs.mdx": __fd_glob_6, "api-reference/uploads.mdx": __fd_glob_7, "api-reference/utils.mdx": __fd_glob_8, "api-reference/webhooks.mdx": __fd_glob_9, "architecture/index.mdx": __fd_glob_10, "get-started/authentication.mdx": __fd_glob_11, "get-started/concepts.mdx": __fd_glob_12, "get-started/quickstart.mdx": __fd_glob_13, "get-started/uploads.mdx": __fd_glob_14, "webhooks/delivery.mdx": __fd_glob_15, "webhooks/event-catalog.mdx": __fd_glob_16, "webhooks/index.mdx": __fd_glob_17, "webhooks/payload.mdx": __fd_glob_18, "webhooks/security.mdx": __fd_glob_19, "webhooks/subscriptions.mdx": __fd_glob_20, "webhooks/testing.mdx": __fd_glob_21, });
+export const docs = await create.doc("docs", "content/docs", {"changelog.mdx": __fd_glob_0, "common-tasks.mdx": __fd_glob_1, "errors.mdx": __fd_glob_2, "index.mdx": __fd_glob_3, "operations.mdx": __fd_glob_4, "platforms.mdx": __fd_glob_5, "support.mdx": __fd_glob_6, "api-reference/index.mdx": __fd_glob_7, "api-reference/jobs.mdx": __fd_glob_8, "api-reference/uploads.mdx": __fd_glob_9, "api-reference/utils.mdx": __fd_glob_10, "api-reference/webhooks.mdx": __fd_glob_11, "architecture/index.mdx": __fd_glob_12, "get-started/authentication.mdx": __fd_glob_13, "get-started/concepts.mdx": __fd_glob_14, "get-started/quickstart.mdx": __fd_glob_15, "webhooks/delivery.mdx": __fd_glob_16, "webhooks/event-catalog.mdx": __fd_glob_17, "webhooks/index.mdx": __fd_glob_18, "webhooks/payload.mdx": __fd_glob_19, "webhooks/security.mdx": __fd_glob_20, "webhooks/subscriptions.mdx": __fd_glob_21, "webhooks/testing.mdx": __fd_glob_22, });
 
-export const meta = await create.meta("meta", "content/docs", {"meta.json": __fd_glob_22, "api-reference/meta.json": __fd_glob_23, "get-started/meta.json": __fd_glob_24, "webhooks/meta.json": __fd_glob_25, });
+export const meta = await create.meta("meta", "content/docs", {"meta.json": __fd_glob_23, "api-reference/meta.json": __fd_glob_24, "get-started/meta.json": __fd_glob_25, "webhooks/meta.json": __fd_glob_26, });

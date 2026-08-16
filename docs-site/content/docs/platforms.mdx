@@ -1,0 +1,89 @@
+---
+title: Supported Platforms
+description: Which platforms Flume can download from, and why the list changes.
+---
+
+Flume can download source media from external platforms such as YouTube,
+Instagram, and others. The list of supported platforms is **curated** —
+each platform is validated by Flume's team before it's enabled, and new
+platforms are added by admins via the dashboard as they're tested. It's not
+a mirror of every extractor yt-dlp ships; the catalog grows deliberately as
+platforms are vetted for reliability and performance.
+
+## How it works
+
+Each platform maps to a yt-dlp **extractor key** (lowercased). When a job's
+source URI points at a platform, the download step runs yt-dlp with that
+extractor to fetch the media.
+
+The platform catalog is stored in a database table and managed by Flume
+through admin CRUD. Each platform is registered with its capabilities and
+limitations. The public API only exposes platforms marked as **active** —
+inactive platforms are hidden from the discovery endpoint.
+
+Because the catalog is curated and the platform landscape evolves
+constantly, this page does not hardcode a list. Always query the API for
+the current set.
+
+## Checking the current list
+
+`GET /v1/utils/platforms` returns the active platforms with their
+capabilities:
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "platforms": [
+      {
+        "slug": "youtube",
+        "name": "YouTube",
+        "url": "https://youtube.com",
+        "is_active": true,
+        "content_types": ["single", "playlist", "vod"],
+        "requires_login": true,
+        "supports_live": false,
+        "description": "YouTube video and playlist downloader",
+        "limitations": null,
+        "sort_order": 1
+      }
+    ],
+    "total": 1
+  },
+  "role": null
+}
+```
+
+See [Utils](/docs/api-reference/utils) for the full endpoint reference.
+
+## Platform capabilities
+
+| Field | Meaning |
+|-------|---------|
+| `slug` | Lowercased yt-dlp extractor key, used to identify the platform |
+| `content_types` | What the platform offers — `single`, `playlist`, `vod`, etc. |
+| `requires_login` | Whether downloading private/restricted content needs login cookies |
+| `supports_live` | Whether the platform's live streams can be captured |
+| `limitations` | Known constraints for the platform |
+
+## Using a platform URL as a source
+
+Just pass the platform URL as `source.uri` in a job. Flume detects the
+platform, runs the matching yt-dlp extractor, and downloads the media before
+your pipeline runs:
+
+```json
+{
+  "source": {
+    "type": "video",
+    "uri": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  },
+  "pipeline": [
+    { "operation": "trim", "params": { "start": "0:00", "end": "0:30" } }
+  ]
+}
+```
+
+Platform detection happens during orchestration — see
+[How Flume Works](/docs/architecture) for the full download flow.

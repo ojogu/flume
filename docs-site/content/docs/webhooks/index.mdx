@@ -9,20 +9,7 @@ Webhooks let you receive real-time HTTP notifications when events occur in Flume
 
 ## How It Works
 
-```
-Your Server ←────────── Flume
-     ↑                      │
-     │  1. Subscribe        │
-     │  POST /v1/webhooks      │
-     │                      │
-     │  2. Event occurs     │
-     │  (job.completed)     │
-     │                      │
-     │  3. Receive POST     │
-     │  signed payload      │
-     │                      │
-     └──────────────────────┘
-```
+![How it works](/images/webhook.png)
 
 1. **Subscribe** — Create a webhook subscription with your endpoint URL and event filter
 2. **Receive** — Flume POSTs signed JSON payloads to your endpoint when matching events occur

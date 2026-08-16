@@ -118,7 +118,38 @@ memory. Sources are cited per page in the entries below.
 - Empty `changelog/` dir removed (file `changelog.mdx` kept)
 - `scripts/generate-docs.ts` deleted
 
-**Build:** `next build` passes.
+**Duplicate title fix:**
+- Removed body `# H1` from `quickstart`, `concepts`, `authentication`, `api-reference/index`, `architecture/index`, `changelog` — the frontmatter `title` is rendered by `<DocsTitle>` so the title showed twice
+- `index.mdx` — `title: Home` → `title: Flume`; removed body `# Flume`
+- Deleted orphan `get-started/uploads.mdx` (marketing page, unlinked since Phase 1)
+
+**Hyperlink + stale-content pass:**
+- Added `platforms.mdx` — dynamic "Supported Platforms" page (yt-dlp-driven, managed via dashboard); linked from nav and from `api-reference/utils.mdx`
+- "dashboard" now links to `https://flume.ojogulabs.xyz/dashboard` in `authentication.mdx` (x2) and `quickstart.mdx`
+- Plain-text references became links: "Operations reference", "Errors reference", "upload API" (concepts + jobs), `GET /v1/utils/events` (webhooks), index "Transform/Combine/Convert/Extend" → `/docs/operations`, "five validation gates" + "webhook subscribers" (architecture)
+- Removed stale callouts: operations Gate-2 "code bug" (fixed), api-reference/webhooks "not yet in the static catalog" (fixed)
+- Event count 7 → 10 in `api-reference/webhooks.mdx` (table now lists all 10) and `api-reference/utils.mdx`
+- `quickstart.mdx` `[Operations]` link retargeted from `/docs/api-reference` → `/docs/operations`
+- `/v1` prefix restored on test-endpoint paths in `webhooks/testing.mdx` and `webhooks/event-catalog.mdx`
+- Fixed fake host/key in `webhooks/testing.mdx` (`api.flume.example.com`/`your-api-key` → real host + `flm_` placeholder)
+- `changelog.mdx` — 12 → 13 operations; removed fake "Sandbox and Live API key modes"; rewrote platform claim to note yt-dlp/dashboard-driven list
+
+**Build:** `next build` passes (24 pages).
+
+**Diagram → image swap:**
+- Converted the two user-supplied diagrams (JPEG-in-PNG payload) to true PNGs via ffmpeg at `docs-site/public/images/architecture.png` and `docs-site/public/images/webhook.png`; removed the mislabeled originals from `docs-site/` root
+- Replaced the ASCII "High-level flow" diagram (`architecture/index.mdx`) and "How It Works" diagram (`webhooks/index.mdx`) with `![...](/images/...)` references
+- Images are imported by the fumadocs remark-image plugin → bundled to hashed `/docs/_next/static/media/...` URLs
+- Required `images.unoptimized: true` in `next.config.mjs`: the default `next/image` optimizer endpoint (`/_next/image`) is not under the `/docs` prefix, so nginx (`location /docs`) would not reach it. With optimization off, `<img src>` points directly at `/docs/_next/static/media/...` (same path pattern as the JS/CSS chunks, verified served)
+- **Build:** `next build` passes (24 pages); built HTML confirmed to reference the bundled images
+
+**Deploy note:** images are bundled at build time — rebuild + restart the docs container (`docker compose build docs && docker compose up -d docs`) to pick up the new diagrams.
+
+**Future-proof copy pass:**
+- Removed hardcoded operation counts — `operations.mdx` ("13 operations", category counts) and `concepts.mdx` ("There are 13 operations") now describe a growing catalog; the `Count` column in the categories table was replaced with the operations list per category
+- `changelog.mdx` keeps the exact "13 core operations" for v1.0.0 (historical record); its platform line now says platforms are tested and curated
+- `platforms.mdx` reframed from "dynamic / changes as yt-dlp updates" to **curated and admin-tested** (each platform validated before enablement, capabilities + limitations registered, active-only exposure) — matches the backend admin-CRUD implementation
+- `api-reference/utils.mdx` updated to match ("added after validation rather than mirrored automatically")
 
 ---
 
@@ -135,7 +166,6 @@ deferred until they are ready.
 | Pagination docs | Pagination exists in `GET /v1/job` (page/per_page) but not yet documented separately |
 | API versioning | Not yet implemented |
 | Remotion video guides (per-op, per-recipe) | `flume-marketing-video/` Remotion project exists (untracked); videos are a future content project |
-| `job.cancelled`, `job.retried`, `ping` events | Defined in `EventType` enum but missing from static `/utils/events` catalog |
 | Per-operation deep-dive guides | Covered by `operations.mdx` + `common-tasks.mdx` for now |
 | Per-recipe examples | Covered by `common-tasks.mdx` for now |
 | `mute` operation docs | Documented in `operations.mdx` but has no params — confirm if that's correct |
@@ -147,3 +177,47 @@ deferred until they are ready.
 | `backend/src/service/validation.py` Gate 2 | Error message omits `meme` from valid ops | Misleading error when `meme` submitted | **Fixed** — `meme` added to list |
 | `backend/src/service/util.py` `EVENT_CATALOG` | Missing `job.cancelled`, `job.retried`, `ping` events | Events can be subscribed to but don't appear in `GET /utils/events` | **Fixed** — 3 events added |
 | `backend/src/public/route/utils.py` `verify_api_key` docstring | Says "does NOT update last_used_at" but it actually does | Stale docstring | **Fixed** — docstring updated |
+
+---
+
+## Contact & support rollout
+
+**Backend — contact form API (live on port 5001):**
+- Fixed the email task-name bug: `src/core/email_service.py` enqueued `"celery_app.task.send_email_task"`, but the Celery task is registered as `"jobs.email.send"` (no `celery_app/task.py` exists) → magic-link emails silently failed to enqueue. Now `"jobs.email.send"`.
+- New `SUPPORT_TO_EMAIL=nkangprecious26@gmail.com` in `backend/.env` + `support_to_email` in `src/utils/config.py`.
+- New `POST /v1/support/contact` (public, no auth) in `src/public/route/support.py` — body `{name, email, subject, message}` (`src/public/schema/support.py`, validation via Pydantic `EmailStr`); renders `src/core/templates/contact_submission.html` via `send_contact_email()` and enqueues the Celery email task.
+- Verified: imports clean in backend container, endpoint returns success envelope, worker received task, task `SUCCESS`, Resend returned a send receipt.
+- **Note:** backend runs with `--reload` + bind mount, so the new route is already live.
+
+**Contact channels unified:**
+- Email → `support@ojogulabs.xyz` everywhere: `docs/layout.tsx` (mailto replaced by `/docs/support` link), `web/.../PricingHero.tsx` (was `hello@flume.dev`), `web/.../ErrorPage.tsx` + `NotFoundPage.tsx` (were `support@flume.ai`)
+- WhatsApp dummy `wa.me/000000000` → `https://wa.me/2349065011334` in Footer, landing HeroSection, bot HeroSection, bot CTASection (x2), bot PlatformsSection; removed all `DUMMY LINK` comments
+- Footer GitHub `#github` → `https://github.com/ojogu/flume`
+- Fixed broken docs nav link "Start processing" → `https://flume.ojogulabs.xyz/signup` (no such route) → `/login`
+
+**Dashboard:**
+- New `web/src/pages/dashboard/SupportPage.tsx` — contact form posting to `/v1/support/contact` + email/WhatsApp fallbacks; route `/dashboard/support` added; Support nav item (desktop + mobile)
+- "Contact support" links added to DashboardErrorPage, DashboardNotFoundPage, JobErrorCallout
+
+**Docs:**
+- New client `ContactForm` component (`docs-site/src/components/common/ContactForm.tsx`) registered in the MDX renderer (`app/docs/[[...slug]]/page.tsx`)
+- New `content/docs/support.mdx` (form + email/WhatsApp/GitHub fallbacks), added to `meta.json`; docs nav Support → `/docs/support`
+- **Build:** docs `next build` now **25 pages**; web `npm run build` passes
+- **Deploy note:** rebuild + restart docs container and web container to pick up the new support page, nav links, and unified contact links
+
+---
+
+## Pricing block
+
+Subscription pricing and payment/feature limits are **not decided yet** — pricing is temporarily blocked.
+
+**Single switch:** `web/src/lib/pricing.ts` — `PRICING_BLOCKED = true`. Flip to `false` to unblock.
+
+While blocked:
+- Navbar (desktop + mobile) and Footer Pricing links fire a toast ("Subscription pricing and payments are coming soon.") instead of navigating
+- `/pricing` route renders `PricingBlockedPage` (`PricingComingSoon` banner) instead of `PricingPage`
+- Landing `PricingSection` renders the `PricingComingSoon` banner instead of the placeholder tiers
+
+**Unblock steps:** set `PRICING_BLOCKED = false` in `web/src/lib/pricing.ts`, then rebuild + restart the web container. Existing pricing components (`PricingHero`, `ComparisonTable`, `PricingFAQ`, tier data) are untouched and just get rendered again.
+
+**Deploy note:** rebuild + restart web container to ship the block.

@@ -12,13 +12,13 @@ secret so you can verify it came from Flume.
 
 ## Event catalog
 
-The full list of event types is available at `GET /v1/utils/events`:
+The full list of event types is available at [`GET /v1/utils/events`](/docs/api-reference/utils):
 
 ```bash
 curl https://api.flume.ojogulabs.xyz/v1/utils/events
 ```
 
-The catalog currently includes 7 events:
+The catalog currently includes 10 events:
 
 | Event | Description |
 |-------|-------------|
@@ -26,15 +26,12 @@ The catalog currently includes 7 events:
 | `job.processing` | Worker picked up the job |
 | `job.completed` | Job finished successfully |
 | `job.failed` | Job could not complete |
+| `job.cancelled` | Job was cancelled before completion |
+| `job.retried` | Job was re-queued after a transient failure |
 | `step.started` | Pipeline step began |
 | `step.completed` | Pipeline step finished |
 | `step.failed` | Pipeline step failed |
-
-<Callout title="Additional events in the enum">
-`job.cancelled`, `job.retried`, and `ping` are defined in the EventType enum
-but are not yet in the static catalog served by `/utils/events`. This is a
-discrepancy to investigate and resolve.
-</Callout>
+| `ping` | Test event sent by the webhook test endpoint |
 
 ---
 

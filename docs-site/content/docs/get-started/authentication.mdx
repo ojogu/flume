@@ -6,14 +6,12 @@ description: Authenticate requests to the Flume API with API keys.
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-# Authentication
-
 Every API request is authenticated with an **API key** passed in the
 `X-API-Key` header.
 
 ## API keys
 
-Keys are generated in your dashboard. They are prefixed with `flm_` (so
+Keys are generated in your [dashboard](https://flume.ojogulabs.xyz/dashboard). They are prefixed with `flm_` (so
 secret-scanning tools can detect a leaked key) and look like:
 
 ```
@@ -94,8 +92,8 @@ returns read-only metadata about it:
 Field notes:
 
 - `key_prefix` — the first 8 characters of the key's secret. This is what
-  the dashboard shows so you can identify a key without exposing the full
-  value.
+  the [dashboard](https://flume.ojogulabs.xyz/dashboard) shows so you can
+  identify a key without exposing the full value.
 - `last_used_at` — updated whenever a key successfully authenticates a
   request.
 - `status` — `active` or `revoked`.
