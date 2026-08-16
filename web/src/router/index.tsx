@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { LandingPage } from '@/pages/LandingPage'
 import { BotPage } from '@/pages/BotPage'
 import { PricingPage } from '@/pages/PricingPage'
+import { PricingBlockedPage } from '@/pages/PricingBlockedPage'
 import { CallbackPage } from '@/pages/CallbackPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -19,6 +20,7 @@ import { SupportPage } from '@/pages/dashboard/SupportPage'
 import { AdminShell } from '@/pages/admin/AdminShell'
 import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
 import { AdminPlatformsPage } from '@/pages/admin/AdminPlatformsPage'
+import { PRICING_BLOCKED } from '@/lib/pricing'
 export const router = createBrowserRouter([
   {
     errorElement: <ErrorPage />,
@@ -33,7 +35,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/pricing',
-        element: <PricingPage />,
+        element: PRICING_BLOCKED ? <PricingBlockedPage /> : <PricingPage />,
       },
       {
         path: '/api',

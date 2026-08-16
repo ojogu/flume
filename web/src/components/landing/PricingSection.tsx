@@ -2,6 +2,8 @@ import { Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { PricingComingSoon } from '@/components/pricing/PricingComingSoon'
+import { PRICING_BLOCKED } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 
 const tiers = [
@@ -38,6 +40,10 @@ const tiers = [
 ]
 
 export function PricingSection() {
+  if (PRICING_BLOCKED) {
+    return <PricingComingSoon />
+  }
+
   return (
     <section id="pricing" className="py-20 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">

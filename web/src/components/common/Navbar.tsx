@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Menu, Sun, Moon, LogIn } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Wordmark } from './Wordmark'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuthStore } from '@/stores/authStore'
+import { PRICING_BLOCKED, PRICING_COMING_SOON_MESSAGE } from '@/lib/pricing'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
@@ -36,8 +38,20 @@ export function Navbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) =>
-            link.internal ? (
+          {navLinks.map((link) => {
+            const blocked = PRICING_BLOCKED && link.href === '/pricing'
+            if (blocked) {
+              return (
+                <button
+                  key={link.href}
+                  onClick={() => toast(PRICING_COMING_SOON_MESSAGE)}
+                  className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                >
+                  {link.label}
+                </button>
+              )
+            }
+            return link.internal ? (
               <Link
                 key={link.href}
                 to={link.href}
@@ -54,7 +68,7 @@ export function Navbar() {
                 {link.label}
               </a>
             )
-          )}
+          })}
         </nav>
 
         {/* Actions */}
@@ -134,8 +148,23 @@ export function Navbar() {
                 <div className="mb-4 px-2">
                   <Wordmark variant={resolvedTheme} className="h-7" />
                 </div>
-                {navLinks.map((link) =>
-                  link.internal ? (
+                {navLinks.map((link) => {
+                  const blocked = PRICING_BLOCKED && link.href === '/pricing'
+                  if (blocked) {
+                    return (
+                      <button
+                        key={link.href}
+                        onClick={() => {
+                          setMobileOpen(false)
+                          toast(PRICING_COMING_SOON_MESSAGE)
+                        }}
+                        className="w-full text-left rounded-lg px-3 py-2.5 text-base font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                      >
+                        {link.label}
+                      </button>
+                    )
+                  }
+                  return link.internal ? (
                     <Link
                       key={link.href}
                       to={link.href}
@@ -154,7 +183,7 @@ export function Navbar() {
                       {link.label}
                     </a>
                   )
-                )}
+                })}
                 <div className="mt-4 px-1 flex flex-col gap-2">
                   {isAuthenticated ? (
                     <>
