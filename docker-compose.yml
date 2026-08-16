@@ -175,6 +175,8 @@ services:
 
   queue:
     image: rabbitmq:3.13-management-alpine
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     ports:
       - "15673:15672"
     networks:
