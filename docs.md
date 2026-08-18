@@ -221,3 +221,28 @@ While blocked:
 **Unblock steps:** set `PRICING_BLOCKED = false` in `web/src/lib/pricing.ts`, then rebuild + restart the web container. Existing pricing components (`PricingHero`, `ComparisonTable`, `PricingFAQ`, tier data) are untouched and just get rendered again.
 
 **Deploy note:** rebuild + restart web container to ship the block.
+
+---
+
+## Bot page block
+
+Flume Bot is not implemented yet — the bot page and all references to Telegram/WhatsApp bot endpoints are blocked.
+
+**Single switch:** `web/src/lib/bot.ts` — `BOT_BLOCKED = true`. Flip to `false` to unblock.
+
+While blocked:
+- Navbar (desktop + mobile) and Footer Bot links fire a toast ("Flume Bot is coming soon.") instead of navigating
+- `/bot` route renders `BotBlockedPage` (`BotComingSoon` banner) instead of `BotPage`
+- Landing HeroSection "Also available on Flume Bot, Telegram, WhatsApp" line is hidden
+- Landing TwoSurfacesSection bot card is hidden (only the API card shows)
+
+**Unblock steps:** set `BOT_BLOCKED = false` in `web/src/lib/bot.ts`, then rebuild + restart web container. Existing bot components are untouched and just get rendered again.
+
+---
+
+## Authoritative copy softened
+
+- **authentication.mdx** — SDK callout changed from "No SDK required" / "There are no official SDKs" to "SDKs are on the way" / "Official SDKs are coming soon" (SDKs are in development)
+- **api-reference/utils.mdx** — event count: "The catalog currently includes 10 events and grows over time."
+- **api-reference/webhooks.mdx** — same treatment: "The catalog currently includes 10 events and grows over time:"
+- **changelog.mdx** — "13 core operations" kept as-is (historical record of v1.0.0)

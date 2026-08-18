@@ -126,10 +126,11 @@ background. A job moves through these statuses:
 | `failed` | A step encountered an error |
 | `dead` | The job could not run (e.g. exceeded a retry limit) |
 
-You discover the final status by polling `GET /v1/job/{id}`, and each step
-in the response carries its own status (`pending`, `running`, `complete`,
-`failed`). You can also be notified of lifecycle changes via
-[webhooks](/docs/webhooks) instead of polling.
+You can be notified of lifecycle changes via
+[webhooks](/docs/webhooks) — the recommended approach for production.
+Alternatively, discover the final status by polling `GET /v1/job/{id}`. Each
+step in the response carries its own status (`pending`, `running`, `complete`,
+`failed`).
 
 ## Result
 

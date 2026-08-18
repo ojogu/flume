@@ -5,8 +5,9 @@ description: Step-by-step recipes for common media processing workflows.
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-These examples show complete end-to-end workflows: create a job, poll for
-completion, and download the result.
+These examples show complete end-to-end workflows: create a job and download
+the result. The examples use polling to check status, but you can also
+[register a webhook](/docs/webhooks) to be notified when a job completes.
 
 ## Trim and compress a video
 
@@ -54,6 +55,12 @@ curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
 
 ### Poll until done
 
+<Callout title="Recommended: use webhooks">
+Instead of polling, [register a webhook subscription](/docs/webhooks) to
+receive `job.completed` and `job.failed` events in real time. Polling works
+fine for quick tests and scripts.
+</Callout>
+
 ```bash
 curl https://api.flume.ojogulabs.xyz/v1/job/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
   -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
@@ -93,7 +100,8 @@ curl -X POST https://api.flume.ojogulabs.xyz/v1/job \
   }'
 ```
 
-The response includes a `job.id`. Save it for polling.
+The response includes a `job.id`. Save it — you'll need it to download the
+result or to match webhook events.
 
 ### Poll and download
 
@@ -178,4 +186,4 @@ Common causes:
   during download (`502 External API error`).
 
 Use [webhooks](/docs/webhooks) to be notified of status changes instead of
-polling.
+polling — the recommended approach for production workloads.

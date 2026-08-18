@@ -120,6 +120,12 @@ Notes on this response:
 <Step>
 ### Poll for completion
 
+<Callout title="Production tip">
+For production apps, [register a webhook](/docs/webhooks) to receive
+`job.completed` and `job.failed` events instead of polling. Polling is fine
+for quick tests.
+</Callout>
+
 Processing is asynchronous. Poll the job until its `status` leaves
 `pending`/`processing`:
 
@@ -159,4 +165,5 @@ See [Operations](/docs/operations) for each operation's params.
 
 - [Authentication](/docs/get-started/authentication) — API keys in depth
 - [Concepts](/docs/get-started/concepts) — sources, pipelines, and jobs
+- [Webhooks](/docs/webhooks) — get notified when jobs complete
 - [API Reference](/docs/api-reference) — every endpoint and field
