@@ -26,7 +26,13 @@ from src.schema.processor import ProcessError, ProcessResult
 from src.service.llm_error_summarizer import summarize_ffmpeg_error
 from src.utils.ffprobe import probe_media
 from src.utils.log import get_logger
-from src.utils.resolution import DEFAULT_PRESET, derive_aspect_ratio, derive_orientation, get_dimensions
+from src.utils.resolution import (
+    DEFAULT_PRESET,
+    derive_aspect_ratio,
+    derive_orientation,
+    ensure_even,
+    get_dimensions,
+)
 
 logger = get_logger(__name__)
 
@@ -363,7 +369,7 @@ class ProcessorService:
                     ),
                 )
             ar = derive_aspect_ratio(media.width, media.height)
-            dims = get_dimensions(ar, resolution)
+            dims = ensure_even(get_dimensions(ar, resolution))
             width, height = dims["width"], dims["height"]
             cmd.extend([
                 "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease",
@@ -418,11 +424,11 @@ class ProcessorService:
             height = height or -1
         # Case 2: orientation + resolution — lookup directly
         elif orientation and resolution:
-            dims = get_dimensions(orientation, resolution)
+            dims = ensure_even(get_dimensions(orientation, resolution))
             width, height = dims["width"], dims["height"]
         # Case 3: only orientation — lookup with DEFAULT_PRESET
         elif orientation:
-            dims = get_dimensions(orientation, DEFAULT_PRESET)
+            dims = ensure_even(get_dimensions(orientation, DEFAULT_PRESET))
             width, height = dims["width"], dims["height"]
         # Case 4: only resolution — probe source for aspect ratio
         elif resolution:
@@ -439,7 +445,7 @@ class ProcessorService:
                     ),
                 )
             ar = derive_aspect_ratio(media.width, media.height)
-            dims = get_dimensions(ar, resolution)
+            dims = ensure_even(get_dimensions(ar, resolution))
             width, height = dims["width"], dims["height"]
         # Case 5: neither specified — keep source as-is
         else:
@@ -522,7 +528,7 @@ class ProcessorService:
                     ),
                 )
             ar = derive_aspect_ratio(media.width, media.height)
-            dims = get_dimensions(ar, resolution)
+            dims = ensure_even(get_dimensions(ar, resolution))
             width, height = dims["width"], dims["height"]
             cmd.extend([
                 "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease",
@@ -920,7 +926,7 @@ class ProcessorService:
                 )
 
             aspect_ratio = derive_aspect_ratio(first_media.width, first_media.height)
-            target_dims = get_dimensions(aspect_ratio, preset)
+            target_dims = ensure_even(get_dimensions(aspect_ratio, preset))
             target_w, target_h = target_dims["width"], target_dims["height"]
 
             # Build scale+pad filter for each clip, then concat.

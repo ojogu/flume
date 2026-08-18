@@ -125,3 +125,15 @@ def get_dimensions(aspect_ratio: str, preset: str) -> ResolutionDimensions:
             f"Known aspect ratios: 16:9, 9:16, 1:1. Known presets: 360p, 480p, 720p, 1080p, 1440p, 4k."
         )
     return LOOKUP_TABLE[key]
+
+
+def ensure_even(dimensions: ResolutionDimensions) -> ResolutionDimensions:
+    """Floor width and height to even numbers (libx264 requires even dimensions).
+
+    Subtracts 1 from any odd dimension, which always shrinks and guarantees
+    the result stays within the target box.
+    """
+    return ResolutionDimensions(
+        width=dimensions["width"] if dimensions["width"] % 2 == 0 else dimensions["width"] - 1,
+        height=dimensions["height"] if dimensions["height"] % 2 == 0 else dimensions["height"] - 1,
+    )

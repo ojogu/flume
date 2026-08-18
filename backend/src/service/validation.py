@@ -85,6 +85,11 @@ def _validate_param_value(
             raise BadRequest(
                 f"Param {ctx} must be <= {definition.max}, got {value}"
             )
+        if param_name in ("width", "height") and value % 2 != 0:
+            raise BadRequest(
+                f"Param {ctx} must be even, got {value}. "
+                f"libx264 requires even dimensions."
+            )
 
     elif definition.type == ParamType.FLOAT:
         if not isinstance(value, (int, float)) or isinstance(value, bool):
