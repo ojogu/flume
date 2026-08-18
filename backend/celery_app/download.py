@@ -22,6 +22,8 @@ from src.schema.download import DownloadResult, _ExtractedInfo, _FormatPreferenc
 import yt_dlp
 
 from src.service.downloader import (
+    _build_ydl_opts,
+    _is_client_blocked,
     assert_size_under_limit,
     build_artifact_from_local,
     download,
@@ -340,16 +342,9 @@ async def _download_clips(clips: list[str], workspace: Path, job_id: str) -> "Do
                 local_path = await _download_r2_object(clip_url, workspace, filename)
             else:
                 local_path = str(workspace / f"join_clip_{i}.mp4")
-                opts: dict = {
-                    "outtmpl": str(workspace / f"join_clip_{i}.%(ext)s"),
-                    "format": "bestvideo+bestaudio/best",
-                    "quiet": True,
-                    "no_warnings": True,
-                    "merge_output_format": "mp4",
-                }
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(
-                    None, _download_clip_sync, clip_url, str(workspace), i, opts
+                    None, _download_clip_sync, clip_url, str(workspace), i
                 )
 
             clip_paths.append(local_path)
@@ -380,7 +375,21 @@ async def _download_clips(clips: list[str], workspace: Path, job_id: str) -> "Do
     )
 
 
-def _download_clip_sync(url: str, workspace_dir: str, index: int, opts: dict):
-    """Synchronous yt-dlp download wrapper for use in executor."""
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.download([url])
+def _download_clip_sync(url: str, workspace_dir: str, index: int):
+    """Synchronous yt-dlp download with android_vr→web_safari fallback."""
+    format_string = "bestvideo+bestaudio/best"
+
+    for client in ("android_vr", "web_safari"):
+        opts = _build_ydl_opts(workspace_dir, format_string, download=True, client=client)
+        opts["outtmpl"] = str(Path(workspace_dir) / f"join_clip_{index}.%(ext)s")
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([url])
+                return
+        except yt_dlp.utils.DownloadError as exc:
+            if _is_client_blocked(exc) and client == "android_vr":
+                logger.warning(
+                    f"android_vr blocked for clip {index}, falling back to web_safari: {exc}"
+                )
+                continue
+            raise

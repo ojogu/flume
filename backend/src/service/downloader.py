@@ -44,6 +44,29 @@ _AUDIO_FORMAT_MAP: dict[_FormatPreference, str] = {
     _FormatPreference.SMALLEST: "worstaudio/worst",
 }
 
+# ── YouTube client configs ────────────────────────────────────────────────────
+# android_vr: high-quality DASH formats, no PO token needed, but blocked by
+#   datacenter IPs (403 on download).  Tried first.
+# web_safari: HLS manifests (max 480p), requires PO token via bgutil, works
+#   through datacenter proxies.  Used as fallback.
+
+_POT_PROVIDER_BASE_URL = os.environ.get("POT_PROVIDER_BASE_URL", "")
+
+_ANDROID_VR_EXTRACTOR_ARGS: dict = {
+    "youtube": {"player_client": ["android_vr"]},
+}
+
+_WEB_SAFARI_EXTRACTOR_ARGS: dict = {
+    "youtube": {
+        "player_client": ["web_safari"],
+        "fetch_pot": ["always"],
+    },
+}
+if _POT_PROVIDER_BASE_URL:
+    _WEB_SAFARI_EXTRACTOR_ARGS["youtubepot-bgutilhttp"] = {
+        "base_url": [_POT_PROVIDER_BASE_URL],
+    }
+
 
 # ── Private helpers───────────────
 
@@ -59,8 +82,18 @@ def _build_ydl_opts(
     workspace_dir: str,
     format_string: str,
     download: bool = True,
+    client: str = "android_vr",
 ) -> dict:
-    """Construct the options dict passed to yt-dlp's YoutubeDL."""
+    """Construct the options dict passed to yt-dlp's YoutubeDL.
+
+    *client* selects the YouTube player client.  ``"android_vr"`` offers
+    high-quality DASH formats but is blocked by datacenter IPs;``"web_safari"`` offers HLS (max 480p) with PO token and works through proxies.
+    """
+    extractor_args = (
+        _WEB_SAFARI_EXTRACTOR_ARGS if client == "web_safari"
+        else _ANDROID_VR_EXTRACTOR_ARGS
+    )
+
     opts: dict = {
         "outtmpl": str(Path(workspace_dir) / "input.%(ext)s"),
         "format": format_string,
@@ -69,6 +102,7 @@ def _build_ydl_opts(
         "merge_output_format": "mp4",
         "js_runtimes": {"deno": {}},
         "remote_components": ["ejs:github"],
+        "extractor_args": extractor_args,
     }
 
     if not download:
@@ -82,6 +116,12 @@ def _build_ydl_opts(
         opts["proxy"] = config.yt_proxy_url
 
     return opts
+
+
+def _is_client_blocked(exc: Exception) -> bool:
+    """True when the error looks like a YouTube client/IP block (403, bot gate)."""
+    msg = str(exc).lower()
+    return "403" in msg or "forbidden" in msg or "sign in to confirm" in msg
 
 
 def _get_file_size(path: str) -> int:
@@ -227,13 +267,23 @@ def download(
         ValueError: File exceeds ``max_download_size_bytes``.
     """
     format_string = _resolve_format_string(fmt, source_type)
-    opts = _build_ydl_opts(workspace_dir, format_string, download=True)
 
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        logger.info(f"Downloading {url}  (format={fmt.value}, type={source_type})")
-        #download and extract media info in one call
-        raw = ydl.extract_info(url, download=True)
-        logger.info(f"Download complete — title={raw.get('title', 'unknown')}")
+    # Try android_vr first (high-quality DASH), fall back to web_safari + PO
+    # token (HLS, max 480p) when the client is blocked by the network.
+    raw: dict = {}
+    for client in ("android_vr", "web_safari"):
+        opts = _build_ydl_opts(workspace_dir, format_string, download=True, client=client)
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                logger.info(f"Downloading {url} (format={fmt.value}, client={client})")
+                raw = ydl.extract_info(url, download=True)
+                logger.info(f"Download complete — title={raw.get('title', 'unknown')} (client={client})")
+                break
+        except yt_dlp.utils.DownloadError as exc:
+            if _is_client_blocked(exc) and client == "android_vr":
+                logger.warning(f"android_vr blocked for {url}, falling back to web_safari: {exc}")
+                continue
+            raise
 
     ext = raw.get("ext", "mp4")
     local_path = str(Path(workspace_dir) / f"input.{ext}")

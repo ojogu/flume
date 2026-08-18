@@ -91,6 +91,7 @@ services:
       - CELERY_WORKER=true
       - CELERYD_CONCURRENCY=2
       - GRPC_ENABLE_FORK_SUPPORT=false
+      - POT_PROVIDER_BASE_URL=http://pot-provider:4416
     deploy:
       resources:
         limits:
@@ -154,8 +155,21 @@ services:
     networks:
       - observability
 
+  # ── PO Token provider for yt-dlp (YouTube bot-guard attestation) ──
+  pot-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    init: true
+    restart: unless-stopped
+    networks:
+      - observability
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
-  
+
   # ── Infrastructure ────────────────────────────────────────────────
   cache:
     image: redis:7-alpine

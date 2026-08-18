@@ -7,6 +7,7 @@ RUN uv export --format requirements-txt --no-hashes -o requirements.txt
 RUN uv pip install --system -r requirements.txt
 COPY . .
 RUN uv pip install --system --break-system-packages -U yt-dlp
+RUN uv pip install --system --break-system-packages -U bgutil-ytdlp-pot-provider
 
 
 # ---------- Stage 2: Runtime ----------
