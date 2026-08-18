@@ -1,5 +1,6 @@
 import { ArrowRight, BookOpen } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
+import { BOT_BLOCKED } from '@/lib/bot'
 import { cn } from '@/lib/utils'
 
 export function HeroSection() {
@@ -37,15 +38,17 @@ export function HeroSection() {
             </a>
           </div>
 
-          <p className="mt-8 text-sm text-[var(--text-muted)]">
-            Also available on{' '}
-            <a href="/bot" className="text-brand hover:underline underline-offset-4">Flume Bot</a>
-            ,{' '}
-            <a href="https://t.me/getflume_bot" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline underline-offset-4">Telegram</a>
-            , and{' '}
-            <a href="https://wa.me/2349065011334" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline underline-offset-4">WhatsApp</a>
-            {' '}— no setup required.
-          </p>
+          {!BOT_BLOCKED && (
+            <p className="mt-8 text-sm text-[var(--text-muted)]">
+              Also available on{' '}
+              <a href="/bot" className="text-brand hover:underline underline-offset-4">Flume Bot</a>
+              ,{' '}
+              <a href="https://t.me/getflume_bot" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline underline-offset-4">Telegram</a>
+              , and{' '}
+              <a href="https://wa.me/2349065011334" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline underline-offset-4">WhatsApp</a>
+              {' '}— no setup required.
+            </p>
+          )}
         </div>
       </div>
     </section>

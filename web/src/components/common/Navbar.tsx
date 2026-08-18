@@ -8,6 +8,7 @@ import { Wordmark } from './Wordmark'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuthStore } from '@/stores/authStore'
 import { PRICING_BLOCKED, PRICING_COMING_SOON_MESSAGE } from '@/lib/pricing'
+import { BOT_BLOCKED, BOT_COMING_SOON_MESSAGE } from '@/lib/bot'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
@@ -39,12 +40,14 @@ export function Navbar() {
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => {
-            const blocked = PRICING_BLOCKED && link.href === '/pricing'
-            if (blocked) {
+            const blockedMsg =
+              (PRICING_BLOCKED && link.href === '/pricing' && PRICING_COMING_SOON_MESSAGE) ||
+              (BOT_BLOCKED && link.href === '/bot' && BOT_COMING_SOON_MESSAGE)
+            if (blockedMsg) {
               return (
                 <button
                   key={link.href}
-                  onClick={() => toast(PRICING_COMING_SOON_MESSAGE)}
+                  onClick={() => toast(blockedMsg)}
                   className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
                   {link.label}
@@ -149,14 +152,16 @@ export function Navbar() {
                   <Wordmark variant={resolvedTheme} className="h-7" />
                 </div>
                 {navLinks.map((link) => {
-                  const blocked = PRICING_BLOCKED && link.href === '/pricing'
-                  if (blocked) {
+                  const blockedMsg =
+                    (PRICING_BLOCKED && link.href === '/pricing' && PRICING_COMING_SOON_MESSAGE) ||
+                    (BOT_BLOCKED && link.href === '/bot' && BOT_COMING_SOON_MESSAGE)
+                  if (blockedMsg) {
                     return (
                       <button
                         key={link.href}
                         onClick={() => {
                           setMobileOpen(false)
-                          toast(PRICING_COMING_SOON_MESSAGE)
+                          toast(blockedMsg)
                         }}
                         className="w-full text-left rounded-lg px-3 py-2.5 text-base font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
                       >

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Wordmark } from './Wordmark'
 import { PRICING_BLOCKED, PRICING_COMING_SOON_MESSAGE } from '@/lib/pricing'
+import { BOT_BLOCKED, BOT_COMING_SOON_MESSAGE } from '@/lib/bot'
 
 const productLinks = [
   { href: '/api', label: 'FlumeAPI', internal: true },
@@ -22,10 +23,13 @@ const communityLinks = [
 function FooterLink({ href, label, internal, external }: { href: string; label: string; internal?: boolean; external?: boolean }) {
   const className = "text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
   if (internal) {
-    if (PRICING_BLOCKED && href === '/pricing') {
+    const blockedMsg =
+      (PRICING_BLOCKED && href === '/pricing' && PRICING_COMING_SOON_MESSAGE) ||
+      (BOT_BLOCKED && href === '/bot' && BOT_COMING_SOON_MESSAGE)
+    if (blockedMsg) {
       return (
         <button
-          onClick={() => toast(PRICING_COMING_SOON_MESSAGE)}
+          onClick={() => toast(blockedMsg)}
           className={className}
         >
           {label}

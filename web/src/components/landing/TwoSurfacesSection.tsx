@@ -1,5 +1,6 @@
 import { Code2, Bot, ArrowRight } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
+import { BOT_BLOCKED } from '@/lib/bot'
 import { cn } from '@/lib/utils'
 
 const surfaces = [
@@ -11,6 +12,7 @@ const surfaces = [
     cta: 'View API Docs',
     href: '/docs',
     variant: 'default' as const,
+    blocked: false,
   },
   {
     icon: Bot,
@@ -20,6 +22,7 @@ const surfaces = [
     cta: 'Try the Bot',
     href: '/bot',
     variant: 'outline' as const,
+    blocked: BOT_BLOCKED,
   },
 ]
 
@@ -36,7 +39,7 @@ export function TwoSurfacesSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {surfaces.map((surface) => (
+          {surfaces.filter((s) => !s.blocked).map((surface) => (
             <div
               key={surface.title}
               className="group rounded-xl bg-[var(--bg-card)] p-8 border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200 flex flex-col"
