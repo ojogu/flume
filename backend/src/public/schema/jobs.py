@@ -80,7 +80,7 @@ class JobResponse(BaseModel):
     id: uuid.UUID
     api_key_id: uuid.UUID
     status: JobStatus
-    source_uri: str
+    source_uri: str | None = None
     source_type: SourceType
     pipeline_steps: list | None = None
     outputs: list | None = None
