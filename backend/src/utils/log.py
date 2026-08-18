@@ -18,12 +18,33 @@ from .config import config
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
+
+def stringify_uuid_values(logger, method_name: str, event_dict: dict) -> dict:
+    """Recursively coerce UUID values to str.
+
+    The OTel LoggingHandler ships the structlog event dict as the log body,
+    and its encoder rejects raw ``uuid.UUID`` (including asyncpg's
+    ``pgproto.UUID`` subclass). This processor runs before the stdlib handoff
+    so UUIDs never reach the exporter.
+    """
+    def _coerce(value):
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        if isinstance(value, (list, tuple)):
+            return [_coerce(v) for v in value]
+        if isinstance(value, dict):
+            return {k: _coerce(v) for k, v in value.items()}
+        return value
+
+    return {k: _coerce(v) for k, v in event_dict.items()}
+
 # ---------------------------------------------------------------------------
 # Shared pre-render processors (run before the final renderer)
 # These are format-agnostic — they add metadata to the event dict.
 # ---------------------------------------------------------------------------
 SHARED_PROCESSORS = [
     structlog.contextvars.merge_contextvars,      # Inject request-scoped context
+    stringify_uuid_values,                        # OTLP exporter rejects raw UUIDs
     structlog.stdlib.add_log_level,               # "level": "info"
     structlog.stdlib.add_logger_name,             # "logger": "src.v1.service.user"
     structlog.processors.TimeStamper(fmt="iso"),  # "timestamp": "2026-02-28T..."
@@ -107,7 +128,6 @@ def configure_structlog() -> None:
     logging.getLogger("amqp").setLevel(logging.WARNING)
     logging.getLogger("opentelemetry.instrumentation.celery").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
-    logging.getLogger("LiteLLM").setLevel(logging.WARNING)
     logging.getLogger("botocore").setLevel(logging.WARNING)
     print("Handlers:", root_logger.handlers)
 

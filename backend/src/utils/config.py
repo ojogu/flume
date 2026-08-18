@@ -60,8 +60,8 @@ class Config(BaseSettings):
     # model: litellm model identifier (e.g. "openai/deepseek-v4-flash")
     # api_base: base URL for the LLM API (LiteLLM appends /chat/completions automatically)
     # api_key: secret key for the LLM provider
-    model: str = "openai/deepseek-v4-flash"
-    api_base: str = "https://opencode.ai/zen/go/v1"
+    model: str = "groq/openai/gpt-oss-20b"
+    api_base: str | None = None
     api_key: str | None = None
 
     model_config = SettingsConfigDict(

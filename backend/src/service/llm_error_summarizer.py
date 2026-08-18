@@ -14,7 +14,7 @@ import json
 
 logger = get_logger(__name__)
 
-LLM_ERROR_CACHE_TTL = 3600
+LLM_ERROR_CACHE_TTL = 60
 
 # Keyed on sha256(operation + stderr[:500]) — identical failures produce identical keys.
 def _build_cache_key(operation: str, stderr: str) -> str:
