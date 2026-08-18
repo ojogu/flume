@@ -876,6 +876,9 @@ class ProcessorService:
         """
         import json
 
+        if not input_path:
+            input_path = str(workspace / "join_clips.json")
+
         try:
             with open(input_path, "r") as f:
                 clip_paths = json.load(f)
@@ -934,12 +937,15 @@ class ProcessorService:
             for i in range(n):
                 filter_parts.append(
                     f"[{i}:v]scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,"
-                    f"pad={target_w}:{target_h}:-1:-1[{i}:v_scaled]"
+                    f"pad={target_w}:{target_h}:-1:-1,setsar=1[v{i}_scaled]"
                 )
-                filter_parts.append(f"[{i}:v_scaled][{i}:a]")
+
+            concat_inputs = "".join(f"[v{i}_scaled][{i}:a]" for i in range(n))
 
             filter_complex = (
                 ";".join(filter_parts)
+                + ";"
+                + concat_inputs
                 + f"concat=n={n}:v=1:a=1[vout][aout]"
             )
         else:
@@ -952,7 +958,7 @@ class ProcessorService:
         output_path = str(workspace / f"step_{step_index}_output.mp4")
         cmd = [
             "ffmpeg", "-y",
-            *[["-i", p] for p in clip_paths],
+            *[arg for p in clip_paths for arg in ["-i", p]],
             "-filter_complex", filter_complex,
             "-map", "[vout]",
             "-map", "[aout]",

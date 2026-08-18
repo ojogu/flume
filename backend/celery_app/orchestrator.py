@@ -77,9 +77,11 @@ async def _process_job_async(job_id: str):
         )
 
         try:
+            # join operations have no source_uri — skip yt-dlp extraction and go straight to processing
+            if not job.source_uri:
+                await _handle_single(job_service, job)
             # upload URIs are always single videos — skip yt-dlp extraction and platform validation
-            is_upload = job.source_uri.startswith("uploads/")
-            if is_upload:
+            elif job.source_uri.startswith("uploads/"):
                 await _handle_single(job_service, job)
             else:
                 # extract metadata, check if playlist — this is synchronous yt-dlp, runs in thread

@@ -101,12 +101,13 @@ async def _download_task_async(job_id: str):
             logger.info(f"Workspace ready for job {job_id}: {workspace}")
 
             # check for clips param (used by join operation)
-            clips = step.params.get("clips")
+            download_step = (job.pipeline_steps or [{}])[0]
+            clips = (download_step.get("params") or {}).get("clips")
             if clips:
                 result = await _download_clips(clips, workspace, job_id)
             else:
                 # download — external URLs via yt-dlp, upload URIs via R2 presigned GET
-                is_upload = job.source_uri.startswith("uploads/")
+                is_upload = job.source_uri and job.source_uri.startswith("uploads/")
                 if is_upload:
                     result = await _download_upload_source(job, workspace)
                 else:
