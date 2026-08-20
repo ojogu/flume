@@ -16,6 +16,7 @@ from src.public.route.jobs import job_route
 from src.public.route.support import support_route
 from src.public.route.uploads import upload_route
 from src.public.route.utils import utils_route
+from src.public.route.web import web_route
 from src.public.route.webhooks import webhook_route
 from src.utils.config import Settings
 from src.utils.db import engine
@@ -67,6 +68,7 @@ public_api.include_router(upload_route)
 public_api.include_router(webhook_route)
 public_api.include_router(utils_route)
 public_api.include_router(support_route)
+public_api.include_router(web_route)
 
 
 @public_api.get("/root", tags=["health"])

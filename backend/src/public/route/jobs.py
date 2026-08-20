@@ -2,10 +2,11 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from src.core.dependency import (
     get_api_key_from_header,
+    get_api_key_service,
     get_event_service,
     get_job_service,
     get_upload_service,
@@ -20,6 +21,7 @@ from src.public.schema.jobs import (
     JobResponse,
     StepResponse,
 )
+from src.service.api import WEB_SESSION_DAILY_LIMIT, WEB_SESSION_KEY_PREFIX, ApiKeyService
 from src.service.events import EventService
 from src.service.jobs import JobService
 from src.service.upload import UploadService
@@ -39,8 +41,23 @@ async def create_job(
     job_service: JobService = Depends(get_job_service),
     upload_service: UploadService = Depends(get_upload_service),
     event_service: EventService = Depends(get_event_service),
+    api_key_service: ApiKeyService = Depends(get_api_key_service),
 ):
     source = body.source
+
+    # Session key rate limit: 5 jobs/day
+    if api_key.key_prefix.startswith(f"{WEB_SESSION_KEY_PREFIX}_"):
+        count = await api_key_service.count_jobs_last_24h(api_key.id)
+        if count >= WEB_SESSION_DAILY_LIMIT:
+            return JSONResponse(
+                content={
+                    "status": "error",
+                    "message": f"Daily job limit reached ({WEB_SESSION_DAILY_LIMIT}/day). Try again tomorrow.",
+                    "error_code": "daily_limit_reached",
+                },
+                status_code=429,
+                headers={"Retry-After": "3600"},
+            )
 
     logger.info(
         f"Job creation request received — "
@@ -165,12 +182,18 @@ async def list_jobs(
 @job_route.get("/{job_id}/download")
 async def download_job(
     job_id: uuid.UUID,
+    redirect: bool = Query(default=True),
     api_key: ApiKey = Depends(get_api_key_from_header),
     job_service: JobService = Depends(get_job_service),
 ):
-    """Redirect to a presigned R2 URL for the job's final output."""
+    """Redirect to a presigned R2 URL for the job's final output.
+
+    Use ?redirect=false to get the presigned URL as JSON instead.
+    """
     presigned_url = await job_service.generate_download_url(job_id, api_key.id)
-    return RedirectResponse(presigned_url, status_code=302)
+    if redirect:
+        return RedirectResponse(presigned_url, status_code=302)
+    return success(data={"url": presigned_url})
 
 
 @job_route.get("/{job_id}")

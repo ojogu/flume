@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 
 from src.core.dependency import get_api_key_from_header, get_upload_service
 from src.model.api import ApiKey
@@ -9,10 +10,13 @@ from src.public.schema.uploads import (
     PresignUploadResponse,
     UploadResponse,
 )
+from src.service.api import WEB_SESSION_KEY_PREFIX
 from src.service.upload import UploadService
 from src.utils.response import success
 
 upload_route = APIRouter(prefix="/uploads", tags=["uploads"])
+
+WEB_SESSION_MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB
 
 
 @upload_route.post("/presign", status_code=status.HTTP_201_CREATED)
@@ -24,6 +28,17 @@ async def presign_upload(
     api_key: ApiKey = Depends(get_api_key_from_header),
     upload_service: UploadService = Depends(get_upload_service),
 ):
+    # Session key file size limit: 100 MB
+    if api_key.key_prefix.startswith(f"{WEB_SESSION_KEY_PREFIX}_"):
+        if body.file_size and body.file_size > WEB_SESSION_MAX_UPLOAD_BYTES:
+            return JSONResponse(
+                content={
+                    "status": "error",
+                    "message": f"File too large for anonymous upload. Maximum is 100 MB.",
+                    "error_code": "file_too_large",
+                },
+                status_code=413,
+            )
     result = await upload_service.create_presigned_upload(
         api_key_id=api_key.id,
         original_filename=body.original_filename,
