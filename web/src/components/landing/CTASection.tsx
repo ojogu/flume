@@ -1,4 +1,4 @@
-import { ArrowRight, MessageCircle } from 'lucide-react'
+import { ArrowRight, MessageCircle, Globe } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,15 @@ export function CTASection() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              to="/web"
+              className={cn(buttonVariants({ variant: 'default', size: 'lg' }), 'px-6 gap-2')}
+            >
+              <Globe className="h-4 w-4" />
+              Try Flume Web
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+
             <Link
               to="/login"
               className={cn(buttonVariants({ variant: 'default', size: 'lg' }), 'px-6 gap-2')}

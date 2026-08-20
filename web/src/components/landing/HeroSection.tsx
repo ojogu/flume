@@ -1,4 +1,5 @@
-import { ArrowRight, BookOpen } from 'lucide-react'
+import { ArrowRight, BookOpen, Globe } from 'lucide-react'
+import { Link as RouterLink } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { BOT_BLOCKED } from '@/lib/bot'
 import { cn } from '@/lib/utils'
@@ -21,9 +22,18 @@ export function HeroSection() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <RouterLink
+              to="/web"
+              className={cn(buttonVariants({ variant: 'default', size: 'lg' }), 'px-6 gap-2')}
+            >
+              <Globe className="h-4 w-4" />
+              Try Flume Web
+              <ArrowRight className="h-4 w-4" />
+            </RouterLink>
+
             <a
               href="#api-access"
-              className={cn(buttonVariants({ variant: 'default', size: 'lg' }), 'px-6 gap-2')}
+              className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'px-6 gap-2')}
             >
               Start Building
               <ArrowRight className="h-4 w-4" />

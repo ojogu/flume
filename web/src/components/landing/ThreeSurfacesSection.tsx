@@ -1,9 +1,17 @@
-import { Code2, Bot, ArrowRight } from 'lucide-react'
+import { Globe, Code2, Bot, ArrowRight } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
-import { BOT_BLOCKED } from '@/lib/bot'
 import { cn } from '@/lib/utils'
 
 const surfaces = [
+  {
+    icon: Globe,
+    label: '/web',
+    title: 'Flume Web',
+    description: 'For everyone. Paste a link, pick an operation, download the result. No sign-up required.',
+    cta: 'Get started',
+    href: '/web',
+    variant: 'default' as const,
+  },
   {
     icon: Code2,
     label: '/api',
@@ -11,8 +19,7 @@ const surfaces = [
     description: 'For developers. Full programmatic access, async jobs, webhook callbacks, and storage built in.',
     cta: 'View API Docs',
     href: '/docs',
-    variant: 'default' as const,
-    blocked: false,
+    variant: 'outline' as const,
   },
   {
     icon: Bot,
@@ -22,24 +29,23 @@ const surfaces = [
     cta: 'Try the Bot',
     href: '/bot',
     variant: 'outline' as const,
-    blocked: BOT_BLOCKED,
   },
 ]
 
-export function TwoSurfacesSection() {
+export function ThreeSurfacesSection() {
   return (
     <section id="surfaces" className="py-20 sm:py-24 bg-[var(--bg-subtle)]">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
 
         <div className="text-center mb-14">
-          <p className="text-label text-brand mb-3">Two surfaces</p>
+          <p className="text-label text-brand mb-3">Three surfaces</p>
           <h2 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)]">
-            One infrastructure. Two ways to use it.
+            One infrastructure. Three ways to use it.
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {surfaces.filter((s) => !s.blocked).map((surface) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {surfaces.map((surface) => (
             <div
               key={surface.title}
               className="group rounded-xl bg-[var(--bg-card)] p-8 border border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-sm transition-all duration-200 flex flex-col"

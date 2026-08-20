@@ -5,6 +5,7 @@ import { PRICING_BLOCKED, PRICING_COMING_SOON_MESSAGE } from '@/lib/pricing'
 import { BOT_BLOCKED, BOT_COMING_SOON_MESSAGE } from '@/lib/bot'
 
 const productLinks = [
+  { href: '/web', label: 'Flume Web', internal: true },
   { href: '/api', label: 'FlumeAPI', internal: true },
   { href: '/bot', label: 'Flume Bot', internal: true },
   { href: '/pricing', label: 'Pricing', internal: true },

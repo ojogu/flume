@@ -3,8 +3,9 @@ import { Footer } from '@/components/common/Footer'
 import { HeroSection } from '@/components/landing/HeroSection'
 import { FeaturesSection } from '@/components/landing/FeaturesSection'
 import { HowItWorksSection } from '@/components/landing/HowItWorksSection'
+import { WebSection } from '@/components/landing/WebSection'
 import { PricingSection } from '@/components/landing/PricingSection'
-import { TwoSurfacesSection } from '@/components/landing/TwoSurfacesSection'
+import { ThreeSurfacesSection } from '@/components/landing/ThreeSurfacesSection'
 import { CTASection } from '@/components/landing/CTASection'
 
 export function LandingPage() {
@@ -15,8 +16,9 @@ export function LandingPage() {
         <HeroSection />
         <FeaturesSection />
         <HowItWorksSection />
+        <WebSection />
         <PricingSection />
-        <TwoSurfacesSection />
+        <ThreeSurfacesSection />
         <CTASection />
       </main>
       <Footer />

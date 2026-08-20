@@ -12,6 +12,7 @@ import { BOT_BLOCKED, BOT_COMING_SOON_MESSAGE } from '@/lib/bot'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
+  { href: '/web', label: 'Web', internal: true },
   { href: '/api', label: 'API', internal: true },
   { href: '/bot', label: 'Bot', internal: true },
   { href: '/pricing', label: 'Pricing', internal: true },
