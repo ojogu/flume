@@ -16,7 +16,8 @@ from src.utils.log import get_logger
 logger = get_logger(__name__)
 
 WEB_SESSION_KEY_PREFIX = "web"
-WEB_SESSION_DAILY_LIMIT = 5
+WEB_SESSION_MONTHLY_LIMIT = 5
+AUTHENTICATED_MONTHLY_LIMIT = 20
 
 
 # API key lifecycle — generate (flm_ prefix + SHA-256 hash), verify, revoke
@@ -178,10 +179,10 @@ class ApiKeyService:
         return user
 
     async def create_session_key(self) -> tuple[ApiKey, str]:
-        """Create a short-lived web session API key (24h expiry, 5 jobs/day)."""
+        """Create a short-lived web session API key (35-day expiry, 5 jobs/month)."""
         system_user = await self._get_or_create_system_user()
         full_key, key_hash, key_prefix = self._generate_session_key()
-        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)
+        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=35)
 
         api_key = ApiKey(
             user_id=system_user.id,
@@ -203,9 +204,10 @@ class ApiKeyService:
             logger.error(f"Error creating session key: {e}")
             raise DatabaseError()
 
-    async def count_jobs_last_24h(self, api_key_id: uuid.UUID) -> int:
-        """Count jobs created by this API key in the last 24 hours."""
-        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
+    async def count_jobs_this_month(self, api_key_id: uuid.UUID) -> int:
+        """Count jobs created by this API key in the current calendar month."""
+        now = datetime.datetime.now(datetime.timezone.utc)
+        cutoff = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         result = await self.db.execute(
             select(func.count()).where(
                 Job.api_key_id == api_key_id,

@@ -23,8 +23,8 @@ from src.public.schema.jobs import (
     StepResponse,
 )
 from src.service.api import (
-    WEB_SESSION_DAILY_LIMIT,
     WEB_SESSION_KEY_PREFIX,
+    WEB_SESSION_MONTHLY_LIMIT,
     ApiKeyService,
 )
 from src.service.events import EventService
@@ -56,15 +56,28 @@ async def create_job(
     if origin not in ("web", "api", "bot"):
         origin = "web" if api_key.key_prefix.startswith(f"{WEB_SESSION_KEY_PREFIX}_") else "api"
 
-    # Session key rate limit: 5 jobs/day
-    if api_key.key_prefix.startswith(f"{WEB_SESSION_KEY_PREFIX}_"):
-        count = await api_key_service.count_jobs_last_24h(api_key.id)
-        if count >= WEB_SESSION_DAILY_LIMIT:
+    # Monthly rate limit: anonymous 5/month, authenticated 20/month
+    if origin == "web":
+        count = await api_key_service.count_jobs_this_month(api_key.id)
+        if count >= WEB_SESSION_MONTHLY_LIMIT:
             return JSONResponse(
                 content={
                     "status": "error",
-                    "message": f"Daily job limit reached ({WEB_SESSION_DAILY_LIMIT}/day). Try again tomorrow.",
-                    "error_code": "daily_limit_reached",
+                    "message": f"Monthly job limit reached ({WEB_SESSION_MONTHLY_LIMIT}/month). Sign in for more.",
+                    "error_code": "monthly_limit_reached",
+                },
+                status_code=429,
+                headers={"Retry-After": "3600"},
+            )
+    else:
+        from src.service.api import AUTHENTICATED_MONTHLY_LIMIT
+        count = await api_key_service.count_jobs_this_month(api_key.id)
+        if count >= AUTHENTICATED_MONTHLY_LIMIT:
+            return JSONResponse(
+                content={
+                    "status": "error",
+                    "message": f"Monthly job limit reached ({AUTHENTICATED_MONTHLY_LIMIT}/month).",
+                    "error_code": "monthly_limit_reached",
                 },
                 status_code=429,
                 headers={"Retry-After": "3600"},
