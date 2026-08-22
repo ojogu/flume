@@ -11,7 +11,9 @@ from src.auth.route import auth_route
 from src.internal.route.api_keys import api_key_route
 from src.internal.route.jobs import internal_job_route
 from src.internal.route.platforms import platform_route
+from src.internal.route.stats import stats_route
 from src.internal.route.webhooks import internal_webhook_route
+from src.public.route.analytics import analytics_route
 from src.public.route.jobs import job_route
 from src.public.route.support import support_route
 from src.public.route.uploads import upload_route
@@ -61,6 +63,7 @@ internal_api.include_router(api_key_route)
 internal_api.include_router(platform_route)
 internal_api.include_router(internal_job_route)
 internal_api.include_router(internal_webhook_route)
+internal_api.include_router(stats_route)
 
 
 public_api.include_router(job_route)
@@ -69,6 +72,7 @@ public_api.include_router(webhook_route)
 public_api.include_router(utils_route)
 public_api.include_router(support_route)
 public_api.include_router(web_route)
+public_api.include_router(analytics_route)
 
 
 @public_api.get("/root", tags=["health"])

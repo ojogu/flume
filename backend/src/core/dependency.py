@@ -6,6 +6,7 @@ from src.auth.service import auth_service as auth_service_instance
 from src.core.exception_base import Unauthorized
 from src.model.api import ApiKey
 from src.model.user import User
+from src.service.analytics import PageViewService
 from src.service.api import ApiKeyService
 from src.service.events import EventService
 from src.service.google import GoogleAuthService
@@ -46,6 +47,10 @@ def get_upload_service(db: AsyncSession = Depends(get_session)):
 
 def get_event_service(db: AsyncSession = Depends(get_session)):
     return EventService(db=db)
+
+
+def get_analytics_service(db: AsyncSession = Depends(get_session)):
+    return PageViewService(db=db)
 
 
 def get_platform_service(db: AsyncSession = Depends(get_session)):
