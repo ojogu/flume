@@ -28,9 +28,9 @@ export function DashboardShell() {
 
   useEffect(() => {
     if (!accessToken) {
-      navigate('/login', { replace: true })
+      navigate(`/login?returnTo=${location.pathname}`, { replace: true })
     }
-  }, [accessToken, navigate])
+  }, [accessToken, navigate, location.pathname])
 
   if (!accessToken) return null
 

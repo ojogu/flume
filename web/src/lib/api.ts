@@ -63,8 +63,12 @@ export async function apiClient<T>(
       headers.set('Authorization', `Bearer ${tokens.access_token}`)
       res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers })
     } else {
+      const currentPath = window.location.pathname
+      const dest = currentPath.startsWith('/admin')
+        ? '/admin/login'
+        : `/login?returnTo=${currentPath}`
       store.logout()
-      window.location.href = '/'
+      window.location.href = dest
       throw new ApiClientError('Session expired', 401, 'session_expired')
     }
   }

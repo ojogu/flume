@@ -1,9 +1,11 @@
 import { ArrowRight, MessageCircle, Globe } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export function CTASection() {
+  const location = useLocation()
+  const signInHref = `/login?returnTo=${location.pathname}`
   return (
     <section id="api-access" className="relative py-20 sm:py-24">
       <div className="gradient-cta absolute inset-0 -z-10" />
@@ -30,7 +32,7 @@ export function CTASection() {
             </Link>
 
             <Link
-              to="/login"
+              to={signInHref}
               className={cn(buttonVariants({ variant: 'default', size: 'lg' }), 'px-6 gap-2')}
             >
               Get API Access

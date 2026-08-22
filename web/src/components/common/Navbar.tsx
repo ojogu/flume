@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Menu, Sun, Moon, LogIn } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -22,8 +22,11 @@ const navLinks = [
 export function Navbar() {
   const { resolvedTheme, toggleTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const location = useLocation()
   const { accessToken, user, logout, hydrate } = useAuthStore()
   const isAuthenticated = !!accessToken
+  const isWebContext = location.pathname.startsWith('/web')
+  const signInHref = `/login?returnTo=${location.pathname}`
 
   useEffect(() => {
     hydrate()
@@ -92,12 +95,14 @@ export function Navbar() {
 
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-6">
-              <Link
-                to="/dashboard"
-                className="text-sm font-medium text-[var(--text-secondary)] hover:text-brand transition-colors"
-              >
-                Dashboard
-              </Link>
+              {!isWebContext && (
+                <Link
+                  to="/dashboard"
+                  className="text-sm font-medium text-[var(--text-secondary)] hover:text-brand transition-colors"
+                >
+                  Dashboard
+                </Link>
+              )}
               <div className="flex items-center gap-3">
                 {user?.picture ? (
                   <img
@@ -122,7 +127,7 @@ export function Navbar() {
             </div>
           ) : (
             <Link
-              to="/login"
+              to={signInHref}
               className={cn(
                 buttonVariants({ variant: 'default', size: 'default' }),
                 'hidden md:inline-flex px-4 gap-2'
@@ -193,13 +198,15 @@ export function Navbar() {
                 <div className="mt-4 px-1 flex flex-col gap-2">
                   {isAuthenticated ? (
                     <>
-                      <Link
-                        to="/dashboard"
-                        onClick={() => setMobileOpen(false)}
-                        className="rounded-lg px-3 py-2.5 text-base font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors"
-                      >
-                        Dashboard
-                      </Link>
+                      {!isWebContext && (
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setMobileOpen(false)}
+                          className="rounded-lg px-3 py-2.5 text-base font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors"
+                        >
+                          Dashboard
+                        </Link>
+                      )}
                       <button
                         onClick={() => { logout(); setMobileOpen(false) }}
                         className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-center px-4 mt-2')}
@@ -209,7 +216,7 @@ export function Navbar() {
                     </>
                   ) : (
                     <Link
-                      to="/login"
+                      to={signInHref}
                       onClick={() => setMobileOpen(false)}
                       className={cn(buttonVariants({ variant: 'default' }), 'w-full justify-center px-4 gap-2')}
                     >
