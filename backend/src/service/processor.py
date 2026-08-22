@@ -54,6 +54,9 @@ _MEME_MIN_FONT_SIZE = 18
 _MEME_FONT_COLOR = "black"
 _MEME_BACKGROUND_COLOR = "white"
 
+# GIF output is capped at this width (larger sources are downscaled; small ones never upscaled).
+_GIF_MAX_WIDTH = 576
+
 
 class ProcessorService:
     """FFmpeg execution service. Each operation is a private method that builds an FFmpeg command, runs it via ``_run_ffmpeg``, and on success attaches an ``Artifact`` built from the output file. ``execute_operation`` is the single public entry point used by the ``jobs.media.execute`` Celery task."""
@@ -277,38 +280,100 @@ class ProcessorService:
         params: dict,
     ) -> ProcessResult:
         """Convert a video segment to a GIF using two-pass palette generation for better quality."""
+        job_id_str = str(job_id)
         start = params["start"]
         end = params.get("end")  # optional — None means "till end of video"
         fps = params.get("fps", 15)
 
+        if end is not None and end <= start:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"end ({end}) must be > start ({start})"
+            )
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="invalid_params",
+                    summary=f"[gif] 'end' ({end}) must be greater than 'start' ({start})",
+                    cause="'end' param was not greater than 'start'",
+                    fix="Provide start < end with both values >= 0.",
+                    raw_stderr="",
+                ),
+            )
+
+        media = probe_media(input_path)
+        duration = media.duration_seconds or 0
+        if start >= duration:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"start ({start}) is beyond video duration ({duration}s)"
+            )
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="invalid_params",
+                    summary=f"[gif] 'start' ({start}) is beyond video duration ({duration}s)",
+                    cause="Requested segment begins at or after the end of the input video.",
+                    fix=f"Provide 'start' < {duration}.",
+                    raw_stderr="",
+                ),
+            )
+
         if end is None:
-            media = probe_media(input_path)
-            end = media.duration_seconds or 0
+            end = duration
+        elif end > duration:
+            logger.info(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"clamping end ({end}) to duration ({duration}s)"
+            )
+            end = duration
+
+        if end - start < 0.1:
+            logger.warning(
+                f"[{operation}] job={job_id_str} step={step_index} — "
+                f"segment too short ({end - start:.3f}s between start={start} and end={end})"
+            )
+            return ProcessResult(
+                success=False,
+                error=ProcessError(
+                    code="invalid_params",
+                    summary=f"[gif] Segment too short ({end - start:.2f}s). Need at least 0.1s.",
+                    cause="'end' and 'start' are (nearly) identical after duration clamping.",
+                    fix="Provide a wider start/end range.",
+                    raw_stderr="",
+                ),
+            )
 
         palette_path = str(workspace / f"step_{step_index}_palette.png")  # intermediate; cleaned up after
         output_path = str(workspace / f"step_{step_index}_output.gif")
 
-        # Pass 1: generate palette
+        # Scale caps output width without upscaling small sources; identical chain in both passes so paletteuse sees matching dimensions.
+        gif_scale = f"scale='min({_GIF_MAX_WIDTH},iw)':-2:flags=lanczos"
+
+        # Pass 1: generate palette. Seek options go BEFORE -i (input seeking) — placing them after -i with palettegen produces an empty image2 output while ffmpeg still exits 0.
         cmd_palette = [
             "ffmpeg", "-y",
-            "-i", input_path,
             "-ss", str(start),
             "-to", str(end),
-            "-vf", f"fps={fps},palettegen",
+            "-i", input_path,
+            "-vf", f"{gif_scale},fps={fps},palettegen",
+            "-update", "1",
             palette_path,
         ]
         result = await self._run_ffmpeg(cmd_palette, operation, params, input_path, palette_path, job_id, step_index)
         if not result.success:
+            with suppress(OSError):
+                os.remove(palette_path)
             return result
 
-        # Pass 2: apply palette to produce GIF
+        # Pass 2: apply palette to produce GIF — explicit stream mapping, no auto-selection.
         cmd_gif = [
             "ffmpeg", "-y",
-            "-i", input_path,
             "-ss", str(start),
             "-to", str(end),
+            "-i", input_path,
             "-i", palette_path,
-            "-filter_complex", f"fps={fps},paletteuse",
+            "-filter_complex", f"[0:v]{gif_scale},fps={fps}[v];[v][1:v]paletteuse",
             output_path,
         ]
         result = await self._run_ffmpeg(cmd_gif, operation, params, input_path, output_path, job_id, step_index)
@@ -1171,8 +1236,10 @@ class ProcessorService:
             return ProcessResult(success=False, error=error)
 
         if not os.path.exists(output_path):
+            stderr_tail = (proc.stderr or "")[-2000:]
             logger.error(
-                f"FFmpeg exited 0 but output file missing — job={job_id_str}, step={step_index}, op={operation}, path={output_path}"
+                f"FFmpeg exited 0 but output file missing — job={job_id_str}, step={step_index}, "
+                f"op={operation}, path={output_path} | stderr_tail={stderr_tail}"
             )
             return ProcessResult(
                 success=False,
@@ -1181,7 +1248,7 @@ class ProcessorService:
                     summary=f"[{operation}] FFmpeg succeeded but produced no output file",
                     cause=f"Output path '{output_path}' does not exist after run",
                     fix="Inspect the FFmpeg command and the input file.",
-                    raw_stderr=proc.stderr or "",
+                    raw_stderr=stderr_tail,
                 ),
             )
 
