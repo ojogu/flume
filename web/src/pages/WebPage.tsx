@@ -6,6 +6,7 @@ import { SourceInput } from '@/components/web/SourceInput'
 import { PresetPicker } from '@/components/web/PresetPicker'
 import { PresetParams } from '@/components/web/PresetParams'
 import { RateLimitBadge } from '@/components/web/RateLimitBadge'
+import { JobSourceCard } from '@/components/web/JobSourceCard'
 import { JobProgress } from '@/components/web/JobProgress'
 import { JobResult } from '@/components/web/JobResult'
 import { useWebStore } from '@/stores/webStore'
@@ -54,8 +55,8 @@ export function WebPage() {
     }
     setValidationErrors([])
 
-      const isJoin = selectedPreset === 'join'
-      const isDownload = selectedPreset === 'download'
+    const isJoin = selectedPreset === 'join'
+    const isDownload = selectedPreset === 'download'
 
     setSubmitting(true)
     setError(null)
@@ -154,7 +155,12 @@ export function WebPage() {
               </>
             )}
 
-            {currentJobId && !jobDetail && <JobProgress />}
+            {currentJobId && !jobDetail && (
+              <div className="space-y-4">
+                <JobSourceCard />
+                <JobProgress />
+              </div>
+            )}
             {jobDetail && <JobResult />}
 
             {error && !currentJobId && !jobDetail && (

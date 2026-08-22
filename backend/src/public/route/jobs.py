@@ -11,6 +11,7 @@ from src.core.dependency import (
     get_job_service,
     get_upload_service,
 )
+from src.core.exception_base import BadRequest, NotFoundError
 from src.model.api import ApiKey
 from src.model.event import EventType
 from src.model.upload import UploadStatus
@@ -21,7 +22,11 @@ from src.public.schema.jobs import (
     JobResponse,
     StepResponse,
 )
-from src.service.api import WEB_SESSION_DAILY_LIMIT, WEB_SESSION_KEY_PREFIX, ApiKeyService
+from src.service.api import (
+    WEB_SESSION_DAILY_LIMIT,
+    WEB_SESSION_KEY_PREFIX,
+    ApiKeyService,
+)
 from src.service.events import EventService
 from src.service.jobs import JobService
 from src.service.upload import UploadService
@@ -67,16 +72,36 @@ async def create_job(
         f"api_key={api_key.key_prefix}"
     )
 
-    # Check if the source URI is a prior upload via /upload → mark attached so cleanup sweep doesn't delete it
-    upload = await upload_service.find_by_uri(source.uri, api_key.id)
-    if upload and upload.status == UploadStatus.UNATTACHED.value:
-        await upload_service.attach_upload(upload.id, api_key.id)
-        logger.info(f"Prior upload {upload.id!s} attached to job")
+    # Resolve uploads/ sources to their real R2 object key before anything else.
+    # Clients may reference an upload either by its object key (API surface) or by
+    # upload ID (web flow sends uploads/{uuid}). Fail fast on unknown/unconfirmed
+    # uploads instead of letting the worker crash with a 404 later.
+    source_uri = source.uri
+    if source_uri.startswith("uploads/"):
+        upload = await upload_service.find_by_uri(source_uri, api_key.id)
+        if not upload:
+            try:
+                upload_id = uuid.UUID(source_uri.removeprefix("uploads/"))
+            except ValueError:
+                raise BadRequest(f"Unknown upload source: {source_uri!r}") from None
+            try:
+                upload = await upload_service.get_upload(upload_id, api_key.id)
+            except NotFoundError:
+                raise BadRequest(f"Unknown upload source: {source_uri!r}") from None
+            source_uri = upload.uri
+
+        if upload.status == UploadStatus.PENDING.value:
+            raise BadRequest(
+                "Upload not confirmed yet — complete the upload before creating a job"
+            )
+        if upload.status == UploadStatus.UNATTACHED.value:
+            await upload_service.attach_upload(upload.id, api_key.id)
+            logger.info(f"Prior upload {upload.id!s} attached to job")
 
     # Run 5 validation gates (registry → params → types → build spec)
     logger.debug(f"Starting pipeline validation — {len(body.pipeline)} operations")
     spec = validate_and_build_pipeline(
-        source=source.uri,
+        source=source_uri,
         source_type=source.type.value,
         pipeline=[op.model_dump() for op in body.pipeline],
     )
@@ -92,7 +117,7 @@ async def create_job(
             },
         )
     else:
-        download_type = "r2" if source.uri.startswith("uploads/") else "yt-dlp"
+        download_type = "r2" if source_uri.startswith("uploads/") else "yt-dlp"
         spec.insert(
             0,
             {
@@ -113,7 +138,7 @@ async def create_job(
     selection = source.selection.model_dump() if source.selection else None
     job = await job_service.create_job(
         api_key_id=api_key.id,
-        source_uri=source.uri,
+        source_uri=source_uri,
         source_type=source.type.value,
         pipeline_spec=spec,
         outputs=outputs,

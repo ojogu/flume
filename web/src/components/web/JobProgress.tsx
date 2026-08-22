@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle, Circle, Loader2, AlertCircle } from 'lucide-react'
 import { useWebStore } from '@/stores/webStore'
 import { getJob, type JobDetailResponse } from '@/lib/web'
+import { JobFailureCard } from '@/components/web/JobFailureCard'
 import { useElapsedTime } from '@/hooks/useElapsedTime'
 import { cn } from '@/lib/utils'
 
@@ -29,7 +31,6 @@ export function JobProgress() {
   const session = useWebStore((s) => s.session)
   const currentJobId = useWebStore((s) => s.currentJobId)
   const setJobDetail = useWebStore((s) => s.setJobDetail)
-  const setError = useWebStore((s) => s.setError)
 
   const jobQuery = useQuery<JobDetailResponse>({
     queryKey: ['web-job', currentJobId],
@@ -37,7 +38,7 @@ export function JobProgress() {
     enabled: Boolean(session && currentJobId),
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      if (status === 'succeeded' || status === 'failed' || status === 'dead') return false
+      if (status === 'succeeded' || status === 'partial_success' || status === 'failed' || status === 'dead') return false
       return 2000
     },
   })
@@ -48,6 +49,15 @@ export function JobProgress() {
   const elapsed = useElapsedTime(job?.created_at ?? null, job?.completed_at ?? null, isRunning)
   const completedSteps = steps.filter((s) => s.status === 'complete').length
   const progress = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0
+
+  const isFailed = job?.status === 'failed' || job?.status === 'dead'
+  const isSucceeded = job?.status === 'succeeded' || job?.status === 'partial_success'
+
+  useEffect(() => {
+    if (job && isSucceeded) {
+      setJobDetail(job)
+    }
+  }, [job, isSucceeded, setJobDetail])
 
   if (jobQuery.isLoading) {
     return (
@@ -70,14 +80,11 @@ export function JobProgress() {
     )
   }
 
-  if (job.status === 'failed' || job.status === 'dead') {
-    const msg = job.error ?? 'Job failed unexpectedly.'
-    setError(msg)
-    return null
+  if (isFailed) {
+    return <JobFailureCard job={job} />
   }
 
-  if (job.status === 'succeeded') {
-    setJobDetail(job)
+  if (isSucceeded) {
     return null
   }
 

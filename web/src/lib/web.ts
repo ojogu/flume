@@ -140,8 +140,14 @@ export async function uploadFile(
         onProgress(Math.round((e.loaded / e.total) * 100))
       }
     }
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error('Upload failed')))
-    xhr.onerror = () => reject(new Error('Upload failed'))
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve()
+      } else {
+        reject(new Error(`Upload failed (HTTP ${xhr.status})`))
+      }
+    }
+    xhr.onerror = () => reject(new Error('Upload blocked — network error or CORS rejection'))
     xhr.send(file)
   })
 

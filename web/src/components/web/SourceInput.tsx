@@ -40,8 +40,8 @@ export function SourceInput() {
         setSourceUri(uri)
         setUploadedFile({ name: file.name, size: file.size, type: file.type })
         setUploadProgress(null)
-      } catch {
-        setUploadError('Upload failed. Please try again.')
+      } catch (e) {
+        setUploadError(e instanceof Error ? e.message : 'Upload failed. Please try again.')
         setUploadProgress(null)
       }
     },
