@@ -61,8 +61,11 @@ rebuild/backend:
 	docker compose up -d --build backend
 
 rebuild/frontend:
-	docker rmi --force flume-frontend
 	docker compose up -d --build frontend
+
+rebuild/frontend/fresh:
+	docker compose build --no-cache frontend
+	docker compose up -d frontend
 
 rebuild/docs:
 	docker compose up -d --build docs
