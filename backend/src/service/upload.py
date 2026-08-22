@@ -176,6 +176,37 @@ class UploadService:
             logger.error(f"Error attaching upload: upload_id={upload_id}, api_key_id={api_key_id}, error={e}")
             raise DatabaseError()
 
+    async def resolve_for_web_job(self, upload_id: uuid.UUID) -> Upload:
+        """Fetch an upload by ID (unscoped) and make it usable for job creation.
+
+        Used by the JWT web path: uploads may live under an anonymous session
+        key owned by the system user while the job is created under the user's
+        own 'web' key. Rejects PENDING uploads; reattaches UNATTACHED ones.
+        Ownership hardening lands with the security epic.
+        """
+        result = await self.db.execute(select(Upload).where(Upload.id == upload_id))
+        upload = result.scalar_one_or_none()
+        if not upload:
+            raise NotFoundError("Upload not found")
+
+        if upload.status == UploadStatus.PENDING.value:
+            raise BadRequest(
+                "Upload not confirmed yet — complete the upload before creating a job"
+            )
+
+        if upload.status == UploadStatus.UNATTACHED.value:
+            upload.status = UploadStatus.ATTACHED.value
+            try:
+                await self.db.flush()
+                await self.db.commit()
+                logger.info(f"Upload {upload_id} attached via web job")
+            except Exception as e:
+                await self.db.rollback()
+                logger.error(f"Error attaching upload {upload_id}: {e}")
+                raise DatabaseError()
+
+        return upload
+
     async def cleanup_unattached(self, older_than: datetime) -> int:
         """Delete pending + unattached uploads older than the threshold.
 

@@ -1,17 +1,31 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import JSONResponse
 
-from src.core.dependency import get_current_user, get_job_service
+from src.core.dependency import (
+    get_api_key_service,
+    get_current_user,
+    get_event_service,
+    get_job_service,
+    get_upload_service,
+)
+from src.core.exception_base import BadRequest
 from src.internal.schema.jobs import (
     InternalJobDetailResponse,
     InternalJobListResponse,
     InternalJobResponse,
     RetryJobRequest,
 )
+from src.model.event import EventType
 from src.model.user import User
+from src.public.schema.jobs import CreateJobRequest, JobResponse
+from src.service.api import AUTHENTICATED_MONTHLY_LIMIT, ApiKeyService
+from src.service.events import EventService
 from src.service.jobs import JobService
+from src.service.upload import UploadService
+from src.service.validation import validate_and_build_pipeline
 from src.utils.log import get_logger
 from src.utils.response import success
 
@@ -29,6 +43,120 @@ def _enrich_job(job, api_key_name: str | None = None) -> dict:
     data = job.to_dict()
     data["api_key_name"] = api_key_name
     return InternalJobResponse(**data).model_dump()
+
+
+@internal_job_route.post("", status_code=status.HTTP_201_CREATED)
+async def create_job(
+    body: CreateJobRequest,
+    user: User = Depends(get_current_user),
+    job_service: JobService = Depends(get_job_service),
+    upload_service: UploadService = Depends(get_upload_service),
+    event_service: EventService = Depends(get_event_service),
+    api_key_service: ApiKeyService = Depends(get_api_key_service),
+):
+    """Create a job from the Flume Web page for an authenticated user (JWT).
+
+    Jobs attach to the user's dedicated 'web' API key; enforces the
+    authenticated monthly limit (20/month).
+    """
+    web_key = await api_key_service.get_or_create_web_key(user.id)
+
+    count = await api_key_service.count_jobs_this_month(web_key.id)
+    if count >= AUTHENTICATED_MONTHLY_LIMIT:
+        return JSONResponse(
+            content={
+                "status": "error",
+                "message": f"Monthly job limit reached ({AUTHENTICATED_MONTHLY_LIMIT}/month).",
+                "error_code": "monthly_limit_reached",
+            },
+            status_code=429,
+            headers={"Retry-After": "3600"},
+        )
+
+    source = body.source
+    logger.info(
+        f"Web job creation request received — "
+        f"user={user.email}, "
+        f"source={source.uri}, "
+        f"type={source.type.value}, "
+        f"operations={len(body.pipeline)}"
+    )
+
+    # Resolve uploads/ sources. Uploads may live under an anonymous session key
+    # (no JWT upload path exists yet), so resolve by ID unscoped.
+    source_uri = source.uri
+    if source_uri and source_uri.startswith("uploads/"):
+        try:
+            upload_id = uuid.UUID(source_uri.removeprefix("uploads/"))
+        except ValueError:
+            raise BadRequest(f"Unknown upload source: {source_uri!r}") from None
+        upload = await upload_service.resolve_for_web_job(upload_id)
+        source_uri = upload.uri
+
+    # Run validation gates + build spec — same rules as public POST /v1/job.
+    spec = validate_and_build_pipeline(
+        source=source_uri,
+        source_type=source.type.value,
+        pipeline=[op.model_dump() for op in body.pipeline],
+    )
+    if body.pipeline and body.pipeline[0].operation == "join":
+        spec.insert(
+            0,
+            {
+                "operation": "download",
+                "params": {
+                    "clips": body.pipeline[0].params.get("clips", []),
+                },
+            },
+        )
+    else:
+        download_type = "r2" if source_uri.startswith("uploads/") else "yt-dlp"
+        spec.insert(
+            0,
+            {
+                "operation": "download",
+                "params": {
+                    "type": download_type,
+                    "format": source.format.value,
+                },
+            },
+        )
+
+    outputs = [o.model_dump() for o in body.outputs]
+    selection = source.selection.model_dump() if source.selection else None
+    job = await job_service.create_job(
+        api_key_id=web_key.id,
+        source_uri=source_uri,
+        source_type=source.type.value,
+        pipeline_spec=spec,
+        outputs=outputs,
+        selection=selection,
+        origin="web",
+    )
+    logger.info(f"Web job {job.id!s} created — user={user.email}, status={job.status}")
+
+    await event_service.emit(
+        event_type=EventType.JOB_CREATED,
+        resource_id=job.id,
+        data={
+            "job_id": str(job.id),
+            "status": job.status,
+            "source_uri": job.source_uri,
+            "source_type": job.source_type,
+        },
+        api_key_id=web_key.id,
+    )
+
+    from celery_app.orchestrator import process_job
+
+    process_job.apply_async(args=[str(job.id)], task_id=str(job.id))
+    logger.info(f"Web job {job.id!s} dispatched to orchestrator")
+
+    return success(
+        data=JobResponse(**job.to_dict()).model_dump(),
+        message="Job created",
+        status_code=status.HTTP_201_CREATED,
+    )
 
 
 @internal_job_route.get("")

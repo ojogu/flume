@@ -5,7 +5,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.exception_base import DatabaseError, NotFoundError
+from src.core.exception_base import BadRequest, DatabaseError, NotFoundError
 from src.model.api import ApiKey, ApiKeyStatus
 from src.model.job import Job
 from src.model.user import User
@@ -39,6 +39,9 @@ class ApiKeyService:
     async def create_key(
         self, user_id: uuid.UUID, name: str, expires_at: datetime.datetime | None = None
     ) -> tuple[ApiKey, str]:
+        if name.strip().lower() == "web":
+            raise BadRequest("'web' is a reserved key name")
+
         full_key, key_hash, key_prefix = self._generate_key()
 
         api_key = ApiKey(
@@ -63,8 +66,18 @@ class ApiKeyService:
             raise DatabaseError() 
 
     async def get_keys(self, user_id: uuid.UUID) -> list[ApiKey]:
+        """List the user's live, user-created API keys.
+
+        Excludes revoked/deleted keys and the auto-created 'web' key used by
+        authenticated Flume Web submissions.
+        """
         result = await self.db.execute(
-            select(ApiKey).where(ApiKey.user_id == user_id)
+            select(ApiKey).where(
+                ApiKey.user_id == user_id,
+                ApiKey.deleted_at.is_(None),
+                ApiKey.status == ApiKeyStatus.ACTIVE.value,
+                ApiKey.name != "web",
+            )
         )
         return list(result.scalars().all())
 
@@ -215,3 +228,20 @@ class ApiKeyService:
             )
         )
         return result.scalar() or 0
+
+    async def get_or_create_web_key(self, user_id: uuid.UUID) -> ApiKey:
+        """Find or create this user's dedicated web-origin API key.
+
+        Authenticated web users submit jobs via JWT (no X-API-Key header),
+        but jobs are keyed by api_key_id — so each user gets one stable
+        'web' key to own their web-origin jobs.
+        """
+        result = await self.db.execute(
+            select(ApiKey).where(ApiKey.user_id == user_id, ApiKey.name == "web")
+        )
+        api_key = result.scalar_one_or_none()
+        if api_key:
+            return api_key
+
+        api_key, _full_key = await self.create_key(user_id=user_id, name="web")
+        return api_key

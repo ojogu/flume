@@ -147,7 +147,7 @@ export function ApiKeysPage() {
               </TableRow>
             ) : (
               keys.map((key) => (
-                <TableRow key={key.id} className={cn(key.status === 'revoked' && "opacity-50")}>
+                <TableRow key={key.id}>
                   <TableCell className="font-semibold text-[var(--text-primary)]">
                     {key.name}
                   </TableCell>
@@ -164,7 +164,7 @@ export function ApiKeysPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {key.status === 'active' && activeApiKey !== key.id && (
+                      {activeApiKey !== key.id ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -173,23 +173,18 @@ export function ApiKeysPage() {
                         >
                           Activate
                         </Button>
-                      )}
-                      {key.status === 'active' && activeApiKey === key.id && (
+                      ) : (
                         <Badge className="bg-brand/20 text-brand border-none hover:bg-brand/20 text-[10px] uppercase font-bold tracking-wider h-7">Active</Badge>
                       )}
-                      {key.status === 'active' ? (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => setRevokingId(key.id)}
-                          className="text-[var(--text-muted)] hover:text-destructive hover:bg-destructive/10"
-                          title="Revoke key"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <Badge variant="secondary">Revoked</Badge>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setRevokingId(key.id)}
+                        className="text-[var(--text-muted)] hover:text-destructive hover:bg-destructive/10"
+                        title="Revoke key"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
