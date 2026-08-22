@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { Loader2, Clock, ArrowRight, LogIn } from 'lucide-react'
 import { Navbar } from '@/components/common/Navbar'
 import { Footer } from '@/components/common/Footer'
 import { SourceInput } from '@/components/web/SourceInput'
@@ -10,10 +13,132 @@ import { JobSourceCard } from '@/components/web/JobSourceCard'
 import { JobProgress } from '@/components/web/JobProgress'
 import { JobResult } from '@/components/web/JobResult'
 import { useWebStore } from '@/stores/webStore'
-import { submitJob, ApiError } from '@/lib/web'
+import { useAuthStore } from '@/stores/authStore'
+import { submitJob, submitJobAuth, ApiError } from '@/lib/web'
+import { getJobs, type Job } from '@/lib/jobs'
 import { getOperation, validateRequiredParams, getDefaultParams } from '@/lib/presets'
 import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, formatRelativeTime } from '@/lib/utils'
+
+function getThumbnailUrl(meta: Record<string, unknown> | null): string | null {
+  if (!meta || typeof meta !== 'object') return null
+  const source = meta.source as Record<string, unknown> | undefined
+  const platform = source?.platform as string | undefined
+  const videoId = source?.video_id as string | undefined
+  if (platform === 'youtube' && videoId) {
+    return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+  }
+  return null
+}
+
+function getStatusBadge(status: string) {
+  const styles: Record<string, string> = {
+    succeeded: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+    failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    dead: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    processing: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    pending: 'bg-[var(--bg-subtle)] text-[var(--text-muted)]',
+    partial_success: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  }
+  return styles[status] ?? styles.pending
+}
+
+function HistorySection({ isAuthenticated }: { isAuthenticated: boolean }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['web-history'],
+    queryFn: () => getJobs({ origin: 'web', per_page: 10 }),
+    enabled: isAuthenticated,
+  })
+
+  if (!isAuthenticated) {
+    return (
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 text-center space-y-3">
+        <Clock className="h-8 w-8 mx-auto text-[var(--text-muted)] opacity-40" />
+        <p className="text-sm text-[var(--text-secondary)]">Sign in to see your processing history.</p>
+        <Link
+          to="/login?returnTo=/web"
+          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 inline-flex items-center')}
+        >
+          <LogIn className="h-3.5 w-3.5" />
+          Sign in
+        </Link>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <div className="h-4 w-32 animate-pulse rounded bg-[var(--bg-subtle)]" />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-14 animate-pulse rounded-xl bg-[var(--bg-subtle)]" />
+        ))}
+      </div>
+    )
+  }
+
+  const jobs = data?.jobs ?? []
+  if (jobs.length === 0) return null
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-label text-[var(--text-muted)]">Recent activity</h2>
+        <Link
+          to="/dashboard/jobs?origin=web"
+          className="text-xs font-medium text-brand hover:underline flex items-center gap-1"
+        >
+          View all
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className="divide-y divide-[var(--border-subtle)] rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
+        {jobs.map((job: Job) => (
+          <HistoryRow key={job.id} job={job} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function HistoryRow({ job }: { job: Job }) {
+  const [imgError, setImgError] = useState(false)
+  const thumbnailUrl = getThumbnailUrl(job.source_metadata)
+  const meta = job.source_metadata as Record<string, unknown> | null
+  const source = meta?.source as Record<string, unknown> | undefined
+  const title = (source?.title as string) ?? null
+
+  return (
+    <Link
+      to={`/dashboard/jobs/${job.id}`}
+      className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)]/50 transition-colors"
+    >
+      <div className="h-10 w-[72px] shrink-0 overflow-hidden rounded bg-[var(--bg-subtle)]">
+        {thumbnailUrl && !imgError ? (
+          <img
+            src={thumbnailUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="h-full w-full bg-[var(--bg-subtle)]" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+          {title ?? job.source_uri ?? 'Untitled'}
+        </p>
+        <p className="text-xs text-[var(--text-muted)]">
+          {formatRelativeTime(job.created_at)}
+        </p>
+      </div>
+      <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize', getStatusBadge(job.status))}>
+        {job.status.replace('_', ' ')}
+      </span>
+    </Link>
+  )
+}
 
 export function WebPage() {
   const {
@@ -32,6 +157,9 @@ export function WebPage() {
     setJobId,
     decrementJobsRemaining,
   } = useWebStore()
+
+  const { accessToken } = useAuthStore()
+  const isAuthenticated = !!accessToken
 
   const [validationErrors, setValidationErrors] = useState<string[]>([])
 
@@ -62,19 +190,32 @@ export function WebPage() {
     setError(null)
 
     try {
-      const job = await submitJob(session.apiKey, {
+      const sourceType: 'audio' | 'video' = op.inputTypes.includes('audio') && !op.inputTypes.includes('video') ? 'audio' : 'video'
+      const payload = {
         source: {
-          type: op.inputTypes.includes('audio') && !op.inputTypes.includes('video') ? 'audio' : 'video',
+          type: sourceType,
           uri: isJoin ? '' : sourceUri,
         },
         pipeline: isDownload ? [] : [{ operation: selectedPreset, params: { ...getDefaultParams(op), ...presetParams } }],
-      })
+      }
+      const job = isAuthenticated
+        ? await submitJobAuth(payload)
+        : await submitJob(session.apiKey, payload)
       setJobId(job.id)
       decrementJobsRemaining()
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.errorCode === 'daily_limit_reached') {
-          setError('Daily job limit reached (5/day). Try again tomorrow.')
+        if (err.errorCode === 'monthly_limit_reached') {
+          if (!isAuthenticated) {
+            toast.error('Monthly limit reached', {
+              description: 'Sign in to get 20 jobs per month.',
+              action: {
+                label: 'Sign in',
+                onClick: () => { window.location.href = '/login?returnTo=/web' },
+              },
+            })
+          }
+          setError(err.message)
         } else {
           setError(err.message)
         }
@@ -170,6 +311,14 @@ export function WebPage() {
             )}
           </div>
         </section>
+
+        {!currentJobId && !jobDetail && (
+          <section className="pb-16">
+            <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+              <HistorySection isAuthenticated={isAuthenticated} />
+            </div>
+          </section>
+        )}
       </main>
       <Footer />
     </div>

@@ -27,6 +27,7 @@ export interface Job {
   status: JobStatus
   source_uri: string
   source_type: string
+  origin: string
   pipeline_steps: any[]
   outputs: any[]
   selection: any
@@ -51,6 +52,7 @@ export interface JobsResponse {
 
 export interface GetJobsParams {
   status?: string
+  origin?: string
   created_after?: string
   api_key_id?: string
   page?: number

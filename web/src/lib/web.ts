@@ -1,6 +1,10 @@
 import { API_BASE } from '@/lib/config'
+import { apiClient } from '@/lib/api'
 
 const V1_BASE = API_BASE.replace('/internal', '/v1')
+
+export const MONTHLY_LIMIT_ANONYMOUS = 5
+export const MONTHLY_LIMIT_AUTHENTICATED = 20
 
 export interface CreateJobPayload {
   source: {
@@ -23,9 +27,11 @@ export interface JobResponse {
   status: string
   source_uri: string | null
   source_type: string
+  origin: string
   pipeline_steps: unknown[] | null
   error: string | null
   created_at: string | null
+  source_metadata?: Record<string, unknown> | null
 }
 
 export interface JobDetailResponse extends JobResponse {
@@ -85,7 +91,17 @@ export async function submitJob(apiKey: string, payload: CreateJobPayload): Prom
   return v1Fetch<JobResponse>('/job', apiKey, {
     method: 'POST',
     body: JSON.stringify(payload),
+    headers: { 'X-Flume-Origin': 'web' },
   })
+}
+
+export async function submitJobAuth(payload: CreateJobPayload): Promise<JobResponse> {
+  const res = await apiClient<{ status: string; data: JobResponse }>('/jobs', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'X-Flume-Origin': 'web' },
+  })
+  return res.data
 }
 
 export async function getJob(apiKey: string, jobId: string): Promise<JobDetailResponse> {

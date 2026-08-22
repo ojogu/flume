@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { API_BASE } from '@/lib/config'
+import { consumeReturnTo } from '@/lib/returnTo'
 
 export function CallbackPage() {
   const navigate = useNavigate()
@@ -55,7 +56,7 @@ export function CallbackPage() {
       })
       .finally(() => {
         window.history.replaceState({}, '', '/callback')
-        navigate('/dashboard', { replace: true })
+        navigate(consumeReturnTo(), { replace: true })
       })
   }, [navigate, setTokens, setUser])
 

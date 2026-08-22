@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { LoaderCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Wordmark } from '@/components/common/Wordmark'
 import { API_BASE } from '@/lib/config'
+import { saveReturnTo } from '@/lib/returnTo'
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -33,6 +35,9 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export function LoginPage() {
+  const [searchParams] = useSearchParams()
+  const returnTo = searchParams.get('returnTo')
+
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -41,6 +46,7 @@ export function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
 
   const handleGoogleLogin = async () => {
+    saveReturnTo(returnTo)
     setGoogleLoading(true)
     setError(null)
 
@@ -61,6 +67,7 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    saveReturnTo(returnTo)
     setLoading(true)
     setError(null)
     setSent(false)
