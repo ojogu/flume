@@ -5,6 +5,7 @@ import { BotBlockedPage } from '@/pages/BotBlockedPage'
 import { PricingPage } from '@/pages/PricingPage'
 import { PricingBlockedPage } from '@/pages/PricingBlockedPage'
 import { WebPage } from '@/pages/WebPage'
+import { WebHistoryPage } from '@/pages/WebHistoryPage'
 import { CallbackPage } from '@/pages/CallbackPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -25,6 +26,7 @@ import { AdminPlatformsPage } from '@/pages/admin/AdminPlatformsPage'
 import { AdminStatsPage } from '@/pages/admin/AdminStatsPage'
 import { PRICING_BLOCKED } from '@/lib/pricing'
 import { BOT_BLOCKED } from '@/lib/bot'
+
 export const router = createBrowserRouter([
   {
     errorElement: <ErrorPage />,
@@ -36,6 +38,10 @@ export const router = createBrowserRouter([
       {
         path: '/web',
         element: <WebPage />,
+      },
+      {
+        path: '/web/history',
+        element: <WebHistoryPage />,
       },
       {
         path: '/bot',

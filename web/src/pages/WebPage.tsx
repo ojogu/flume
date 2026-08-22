@@ -12,38 +12,17 @@ import { RateLimitBadge } from '@/components/web/RateLimitBadge'
 import { JobSourceCard } from '@/components/web/JobSourceCard'
 import { JobProgress } from '@/components/web/JobProgress'
 import { JobResult } from '@/components/web/JobResult'
+import { HistoryRow } from '@/components/web/HistoryRow'
 import { useWebStore } from '@/stores/webStore'
 import { useAuthStore } from '@/stores/authStore'
 import { submitJob, submitJobAuth, ApiError } from '@/lib/web'
 import { getJobs, type Job } from '@/lib/jobs'
 import { getOperation, validateRequiredParams, getDefaultParams } from '@/lib/presets'
 import { buttonVariants } from '@/components/ui/button'
-import { cn, formatRelativeTime } from '@/lib/utils'
-
-function getThumbnailUrl(meta: Record<string, unknown> | null): string | null {
-  if (!meta || typeof meta !== 'object') return null
-  const source = meta.source as Record<string, unknown> | undefined
-  const platform = source?.platform as string | undefined
-  const videoId = source?.video_id as string | undefined
-  if (platform === 'youtube' && videoId) {
-    return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
-  }
-  return null
-}
-
-function getStatusBadge(status: string) {
-  const styles: Record<string, string> = {
-    succeeded: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-    failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    dead: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    processing: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    pending: 'bg-[var(--bg-subtle)] text-[var(--text-muted)]',
-    partial_success: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  }
-  return styles[status] ?? styles.pending
-}
+import { cn } from '@/lib/utils'
 
 function HistorySection({ isAuthenticated }: { isAuthenticated: boolean }) {
+  const session = useWebStore((s) => s.session)
   const { data, isLoading } = useQuery({
     queryKey: ['web-history'],
     queryFn: () => getJobs({ origin: 'web', per_page: 10 }),
@@ -85,7 +64,7 @@ function HistorySection({ isAuthenticated }: { isAuthenticated: boolean }) {
       <div className="flex items-center justify-between">
         <h2 className="text-label text-[var(--text-muted)]">Recent activity</h2>
         <Link
-          to="/dashboard/jobs?origin=web"
+          to="/web/history"
           className="text-xs font-medium text-brand hover:underline flex items-center gap-1"
         >
           View all
@@ -94,49 +73,10 @@ function HistorySection({ isAuthenticated }: { isAuthenticated: boolean }) {
       </div>
       <div className="divide-y divide-[var(--border-subtle)] rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
         {jobs.map((job: Job) => (
-          <HistoryRow key={job.id} job={job} />
+          <HistoryRow key={job.id} job={job} apiKey={session?.apiKey ?? null} />
         ))}
       </div>
     </div>
-  )
-}
-
-function HistoryRow({ job }: { job: Job }) {
-  const [imgError, setImgError] = useState(false)
-  const thumbnailUrl = getThumbnailUrl(job.source_metadata)
-  const meta = job.source_metadata as Record<string, unknown> | null
-  const source = meta?.source as Record<string, unknown> | undefined
-  const title = (source?.title as string) ?? null
-
-  return (
-    <Link
-      to={`/dashboard/jobs/${job.id}`}
-      className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)]/50 transition-colors"
-    >
-      <div className="h-10 w-[72px] shrink-0 overflow-hidden rounded bg-[var(--bg-subtle)]">
-        {thumbnailUrl && !imgError ? (
-          <img
-            src={thumbnailUrl}
-            alt=""
-            className="h-full w-full object-cover"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="h-full w-full bg-[var(--bg-subtle)]" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-          {title ?? job.source_uri ?? 'Untitled'}
-        </p>
-        <p className="text-xs text-[var(--text-muted)]">
-          {formatRelativeTime(job.created_at)}
-        </p>
-      </div>
-      <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize', getStatusBadge(job.status))}>
-        {job.status.replace('_', ' ')}
-      </span>
-    </Link>
   )
 }
 
@@ -202,7 +142,9 @@ export function WebPage() {
         ? await submitJobAuth(payload)
         : await submitJob(session.apiKey, payload)
       setJobId(job.id)
-      decrementJobsRemaining()
+      if (!isAuthenticated) {
+        decrementJobsRemaining()
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.errorCode === 'monthly_limit_reached') {

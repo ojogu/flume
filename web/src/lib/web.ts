@@ -1,5 +1,6 @@
 import { API_BASE } from '@/lib/config'
 import { apiClient } from '@/lib/api'
+import { useAuthStore } from '@/stores/authStore'
 
 const V1_BASE = API_BASE.replace('/internal', '/v1')
 
@@ -102,6 +103,27 @@ export async function submitJobAuth(payload: CreateJobPayload): Promise<JobRespo
     headers: { 'X-Flume-Origin': 'web' },
   })
   return res.data
+}
+
+// ── Auth-aware fetchers for the web flow ─────────────────────────────────────
+// Authenticated users' jobs live under their personal 'web' API key, invisible
+// to the anonymous session key — so polling and downloads must use the JWT
+// internal endpoints. Anonymous users stay on the public /v1 surface.
+
+export async function getJobForWeb(apiKey: string | null, jobId: string): Promise<JobDetailResponse> {
+  if (useAuthStore.getState().accessToken) {
+    const res = await apiClient<{ status: string; data: JobDetailResponse }>(`/jobs/${jobId}`)
+    return res.data
+  }
+  return getJob(apiKey!, jobId)
+}
+
+export async function getDownloadUrlForWeb(apiKey: string | null, jobId: string): Promise<string> {
+  if (useAuthStore.getState().accessToken) {
+    const res = await apiClient<{ status: string; data: { url: string } }>(`/jobs/${jobId}/download`)
+    return res.data.url
+  }
+  return getDownloadUrl(apiKey!, jobId)
 }
 
 export async function getJob(apiKey: string, jobId: string): Promise<JobDetailResponse> {

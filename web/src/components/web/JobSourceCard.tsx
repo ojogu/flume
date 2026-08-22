@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useWebStore } from '@/stores/webStore'
-import { getJob, type JobDetailResponse } from '@/lib/web'
+import { getJobForWeb, type JobDetailResponse } from '@/lib/web'
 
 function getHostname(uri: string): string | null {
   try {
@@ -27,7 +27,7 @@ export function JobSourceCard() {
 
   const { data: job } = useQuery<JobDetailResponse>({
     queryKey: ['web-job', currentJobId],
-    queryFn: () => getJob(session!.apiKey, currentJobId!),
+    queryFn: () => getJobForWeb(session?.apiKey ?? null, currentJobId!),
     enabled: Boolean(session && currentJobId),
   })
 

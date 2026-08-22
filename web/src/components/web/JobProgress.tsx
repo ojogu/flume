@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle, Circle, Loader2, AlertCircle } from 'lucide-react'
 import { useWebStore } from '@/stores/webStore'
-import { getJob, type JobDetailResponse } from '@/lib/web'
+import { getJobForWeb, type JobDetailResponse } from '@/lib/web'
 import { JobFailureCard } from '@/components/web/JobFailureCard'
 import { useElapsedTime } from '@/hooks/useElapsedTime'
 import { cn } from '@/lib/utils'
@@ -34,7 +34,7 @@ export function JobProgress() {
 
   const jobQuery = useQuery<JobDetailResponse>({
     queryKey: ['web-job', currentJobId],
-    queryFn: () => getJob(session!.apiKey, currentJobId!),
+    queryFn: () => getJobForWeb(session?.apiKey ?? null, currentJobId!),
     enabled: Boolean(session && currentJobId),
     refetchInterval: (query) => {
       const status = query.state.data?.status

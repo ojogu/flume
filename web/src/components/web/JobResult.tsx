@@ -1,7 +1,7 @@
 import { Download, RotateCcw } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { useWebStore } from '@/stores/webStore'
-import { getDownloadUrl } from '@/lib/web'
+import { getDownloadUrlForWeb } from '@/lib/web'
 import { cn } from '@/lib/utils'
 
 function formatDuration(seconds: number): string {
@@ -41,7 +41,7 @@ export function JobResult() {
   const handleDownload = async () => {
     if (!session) return
     try {
-      const url = await getDownloadUrl(session.apiKey, jobDetail.id)
+      const url = await getDownloadUrlForWeb(session.apiKey, jobDetail.id)
       window.open(url, '_blank')
     } catch {
       // fallback: let browser handle the redirect

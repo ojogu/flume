@@ -1,8 +1,12 @@
 import { useWebStore } from '@/stores/webStore'
+import { useAuthStore } from '@/stores/authStore'
 
 export function RateLimitBadge() {
+  const { accessToken } = useAuthStore()
   const session = useWebStore((s) => s.session)
-  if (!session) return null
+  // Authenticated users have a server-side 20/month limit; the badge only
+  // reflects the anonymous session counter.
+  if (!session || accessToken) return null
 
   const remaining = session.jobsRemaining
   const dotColor =
