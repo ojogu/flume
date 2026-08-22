@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { LandingPage } from '@/pages/LandingPage'
 import { BotPage } from '@/pages/BotPage'
 import { BotBlockedPage } from '@/pages/BotBlockedPage'
@@ -24,13 +24,22 @@ import { AdminShell } from '@/pages/admin/AdminShell'
 import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
 import { AdminPlatformsPage } from '@/pages/admin/AdminPlatformsPage'
 import { AdminStatsPage } from '@/pages/admin/AdminStatsPage'
+import { usePageView } from '@/hooks/usePageView'
 import { PRICING_BLOCKED } from '@/lib/pricing'
 import { BOT_BLOCKED } from '@/lib/bot'
+
+function PageViewTracker() {
+  usePageView()
+  return <Outlet />
+}
 
 export const router = createBrowserRouter([
   {
     errorElement: <ErrorPage />,
     children: [
+      {
+        element: <PageViewTracker />,
+        children: [
       {
         path: '/',
         element: <LandingPage />,
@@ -135,6 +144,8 @@ export const router = createBrowserRouter([
       {
         path: '*',
         element: <NotFoundPage />,
+      },
+      ],
       },
     ],
   },
