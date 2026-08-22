@@ -22,6 +22,7 @@ import { SupportPage } from '@/pages/dashboard/SupportPage'
 import { AdminShell } from '@/pages/admin/AdminShell'
 import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
 import { AdminPlatformsPage } from '@/pages/admin/AdminPlatformsPage'
+import { AdminStatsPage } from '@/pages/admin/AdminStatsPage'
 import { PRICING_BLOCKED } from '@/lib/pricing'
 import { BOT_BLOCKED } from '@/lib/bot'
 export const router = createBrowserRouter([
@@ -112,6 +113,10 @@ export const router = createBrowserRouter([
               {
                 path: 'platforms',
                 element: <AdminPlatformsPage />,
+              },
+              {
+                path: 'stats',
+                element: <AdminStatsPage />,
               },
             ],
           },

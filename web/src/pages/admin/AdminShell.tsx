@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Globe, LogOut, Menu, User as UserIcon, ArrowLeft } from 'lucide-react'
+import { Globe, LogOut, Menu, User as UserIcon, ArrowLeft, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Wordmark } from '@/components/common/Wordmark'
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 
 const ADMIN_NAV = [
   { href: '/admin/platforms', label: 'Platforms', icon: Globe },
+  { href: '/admin/stats', label: 'Stats', icon: BarChart3 },
 ]
 
 export function AdminShell() {
