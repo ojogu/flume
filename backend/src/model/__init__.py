@@ -1,5 +1,6 @@
 # Model registry — ensures all models are importable for Alembic autogenerate and dependency injection
 
+from .analytics import PageView
 from .api import ApiKey
 from .base import Base, BaseModel
 from .event import (
@@ -9,7 +10,7 @@ from .event import (
     WebhookDelivery,
     WebhookSubscription,
 )
-from .job import Job, JobStep
+from .job import Job, JobOrigin, JobStep
 from .platform import Platform
 from .upload import Upload
 from .user import MagicLinkToken, Project, User
@@ -22,8 +23,10 @@ __all__ = [
     "DeliveryStatus",
     "EventType",
     "Job",
+    "JobOrigin",
     "JobStep",
     "MagicLinkToken",
+    "PageView",
     "Platform",
     "Project",
     "Upload",

@@ -24,6 +24,13 @@ class JobStatus(str, enum.Enum):
 TERMINAL_JOB_STATUSES = {JobStatus.SUCCEEDED, JobStatus.PARTIAL_SUCCESS, JobStatus.FAILED, JobStatus.DEAD} #once a job reaches any of these, no further processing occurs.
 
 
+class JobOrigin(str, enum.Enum):
+    """Origin of a job — distinguishes web-initiated from API-initiated jobs for history filtering."""
+    WEB = "web"
+    API = "api"
+    BOT = "bot"
+
+
 class SourceType(str, enum.Enum):
     VIDEO = "video"
     AUDIO = "audio"
@@ -74,6 +81,14 @@ class Job(BaseModel):
     # retry tracking — incremented on each user-initiated retry
     retry_count: Mapped[int] = sa.Column(sa.Integer, nullable=False, default=0)
     max_retries: Mapped[int] = sa.Column(sa.Integer, nullable=False, default=3)
+
+    # origin tracking — distinguishes web-initiated from API-initiated jobs
+    origin: Mapped[str] = sa.Column(
+        sa.String(16),
+        nullable=False,
+        default=JobOrigin.API.value,
+        index=True,
+    )
 
     api_key: Mapped["ApiKey"] = relationship("ApiKey", back_populates="jobs")
     job_steps: Mapped[list["JobStep"]] = relationship("JobStep", back_populates="job")
