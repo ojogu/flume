@@ -37,6 +37,7 @@ async def list_jobs(
     job_service: JobService = Depends(get_job_service),
     api_key_id: uuid.UUID | None = Query(None, description="Filter by API key"),
     status_filter: str | None = Query(None, alias="status"),
+    origin: str | None = Query(None, alias="origin"),
     created_after: datetime | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -46,6 +47,7 @@ async def list_jobs(
         user_id=user.id,
         status=status_filter,
         api_key_id=api_key_id,
+        origin=origin,
         created_after=created_after,
         page=page,
         per_page=per_page,
@@ -89,11 +91,13 @@ async def get_job_counts(
     user: User = Depends(get_current_user),
     job_service: JobService = Depends(get_job_service),
     api_key_id: uuid.UUID | None = Query(None, description="Filter by API key"),
+    origin: str | None = Query(None, alias="origin"),
 ):
     """Return job counts grouped by status for the authenticated user."""
     counts = await job_service.get_counts_by_status(
         user_id=user.id,
         api_key_id=api_key_id,
+        origin=origin,
     )
     return success(data=counts)
 

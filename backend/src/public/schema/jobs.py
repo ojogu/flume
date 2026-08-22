@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from src.model.job import JobStatus, SourceType
+from src.model.job import JobOrigin, JobStatus, SourceType
 from src.schema.download import (
     _AUDIO_SAFE_FORMATS,
     _FormatPreference,
@@ -82,6 +82,7 @@ class JobResponse(BaseModel):
     status: JobStatus
     source_uri: str | None = None
     source_type: SourceType
+    origin: str = JobOrigin.API.value
     pipeline_steps: list | None = None
     outputs: list | None = None
     selection: dict | None = None

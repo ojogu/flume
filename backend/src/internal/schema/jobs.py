@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from src.model.job import JobStatus, SourceType
+from src.model.job import JobOrigin, JobStatus, SourceType
 
 
 class RetryJobRequest(BaseModel):
@@ -21,6 +21,7 @@ class InternalJobResponse(BaseModel):
     status: JobStatus
     source_uri: str | None
     source_type: SourceType
+    origin: str = JobOrigin.API.value
     pipeline_steps: list | None = None
     outputs: list | None = None
     selection: dict | None = None

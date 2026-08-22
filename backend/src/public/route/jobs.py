@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from src.core.dependency import (
@@ -42,6 +42,7 @@ job_route = APIRouter(prefix="/job", tags=["jobs"])
 @job_route.post("")
 async def create_job(
     body: CreateJobRequest,
+    request: Request,
     api_key: ApiKey = Depends(get_api_key_from_header),
     job_service: JobService = Depends(get_job_service),
     upload_service: UploadService = Depends(get_upload_service),
@@ -49,6 +50,11 @@ async def create_job(
     api_key_service: ApiKeyService = Depends(get_api_key_service),
 ):
     source = body.source
+
+    # Determine origin: explicit header takes precedence, else derive from key prefix
+    origin = request.headers.get("X-Flume-Origin", "").lower()
+    if origin not in ("web", "api", "bot"):
+        origin = "web" if api_key.key_prefix.startswith(f"{WEB_SESSION_KEY_PREFIX}_") else "api"
 
     # Session key rate limit: 5 jobs/day
     if api_key.key_prefix.startswith(f"{WEB_SESSION_KEY_PREFIX}_"):
@@ -143,6 +149,7 @@ async def create_job(
         pipeline_spec=spec,
         outputs=outputs,
         selection=selection,
+        origin=origin,
     )
 
     logger.info(
@@ -182,6 +189,7 @@ async def list_jobs(
     api_key: ApiKey = Depends(get_api_key_from_header),
     job_service: JobService = Depends(get_job_service),
     status_filter: str | None = Query(None, alias="status"),
+    origin: str | None = Query(None, alias="origin"),
     created_after: datetime | None = Query(None, alias="created_after"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -190,6 +198,7 @@ async def list_jobs(
     jobs, total = await job_service.list_jobs(
         api_key_id=api_key.id,
         status=status_filter,
+        origin=origin,
         created_after=created_after,
         page=page,
         per_page=per_page,

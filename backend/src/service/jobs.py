@@ -7,7 +7,14 @@ from sqlalchemy.orm import selectinload
 
 from src.core.exception_base import BadRequest, DatabaseError, NotFoundError
 from src.model.api import ApiKey
-from src.model.job import TERMINAL_JOB_STATUSES, Job, JobStatus, JobStep, StepStatus
+from src.model.job import (
+    TERMINAL_JOB_STATUSES,
+    Job,
+    JobOrigin,
+    JobStatus,
+    JobStep,
+    StepStatus,
+)
 from src.schema.download import _ExtractedInfo
 from src.service.downloader import build_source_meta
 from src.utils.log import get_logger
@@ -31,6 +38,7 @@ class JobService:
         self,
         api_key_id: uuid.UUID,
         status: str | None = None,
+        origin: str | None = None,
         created_after: datetime | None = None,
         page: int = 1,
         per_page: int = 20,
@@ -43,6 +51,8 @@ class JobService:
 
         if status:
             base = base.where(Job.status == status)
+        if origin:
+            base = base.where(Job.origin == origin)
         if created_after:
             base = base.where(Job.created_at >= created_after)
 
@@ -77,6 +87,7 @@ class JobService:
         user_id: uuid.UUID,
         status: str | None = None,
         api_key_id: uuid.UUID | None = None,
+        origin: str | None = None,
         created_after: datetime | None = None,
         page: int = 1,
         per_page: int = 20,
@@ -94,6 +105,8 @@ class JobService:
 
         if api_key_id:
             base = base.where(Job.api_key_id == api_key_id)
+        if origin:
+            base = base.where(Job.origin == origin)
         if status:
             base = base.where(Job.status == status)
         if created_after:
@@ -115,6 +128,7 @@ class JobService:
         self,
         user_id: uuid.UUID,
         api_key_id: uuid.UUID | None = None,
+        origin: str | None = None,
     ) -> dict:
         """Return job counts grouped by status for all API keys belonging to a user."""
         base = (
@@ -125,6 +139,8 @@ class JobService:
 
         if api_key_id:
             base = base.where(Job.api_key_id == api_key_id)
+        if origin:
+            base = base.where(Job.origin == origin)
 
         result = await self.db.execute(base.group_by(Job.status))
         counts = {row[0]: row[1] for row in result.all()}
@@ -159,6 +175,7 @@ class JobService:
         outputs: list[dict] | None = None,
         parent_job_id: uuid.UUID | None = None,
         selection: dict | None = None,
+        origin: str = JobOrigin.API.value,
     ) -> Job:
         """Create a job in pending state with the validated pipeline spec."""
         job = Job(
@@ -170,6 +187,7 @@ class JobService:
             outputs=outputs,
             parent_job_id=parent_job_id,
             selection=selection,
+            origin=origin,
         )
         self.db.add(job)
         try:
@@ -418,7 +436,7 @@ class JobService:
     ) -> list[Job]:
         """Create one child Job per playlist entry.
 
-        Each child inherits the parent's ``pipeline_steps`` and ``outputs``,
+        Each child inherits the parent's ``pipeline_steps``, ``outputs``, and ``origin``,
         but gets its own ``source_uri`` (the individual video URL from the
         playlist entry), a 1-based ``playlist_entry_index``, and
         pre-populated ``source_metadata`` from the initial extraction.
@@ -436,6 +454,7 @@ class JobService:
                     outputs=outputs,
                     parent_job_id=parent_job.id,
                     playlist_entry_index=entry_index,
+                    origin=parent_job.origin,
                 )
                 self.db.add(child)
                 children.append(child)
