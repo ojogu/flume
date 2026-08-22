@@ -13,6 +13,7 @@ import { JobSourceCard } from '@/components/web/JobSourceCard'
 import { JobProgress } from '@/components/web/JobProgress'
 import { JobResult } from '@/components/web/JobResult'
 import { HistoryRow } from '@/components/web/HistoryRow'
+import { ActiveJobBanner } from '@/components/web/ActiveJobBanner'
 import { useWebStore } from '@/stores/webStore'
 import { useAuthStore } from '@/stores/authStore'
 import { submitJob, submitJobAuth, ApiError } from '@/lib/web'
@@ -84,7 +85,7 @@ export function WebPage() {
   const {
     session,
     initSession,
-    resetUI,
+    resetForm,
     sourceUri,
     selectedPreset,
     presetParams,
@@ -104,9 +105,9 @@ export function WebPage() {
   const [validationErrors, setValidationErrors] = useState<string[]>([])
 
   useEffect(() => {
-    resetUI()
+    resetForm()
     initSession()
-  }, [resetUI, initSession])
+  }, [resetForm, initSession])
 
   const canSubmit = session && sourceUri && selectedPreset && !isSubmitting && !currentJobId && !jobDetail
 
@@ -187,6 +188,7 @@ export function WebPage() {
 
             {!currentJobId && !jobDetail && (
               <>
+                <ActiveJobBanner />
                 <SourceInput />
 
                 <div className="space-y-4">

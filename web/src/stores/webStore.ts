@@ -43,6 +43,7 @@ interface WebState {
   setError: (e: string | null) => void
   decrementJobsRemaining: () => void
   resetUI: () => void
+  resetForm: () => void
   reset: () => void
   resetJob: () => void
 }
@@ -96,6 +97,20 @@ export const useWebStore = create<WebState>()(
 
       resetJob: () => set({ currentJobId: null, jobDetail: null, error: null }),
 
+  // Clears form state but keeps the job context so a reload mid-processing
+  // (or navigating away and back) resumes polling for the same job.
+  resetForm: () =>
+    set({
+      sourceUri: '',
+      uploadedFile: null,
+      mode: 'preset',
+      selectedPreset: null,
+      presetParams: {},
+      pipelineSteps: [],
+      isSubmitting: false,
+      error: null,
+    }),
+
       decrementJobsRemaining: () =>
         set((s) => ({
           session: s.session
@@ -130,6 +145,7 @@ export const useWebStore = create<WebState>()(
         sourceUri: state.sourceUri,
         mode: state.mode,
         selectedPreset: state.selectedPreset,
+        currentJobId: state.currentJobId,
       }),
     },
   ),

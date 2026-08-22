@@ -10,6 +10,18 @@ function formatDuration(seconds: number): string {
   return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let value = bytes / 1024
+  let unit = 0
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit++
+  }
+  return `${value >= 100 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`
+}
+
 function getSourceMetadata(meta: Record<string, unknown> | null) {
   if (!meta || typeof meta !== 'object') return null
   const source = meta.source as Record<string, unknown> | undefined
@@ -25,9 +37,16 @@ export function JobResult() {
   const title = (meta?.source?.title as string) ?? null
 
   const mediaParts: string[] = []
+  // Output file size from the final completed step — falls back to duration only.
+  const finalStep = [...(jobDetail.steps ?? [])]
+    .reverse()
+    .find((s) => s.status === 'complete')
+  const file = finalStep?.output_artifact?.file as { size_bytes?: number } | undefined
+  if (file?.size_bytes && file.size_bytes > 0) {
+    mediaParts.push(formatFileSize(file.size_bytes))
+  }
   if (meta?.media) {
     const m = meta.media
-    if (m.width && m.height) mediaParts.push(`${m.width}×${m.height}`)
     if (m.duration_seconds) mediaParts.push(formatDuration(m.duration_seconds as number))
   }
 

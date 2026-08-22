@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { CheckCircle, Circle, Loader2, AlertCircle } from 'lucide-react'
 import { useWebStore } from '@/stores/webStore'
@@ -48,10 +48,45 @@ export function JobProgress() {
   const isRunning = job?.status === 'pending' || job?.status === 'processing'
   const elapsed = useElapsedTime(job?.created_at ?? null, job?.completed_at ?? null, isRunning)
   const completedSteps = steps.filter((s) => s.status === 'complete').length
-  const progress = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0
 
-  const isFailed = job?.status === 'failed' || job?.status === 'dead'
+  // ── Progress engine ────────────────────────────────────────────────────────
+  // Backend emits step statuses only (no %, no ETA). Displayed % = real
+  // step-completion floor + asymptotic time creep toward a 90% ceiling.
+  // Snap to 100% on terminal success.
   const isSucceeded = job?.status === 'succeeded' || job?.status === 'partial_success'
+  const isFailed = job?.status === 'failed' || job?.status === 'dead'
+
+  const [displayPct, setDisplayPct] = useState(5)
+  const realPct = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0
+
+  // Reset the creep when step rows are replaced (retry deletes + recreates them)
+  const stepIdsKey = steps.map((s) => s.id).join(',')
+  const prevStepIdsRef = useRef(stepIdsKey)
+  useEffect(() => {
+    if (prevStepIdsRef.current !== stepIdsKey) {
+      prevStepIdsRef.current = stepIdsKey
+      setDisplayPct(5)
+    }
+  }, [stepIdsKey])
+
+  useEffect(() => {
+    if (isSucceeded) {
+      setDisplayPct(100)
+      return
+    }
+    if (isFailed) return // freeze in place; failure card takes over
+    const timer = setInterval(() => {
+      setDisplayPct((prev) => {
+        if (realPct >= prev) {
+          return Math.min(realPct < 90 ? Math.max(realPct, prev + (90 - prev) * 0.02) : realPct, 90)
+        }
+        return Math.min(90, prev + (90 - prev) * 0.02)
+      })
+    }, 400)
+    return () => clearInterval(timer)
+  }, [isSucceeded, isFailed, realPct])
+
+  const progress = displayPct
 
   useEffect(() => {
     if (job && isSucceeded) {
@@ -100,9 +135,9 @@ export function JobProgress() {
         </span>
       </div>
 
-      <div className="w-full bg-[var(--bg-subtle)] rounded-full h-2">
+      <div className="w-full bg-[var(--bg-subtle)] rounded-full h-2 overflow-hidden">
         <div
-          className="bg-brand h-2 rounded-full transition-all duration-500"
+          className="progress-fill h-full rounded-full bg-brand"
           style={{ width: `${progress}%` }}
         />
       </div>

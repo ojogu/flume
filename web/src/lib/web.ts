@@ -44,6 +44,7 @@ export interface JobDetailResponse extends JobResponse {
     error: string | null
     started_at: string | null
     completed_at: string | null
+    output_artifact?: Record<string, unknown> | null
   }>
   source_metadata: Record<string, unknown> | null
   completed_at: string | null
