@@ -39,6 +39,8 @@ agent.md
 test.md
 deploy.sh
 migrate.sh
+learn.md
+summary.md
 
 # Dev-only scripts
 backend/dev_drop_db.py

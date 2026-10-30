@@ -8,13 +8,13 @@
 
 Flume presents as a clean, minimal, developer-facing SaaS product. The visual language is intentionally restrained — generous whitespace, a single green brand accent, and expressive typography used sparingly as a contrast against workhorse UI text.
 
-| Principle | Expression |
-|---|---|
-| Minimal | No decorative elements. Every visual element earns its space. |
-| Developer-native | Monospace labels, tight grids, code-like precision in spacing |
+| Principle           | Expression                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| Minimal             | No decorative elements. Every visual element earns its space.                                |
+| Developer-native    | Monospace labels, tight grids, code-like precision in spacing                                |
 | Expressive headings | Instrument Serif italic headings contrast with DM Sans body — this pairing is non-negotiable |
-| One accent | Brand green (`#1D9E75`) is the only color accent. Never introduce a second accent color. |
-| Dark mode first | All tokens are defined for both light and dark. Never hardcode a light-only color. |
+| One accent          | Brand green (`#1D9E75`) is the only color accent. Never introduce a second accent color.     |
+| Dark mode first     | All tokens are defined for both light and dark. Never hardcode a light-only color.           |
 
 ---
 
@@ -27,35 +27,35 @@ All CSS variables must be defined in `tokens.css` for both `:root` (light) and `
 
 ### 2.1 Brand Colors
 
-| Token | CSS Variable | Tailwind Utility | Value (light + dark) | Usage |
-|---|---|---|---|---|
-| Brand | `--brand` | `text-brand` `bg-brand` | `#1D9E75` | CTAs, eyebrow labels, icon tints, active states |
-| Brand Mid | `--brand-mid` | `text-brand-mid` | `#9FE1CB` | Step connectors, focus rings, dashed borders |
-| Brand Hover | `--brand-hover` | `text-brand-hover` | `#085041` | Button hover/pressed background |
-| Brand Light | `--brand-light` | `bg-(--brand-light)` | `rgba(29, 158, 117, 0.10)` | Icon container fills, card accent backgrounds, gradient base |
+| Token       | CSS Variable    | Tailwind Utility        | Value (light + dark)       | Usage                                                        |
+| ----------- | --------------- | ----------------------- | -------------------------- | ------------------------------------------------------------ |
+| Brand       | `--brand`       | `text-brand` `bg-brand` | `#1D9E75`                  | CTAs, eyebrow labels, icon tints, active states              |
+| Brand Mid   | `--brand-mid`   | `text-brand-mid`        | `#9FE1CB`                  | Step connectors, focus rings, dashed borders                 |
+| Brand Hover | `--brand-hover` | `text-brand-hover`      | `#085041`                  | Button hover/pressed background                              |
+| Brand Light | `--brand-light` | `bg-(--brand-light)`    | `rgba(29, 158, 117, 0.10)` | Icon container fills, card accent backgrounds, gradient base |
 
 ### 2.2 Surface Colors
 
-| Token | CSS Variable | Tailwind Utility | Light | Dark | Usage |
-|---|---|---|---|---|---|
-| Page background | `--background` | `bg-background` | `#F8F9FA` | `#0C0C0E` | Base page background |
-| Card | `--card` | `bg-card` / `bg-(--bg-card)` | `#FFFFFF` | `#131318` | Card / surface backgrounds |
-| Subtle | `--bg-subtle` | `bg-(--bg-subtle)` | `#F1F3F4` | `#1A1A22` | Alternate section backgrounds, input fills |
+| Token           | CSS Variable   | Tailwind Utility             | Light     | Dark      | Usage                                      |
+| --------------- | -------------- | ---------------------------- | --------- | --------- | ------------------------------------------ |
+| Page background | `--background` | `bg-background`              | `#F8F9FA` | `#0C0C0E` | Base page background                       |
+| Card            | `--card`       | `bg-card` / `bg-(--bg-card)` | `#FFFFFF` | `#131318` | Card / surface backgrounds                 |
+| Subtle          | `--bg-subtle`  | `bg-(--bg-subtle)`           | `#F1F3F4` | `#1A1A22` | Alternate section backgrounds, input fills |
 
 ### 2.3 Text Colors
 
-| Token | CSS Variable | Tailwind Utility | Light | Dark | Usage |
-|---|---|---|---|---|---|
-| Primary text | `--foreground` | `text-foreground` / `text-(--text-primary)` | `#1A1A22` | `#F0F0F4` | All headings and primary body text |
-| Secondary text | `--muted-foreground` | `text-muted-foreground` / `text-(--text-secondary)` | `#5A5A72` | `#9090A8` | Descriptions, card body, nav links |
-| Muted text | `--text-muted` | `text-(--text-muted)` | `#9090A8` | `#5A5A72` | Timestamps, footer fine print, placeholders |
+| Token          | CSS Variable         | Tailwind Utility                                    | Light     | Dark      | Usage                                       |
+| -------------- | -------------------- | --------------------------------------------------- | --------- | --------- | ------------------------------------------- |
+| Primary text   | `--foreground`       | `text-foreground` / `text-(--text-primary)`         | `#1A1A22` | `#F0F0F4` | All headings and primary body text          |
+| Secondary text | `--muted-foreground` | `text-muted-foreground` / `text-(--text-secondary)` | `#5A5A72` | `#9090A8` | Descriptions, card body, nav links          |
+| Muted text     | `--text-muted`       | `text-(--text-muted)`                               | `#9090A8` | `#5A5A72` | Timestamps, footer fine print, placeholders |
 
 ### 2.4 Border Colors
 
-| Token | CSS Variable | Light | Dark | Usage |
-|---|---|---|---|---|
-| Subtle border | `--border` | `rgba(0,0,0,0.07)` | `rgba(255,255,255,0.07)` | Default card / section borders |
-| Strong border | `--border-strong` | `rgba(0,0,0,0.14)` | `rgba(255,255,255,0.14)` | Hover state border on cards |
+| Token         | CSS Variable      | Light              | Dark                     | Usage                          |
+| ------------- | ----------------- | ------------------ | ------------------------ | ------------------------------ |
+| Subtle border | `--border`        | `rgba(0,0,0,0.07)` | `rgba(255,255,255,0.07)` | Default card / section borders |
+| Strong border | `--border-strong` | `rgba(0,0,0,0.14)` | `rgba(255,255,255,0.14)` | Hover state border on cards    |
 
 Use: `border-border` or `border-(--border-subtle)` for default, `border-(--border-strong)` on hover. Use `border-brand/20` only for brand feedback and `border-destructive/20` only for destructive feedback.
 
@@ -79,13 +79,13 @@ These are required by shadcn components. Never rename or remove them. Both `:roo
 ### 2.6 Border Radius Scale
 
 ```css
---radius-sm:  calc(var(--radius) * 0.6)   /* ~5px  */
---radius-md:  calc(var(--radius) * 0.8)   /* ~6px  */
---radius-lg:  var(--radius)               /* 8px   */
---radius-xl:  calc(var(--radius) * 1.4)   /* ~11px */
---radius-2xl: calc(var(--radius) * 1.8)   /* ~14px */
---radius-3xl: calc(var(--radius) * 2.2)   /* ~18px */
---radius-4xl: calc(var(--radius) * 2.6)   /* ~21px */
+--radius-sm: calc(var(--radius) * 0.6) /* ~5px  */
+    --radius-md: calc(var(--radius) * 0.8) /* ~6px  */
+    --radius-lg: var(--radius) /* 8px   */
+    --radius-xl: calc(var(--radius) * 1.4) /* ~11px */
+    --radius-2xl: calc(var(--radius) * 1.8) /* ~14px */
+    --radius-3xl: calc(var(--radius) * 2.2) /* ~18px */
+    --radius-4xl: calc(var(--radius) * 2.6) /* ~21px */;
 ```
 
 In Tailwind: `rounded-xl` = `--radius-xl`. For cards use `rounded-xl`. For icon containers use `rounded-lg` (compact) or `rounded-xl` (large surface cards).
@@ -95,6 +95,7 @@ In Tailwind: `rounded-xl` = `--radius-xl`. For cards use `rounded-xl`. For icon 
 ## 3 — Typography
 
 **Font stack:**
+
 - **UI / body:** `DM Sans` — loaded via `@fontsource/dm-sans` (weights 400, 500, 600, 700)
 - **Display / headings:** `Instrument Serif` italic — loaded via `@fontsource/instrument-serif` (400-italic only)
 
@@ -102,10 +103,10 @@ These are set in `@theme inline` as `--font-sans` and `--font-serif`.
 
 ### 3.1 Utility Classes
 
-| Class | CSS Definition | Usage |
-|---|---|---|
+| Class           | CSS Definition                                                                                                    | Usage                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | `.text-display` | `font-family: Instrument Serif; font-style: italic; font-weight: 400; line-height: 1.05; letter-spacing: -0.02em` | **All** section headings and hero H1s |
-| `.text-label` | `font-size: 11px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase` | Section eyebrow labels |
+| `.text-label`   | `font-size: 11px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase`                            | Section eyebrow labels                |
 
 Both are defined as plain classes (not `@utility`) in `index.css`. Do not add pseudo-selectors or variants to them.
 
@@ -141,6 +142,7 @@ Eyebrow:        .text-label    text-brand  mb-3
 ```
 
 For centered prose blocks within a section (hero text, CTA copy):
+
 ```jsx
 <div className="mx-auto max-w-3xl text-center">   {/* hero, large CTA */}
 <div className="mx-auto max-w-2xl text-center">   {/* small CTA, confirmation blocks */}
@@ -158,13 +160,13 @@ mb-14                     →  spacing below the section header block (eyebrow +
 
 ### 4.3 Grid Columns
 
-| Content | Grid |
-|---|---|
-| Feature cards (4 items) | `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5` |
-| Capability cards (6 items) | `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5` |
-| Two surfaces / Platforms | `grid-cols-1 md:grid-cols-2 gap-5` |
-| Pricing tiers | `grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto` |
-| Footer | `grid-cols-2 sm:grid-cols-4 gap-8` |
+| Content                    | Grid                                                 |
+| -------------------------- | ---------------------------------------------------- |
+| Feature cards (4 items)    | `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5`    |
+| Capability cards (6 items) | `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5`    |
+| Two surfaces / Platforms   | `grid-cols-1 md:grid-cols-2 gap-5`                   |
+| Pricing tiers              | `grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto` |
+| Footer                     | `grid-cols-2 sm:grid-cols-4 gap-8`                   |
 
 ### 4.4 Section Background Alternation
 
@@ -189,29 +191,31 @@ Sections alternate between the two surface backgrounds. The pattern for each pag
 Every public marketing section follows this exact structure. Dashboard and admin pages use the application-page anatomy in §16 instead.
 
 ```jsx
-<section id="section-id" className="py-20 sm:py-24 [optional: bg-[var(--bg-subtle)]]">
-  <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+<section
+    id="section-id"
+    className="py-20 sm:py-24 [optional: bg-[var(--bg-subtle)]]"
+>
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* ── Section header ─────────────────────────────────────── */}
+        <div className="text-center mb-14">
+            <p className="text-label text-brand mb-3">Eyebrow label</p>
+            <h2 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)]">
+                Section headline goes here
+            </h2>
+            {/* Optional subtext — only when the heading needs elaboration */}
+            <p className="mt-4 text-lg text-[var(--text-secondary)]">
+                Supporting sentence.
+            </p>
+        </div>
+        {/* ────────────────────────────────────────────────────────── */}
 
-    {/* ── Section header ─────────────────────────────────────── */}
-    <div className="text-center mb-14">
-      <p className="text-label text-brand mb-3">Eyebrow label</p>
-      <h2 className="text-display text-3xl sm:text-4xl text-[var(--text-primary)]">
-        Section headline goes here
-      </h2>
-      {/* Optional subtext — only when the heading needs elaboration */}
-      <p className="mt-4 text-lg text-[var(--text-secondary)]">
-        Supporting sentence.
-      </p>
+        {/* Section content: grid, steps, cards, etc. */}
     </div>
-    {/* ────────────────────────────────────────────────────────── */}
-
-    {/* Section content: grid, steps, cards, etc. */}
-
-  </div>
 </section>
 ```
 
 **Rules:**
+
 - Marketing sections use an eyebrow label unless the section is an explicitly documented hero or utility section.
 - Never use `text-display` for the eyebrow — only `.text-label`.
 - `mb-14` on the standard marketing header block is fixed. Do not change it to `mb-12` or `mb-16` without documenting the exception.
@@ -246,33 +250,46 @@ import { cn } from '@/lib/utils'
 
 #### Variant usage
 
-| Variant | When to use |
-|---|---|
-| `default` | Primary CTA — filled brand green. Use once per section at most. |
-| `outline` | Secondary CTA — paired with a `default` button. |
-| `ghost` | Icon-only utility buttons (theme toggle, mobile menu trigger). |
-| `secondary` | Lower-priority actions with no strong visual weight. |
+| Variant     | When to use                                                     |
+| ----------- | --------------------------------------------------------------- |
+| `default`   | Primary CTA — filled brand green. Use once per section at most. |
+| `outline`   | Secondary CTA — paired with a `default` button.                 |
+| `ghost`     | Icon-only utility buttons (theme toggle, mobile menu trigger).  |
+| `secondary` | Lower-priority actions with no strong visual weight.            |
 
 #### Size usage
 
-| Size | When to use |
-|---|---|
-| `lg` | Hero and CTA section CTAs |
+| Size      | When to use                                   |
+| --------- | --------------------------------------------- |
+| `lg`      | Hero and CTA section CTAs                     |
 | `default` | Section-level CTAs, mobile sticky bar buttons |
-| `sm` | Card-level CTAs (`self-start`) |
-| `icon` | Square icon-only buttons (`h-10 w-10`) |
+| `sm`      | Card-level CTAs (`self-start`)                |
+| `icon`    | Square icon-only buttons (`h-10 w-10`)        |
 
 #### CTA pairing pattern
 
 Every CTA block has a **primary** + **secondary** pair:
+
 ```jsx
 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-  <a href="..." className={cn(buttonVariants({ variant: 'default', size: 'lg' }), 'px-6 gap-2')}>
-    Primary Action <Icon className="h-4 w-4" />
-  </a>
-  <a href="..." className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'px-6 gap-2')}>
-    <Icon className="h-4 w-4" /> Secondary Action
-  </a>
+    <a
+        href="..."
+        className={cn(
+            buttonVariants({ variant: "default", size: "lg" }),
+            "px-6 gap-2",
+        )}
+    >
+        Primary Action <Icon className="h-4 w-4" />
+    </a>
+    <a
+        href="..."
+        className={cn(
+            buttonVariants({ variant: "outline", size: "lg" }),
+            "px-6 gap-2",
+        )}
+    >
+        <Icon className="h-4 w-4" /> Secondary Action
+    </a>
 </div>
 ```
 
@@ -307,6 +324,7 @@ Standard card pattern used across feature grids, capability grids, and surface c
 ```
 
 **Rules:**
+
 - `hover:shadow-sm` + `hover:border-[var(--border-strong)]` on every interactive card. Never omit.
 - `transition-all duration-200` on every card.
 - Icon container color is always `bg-[var(--brand-light)]`, icon is always `text-brand`.
@@ -316,29 +334,35 @@ Standard card pattern used across feature grids, capability grids, and surface c
 Used in both the landing and bot `HowItWorks` sections. The step circle and dashed connector between steps are a visual signature.
 
 ```tsx
-import React from 'react'
+import React from "react";
 
 <div className="flex flex-col md:flex-row items-start gap-8 md:gap-0">
-  {steps.map((step, index) => (
-    <React.Fragment key={step.number}>
-      {/* Step */}
-      <div className="flex-1 flex flex-col items-center text-center px-4 md:px-6">
-        <div className="h-12 w-12 rounded-full bg-[var(--brand-light)] border-2 border-[var(--brand-mid)] flex items-center justify-center mb-5 shrink-0">
-          <span className="text-sm font-bold text-brand">{step.number}</span>
-        </div>
-        <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">{step.title}</h3>
-        <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-[220px]">{step.description}</p>
-      </div>
+    {steps.map((step, index) => (
+        <React.Fragment key={step.number}>
+            {/* Step */}
+            <div className="flex-1 flex flex-col items-center text-center px-4 md:px-6">
+                <div className="h-12 w-12 rounded-full bg-[var(--brand-light)] border-2 border-[var(--brand-mid)] flex items-center justify-center mb-5 shrink-0">
+                    <span className="text-sm font-bold text-brand">
+                        {step.number}
+                    </span>
+                </div>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">
+                    {step.title}
+                </h3>
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-[220px]">
+                    {step.description}
+                </p>
+            </div>
 
-      {/* Dashed connector — desktop only, between steps */}
-      {index < steps.length - 1 && (
-        <div className="hidden md:block shrink-0 w-12 lg:w-16 pt-6">
-          <div className="border-t-2 border-dashed border-[var(--brand-mid)] w-full" />
-        </div>
-      )}
-    </React.Fragment>
-  ))}
-</div>
+            {/* Dashed connector — desktop only, between steps */}
+            {index < steps.length - 1 && (
+                <div className="hidden md:block shrink-0 w-12 lg:w-16 pt-6">
+                    <div className="border-t-2 border-dashed border-[var(--brand-mid)] w-full" />
+                </div>
+            )}
+        </React.Fragment>
+    ))}
+</div>;
 ```
 
 Step numbers are zero-padded strings: `'01'`, `'02'`, `'03'`.
@@ -348,29 +372,35 @@ Step numbers are zero-padded strings: `'01'`, `'02'`, `'03'`.
 The highlighted (recommended) tier uses a visual ring and scale treatment. Only one tier can be `highlighted: true`.
 
 ```tsx
-<div className={cn(
-  'relative rounded-xl bg-[var(--bg-card)] p-8 flex flex-col border transition-all duration-200',
-  tier.highlighted
-    ? 'border-[var(--brand)] ring-1 ring-[var(--brand)] shadow-lg scale-[1.02]'
-    : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-sm'
-)}>
-  {/* Recommended badge — positioned above the card */}
-  {tier.highlighted && (
-    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-      <Badge variant="default" className="px-3 py-0.5 text-xs font-semibold">
-        Recommended
-      </Badge>
-    </div>
-  )}
-  {/* ... pricing card content ... */}
+<div
+    className={cn(
+        "relative rounded-xl bg-[var(--bg-card)] p-8 flex flex-col border transition-all duration-200",
+        tier.highlighted
+            ? "border-[var(--brand)] ring-1 ring-[var(--brand)] shadow-lg scale-[1.02]"
+            : "border-[var(--border-subtle)] hover:border-[var(--border-strong)] hover:shadow-sm",
+    )}
+>
+    {/* Recommended badge — positioned above the card */}
+    {tier.highlighted && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+            <Badge
+                variant="default"
+                className="px-3 py-0.5 text-xs font-semibold"
+            >
+                Recommended
+            </Badge>
+        </div>
+    )}
+    {/* ... pricing card content ... */}
 </div>
 ```
 
 Feature list items always use a `Check` icon:
+
 ```tsx
 <li className="flex items-start gap-2.5">
-  <Check className="h-4 w-4 text-brand mt-0.5 shrink-0" />
-  <span className="text-sm text-[var(--text-secondary)]">{feature}</span>
+    <Check className="h-4 w-4 text-brand mt-0.5 shrink-0" />
+    <span className="text-sm text-[var(--text-secondary)]">{feature}</span>
 </li>
 ```
 
@@ -378,9 +408,9 @@ Feature list items always use a `Check` icon:
 
 From `@/components/ui/badge`.
 
-| Variant | Usage |
-|---|---|
-| `default` | "Recommended" on the highlighted pricing tier |
+| Variant     | Usage                                               |
+| ----------- | --------------------------------------------------- |
+| `default`   | "Recommended" on the highlighted pricing tier       |
 | `secondary` | "Coming soon" state labels (e.g. WhatsApp platform) |
 
 ### 6.6 Navbar
@@ -397,16 +427,16 @@ Mobile sheet: uses shadcn `Sheet` (backed by `@base-ui/react/dialog`). The `Shee
 
 ```tsx
 <SheetTrigger
-  render={
-    <Button
-      variant="ghost"
-      size="icon"
-      className="md:hidden"
-      aria-label="Open navigation menu"
-    />
-  }
+    render={
+        <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label="Open navigation menu"
+        />
+    }
 >
-  <Menu className="h-5 w-5" />
+    <Menu className="h-5 w-5" />
 </SheetTrigger>
 ```
 
@@ -465,31 +495,31 @@ DemoPlaceholderSection          ← section wrapper; holds loopKey state
 
 #### Animation sequence
 
-| ms | Step | Technique |
-|---|---|---|
-| 0 | Frame fades + scales in | `opacity: 0→1, scale: 0.95→1` |
-| 400 | Header slides down | `y: -24→0, opacity: 0→1` |
-| 900 | Bot welcome bubble | slide in from left |
-| 1900 | User video file bubble | slide in from right |
-| 2900 | User text bubble | slide in from right |
-| 3900 | Typing indicator (`● ● ●`) | 3 dots, staggered scale+opacity loop |
-| 5000 | Typing exits → bot reply slides in | `AnimatePresence mode="wait"` |
-| 5550 | Bot file attachment | `opacity: 0→1, y: 4→0` |
-| 7500 | Loop resets | `loopKey` increments, component remounts |
+| ms   | Step                               | Technique                                |
+| ---- | ---------------------------------- | ---------------------------------------- |
+| 0    | Frame fades + scales in            | `opacity: 0→1, scale: 0.95→1`            |
+| 400  | Header slides down                 | `y: -24→0, opacity: 0→1`                 |
+| 900  | Bot welcome bubble                 | slide in from left                       |
+| 1900 | User video file bubble             | slide in from right                      |
+| 2900 | User text bubble                   | slide in from right                      |
+| 3900 | Typing indicator (`● ● ●`)         | 3 dots, staggered scale+opacity loop     |
+| 5000 | Typing exits → bot reply slides in | `AnimatePresence mode="wait"`            |
+| 5550 | Bot file attachment                | `opacity: 0→1, y: 4→0`                   |
+| 7500 | Loop resets                        | `loopKey` increments, component remounts |
 
 #### Telegram color palette
 
 These colors are **component-scoped** inline values. They must **not** be added to `tokens.css` — they represent Telegram's brand, not Flume's design system.
 
-| Element | Light | Dark (`dark:`) |
-|---|---|---|
-| Header bg | `#229ED9` | `#229ED9` (unchanged) |
-| Chat bg | `#EFEBE6` | `#1C1C1E` |
-| Bot bubble bg | `#FFFFFF` | `#2C2C2E` |
-| User bubble bg | `#EFFDDE` | `#2B5278` |
-| Input bar bg | `#F0F0F0` | `#2C2C2E` |
-| Input field bg | `#FFFFFF` | `#3A3A3C` |
-| Icon / dot color | `#ABABAB` | `#ABABAB` |
+| Element          | Light     | Dark (`dark:`)        |
+| ---------------- | --------- | --------------------- |
+| Header bg        | `#229ED9` | `#229ED9` (unchanged) |
+| Chat bg          | `#EFEBE6` | `#1C1C1E`             |
+| Bot bubble bg    | `#FFFFFF` | `#2C2C2E`             |
+| User bubble bg   | `#EFFDDE` | `#2B5278`             |
+| Input bar bg     | `#F0F0F0` | `#2C2C2E`             |
+| Input field bg   | `#FFFFFF` | `#3A3A3C`             |
+| Icon / dot color | `#ABABAB` | `#ABABAB`             |
 
 Dark mode is applied via Tailwind `dark:` variants (e.g. `dark:bg-[#1C1C1E]`), which works because of the `@custom-variant dark (&:is(.dark *))` defined in `index.css`.
 
@@ -508,28 +538,28 @@ The Wordmark is the primary Flume brand identity element — an inline SVG combi
 
 #### Props
 
-| Prop | Type | Default | Description |
-|---|---|---|---|
-| `variant` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Color palette to render. `'auto'` reads `resolvedTheme` from `useTheme` internally. |
-| `className` | `string` | — | Additional Tailwind classes. Default size is `h-8 w-auto`. |
+| Prop        | Type                          | Default  | Description                                                                         |
+| ----------- | ----------------------------- | -------- | ----------------------------------------------------------------------------------- |
+| `variant`   | `'light' \| 'dark' \| 'auto'` | `'auto'` | Color palette to render. `'auto'` reads `resolvedTheme` from `useTheme` internally. |
+| `className` | `string`                      | —        | Additional Tailwind classes. Default size is `h-8 w-auto`.                          |
 
 #### Color logic
 
-| Variant | Text color (`currentColor`) |
-|---|---|
-| `'dark'` | `var(--brand-mid)` — lighter green, readable on dark surfaces |
+| Variant   | Text color (`currentColor`)                                   |
+| --------- | ------------------------------------------------------------- |
+| `'dark'`  | `var(--brand-mid)` — lighter green, readable on dark surfaces |
 | `'light'` | `var(--brand-hover)` — deep green, readable on light surfaces |
-| `'auto'` | Resolves to the above based on `resolvedTheme` |
+| `'auto'`  | Resolves to the above based on `resolvedTheme`                |
 
 #### Mark anatomy
 
 Three diagonal parallelogram stripes stacked vertically (viewBox `0 0 124 32`):
 
-| Stripe | Fill | Visual role |
-|---|---|---|
-| Top | `var(--brand-light)` | Lightest — creates depth gradient |
-| Middle | `var(--brand-mid)` | Mid tone |
-| Bottom | `var(--brand)` | Darkest — anchors the mark |
+| Stripe | Fill                 | Visual role                       |
+| ------ | -------------------- | --------------------------------- |
+| Top    | `var(--brand-light)` | Lightest — creates depth gradient |
+| Middle | `var(--brand-mid)`   | Mid tone                          |
+| Bottom | `var(--brand)`       | Darkest — anchors the mark        |
 
 The logotype `"flume"` is rendered as an SVG `<text>` element: Instrument Serif, italic, weight 400, `fontSize=22`, `letterSpacing=-0.44`, `fill="currentColor"`.
 
@@ -549,6 +579,7 @@ import { Wordmark } from '@/components/common/Wordmark'
 ```
 
 **Rules:**
+
 - Always import from `@/components/common/Wordmark` — never inline the SVG in a new file.
 - Do not pass `variant={resolvedTheme}` unless the parent has already called `useTheme` for another purpose. `'auto'` is the correct default for all common cases.
 - Do not resize using `width`/`height` HTML attributes — use the `className` prop with a Tailwind `h-*` utility.
@@ -559,12 +590,12 @@ import { Wordmark } from '@/components/common/Wordmark'
 
 Defined in `web/src/index.css`. Follow Tailwind v4 rules — custom utilities go in `@layer components` or `@utility`.
 
-| Class | Layer | Definition | Usage |
-|---|---|---|---|
-| `.gradient-hero` | `@layer components` | `radial-gradient(circle at 50% 0%, var(--brand-light) 0%, transparent 60%)` | Hero sections |
-| `.gradient-cta` | `@layer components` | `radial-gradient(circle at 50% 100%, var(--brand-light) 0%, transparent 60%)` | CTA sections |
-| `.text-display` | (plain class) | Instrument Serif, italic, 400, lh 1.05, ls -0.02em | All headings |
-| `.text-label` | (plain class) | 11px, 500, ls 0.07em, uppercase | Eyebrow labels |
+| Class            | Layer               | Definition                                                                    | Usage          |
+| ---------------- | ------------------- | ----------------------------------------------------------------------------- | -------------- |
+| `.gradient-hero` | `@layer components` | `radial-gradient(circle at 50% 0%, var(--brand-light) 0%, transparent 60%)`   | Hero sections  |
+| `.gradient-cta`  | `@layer components` | `radial-gradient(circle at 50% 100%, var(--brand-light) 0%, transparent 60%)` | CTA sections   |
+| `.text-display`  | (plain class)       | Instrument Serif, italic, 400, lh 1.05, ls -0.02em                            | All headings   |
+| `.text-label`    | (plain class)       | 11px, 500, ls 0.07em, uppercase                                               | Eyebrow labels |
 
 ### Tailwind v4 rules to follow
 
@@ -582,13 +613,13 @@ Defined in `web/src/index.css`. Follow Tailwind v4 rules — custom utilities go
 
 ### Sizing convention
 
-| Context | Size |
-|---|---|
-| Inside buttons | `h-4 w-4` |
-| Compact icon container (`h-10 w-10`) | `h-5 w-5` |
-| Large icon container (`h-12 w-12`) | `h-6 w-6` |
-| Mobile menu icon | `h-5 w-5` |
-| Card CTA arrow | `h-3.5 w-3.5` |
+| Context                              | Size          |
+| ------------------------------------ | ------------- |
+| Inside buttons                       | `h-4 w-4`     |
+| Compact icon container (`h-10 w-10`) | `h-5 w-5`     |
+| Large icon container (`h-12 w-12`)   | `h-6 w-6`     |
+| Mobile menu icon                     | `h-5 w-5`     |
+| Card CTA arrow                       | `h-3.5 w-3.5` |
 
 ### Color convention
 
@@ -604,22 +635,37 @@ Telegram and WhatsApp use **inline SVG components** defined locally in each bot 
 ```tsx
 // Telegram — #229ED9 brand color
 function TelegramIcon({ className }: { className?: string }) {
-  return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-    <path d="M11.944 0A12 12 0 ..." />
-  </svg>
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className={className}
+            aria-hidden="true"
+        >
+            <path d="M11.944 0A12 12 0 ..." />
+        </svg>
+    );
 }
 
 // WhatsApp — #25D366 brand color
 function WhatsAppIcon({ className }: { className?: string }) {
-  return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-    <path d="M17.472 14.382c..." />
-  </svg>
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className={className}
+            aria-hidden="true"
+        >
+            <path d="M17.472 14.382c..." />
+        </svg>
+    );
 }
 ```
 
 These are defined in: `BotHeroSection.tsx`, `PlatformsSection.tsx`, `CTASection.tsx` (bot).
 
 **Platform accent colors (do not change):**
+
 - Telegram: `#229ED9` (icon color, top accent bar, icon container: `bg-[#229ED9]/10`)
 - WhatsApp: `#25D366` (icon color, top accent bar, icon container: `bg-[#25D366]/10`)
 
@@ -632,6 +678,7 @@ These are defined in: `BotHeroSection.tsx`, `PlatformsSection.tsx`, `CTASection.
 **Custom variant:** `@custom-variant dark (&:is(.dark *))` defined in `index.css`. This means dark mode styles are applied when any ancestor has the `.dark` class.
 
 **Rules:**
+
 - Every CSS variable in `tokens.css` under `:root` must have a counterpart in `.dark`.
 - Never use hardcoded Flume palette colors in product components. Always use a CSS variable that has a dark mode value.
 - Documented external brand surfaces, such as Telegram and WhatsApp in §8, are the only component-scoped color exceptions.
@@ -642,13 +689,13 @@ These are defined in: `BotHeroSection.tsx`, `PlatformsSection.tsx`, `CTASection.
 
 ## 10 — Accessibility
 
-| Rule | Implementation |
-|---|---|
-| All icon-only buttons must have `aria-label` | `<Button ... aria-label="Switch to dark mode">` |
-| No nested `<button>` elements | Use `render` prop on base-ui primitives (e.g. `SheetTrigger`) instead of wrapping a `Button` |
-| Mobile nav closes on link click | All mobile Sheet nav links call `setMobileOpen(false)` in `onClick` |
-| Disabled platform links | Use `aria-disabled="true"` + `tabIndex={-1}` + `pointer-events-none` (not the HTML `disabled` attr on `<a>`) |
-| Focus rings | Configured globally via `outline-ring/50` in `@layer base` — do not override this |
+| Rule                                         | Implementation                                                                                               |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| All icon-only buttons must have `aria-label` | `<Button ... aria-label="Switch to dark mode">`                                                              |
+| No nested `<button>` elements                | Use `render` prop on base-ui primitives (e.g. `SheetTrigger`) instead of wrapping a `Button`                 |
+| Mobile nav closes on link click              | All mobile Sheet nav links call `setMobileOpen(false)` in `onClick`                                          |
+| Disabled platform links                      | Use `aria-disabled="true"` + `tabIndex={-1}` + `pointer-events-none` (not the HTML `disabled` attr on `<a>`) |
+| Focus rings                                  | Configured globally via `outline-ring/50` in `@layer base` — do not override this                            |
 
 ---
 
@@ -709,15 +756,15 @@ Rules:
 
 ## 12 — Placeholders & Future Work
 
-| File | Status | Note |
-|---|---|---|
-| `DemoPlaceholderSection.tsx` | ✅ Done | Telegram-simulated animated chat demo. See §6.8 for full documentation. |
-| `PricingHero.tsx` | ⚠️ Placeholder data | Tier names, prices, and features are not final. See `// [PLACEHOLDER]` comment. |
-| `ComparisonTable.tsx` | ⚠️ Placeholder data | Feature rows and tier limits are not final. See `// [PLACEHOLDER]` comment. |
-| `PricingFAQ.tsx` | ⚠️ Placeholder data | FAQ copy reflects current policy assumptions. See `// [PLACEHOLDER]` comment. |
-| `Footer.tsx` (WhatsApp link) | ⚠️ Dummy link | `https://wa.me/000000000` is a placeholder. Replace with real number before launch. |
-| `BotHeroSection.tsx` (WhatsApp) | ⚠️ Dummy link | Same. |
-| `PlatformsSection.tsx` (WhatsApp) | ⚠️ Coming soon | WhatsApp card is deliberately disabled (`opacity-75`, `pointer-events-none`). Enable when ready. |
+| File                              | Status              | Note                                                                                             |
+| --------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------ |
+| `DemoPlaceholderSection.tsx`      | ✅ Done             | Telegram-simulated animated chat demo. See §6.8 for full documentation.                          |
+| `PricingHero.tsx`                 | ⚠️ Placeholder data | Tier names, prices, and features are not final. See `// [PLACEHOLDER]` comment.                  |
+| `ComparisonTable.tsx`             | ⚠️ Placeholder data | Feature rows and tier limits are not final. See `// [PLACEHOLDER]` comment.                      |
+| `PricingFAQ.tsx`                  | ⚠️ Placeholder data | FAQ copy reflects current policy assumptions. See `// [PLACEHOLDER]` comment.                    |
+| `Footer.tsx` (WhatsApp link)      | ⚠️ Dummy link       | `https://wa.me/000000000` is a placeholder. Replace with real number before launch.              |
+| `BotHeroSection.tsx` (WhatsApp)   | ⚠️ Dummy link       | Same.                                                                                            |
+| `PlatformsSection.tsx` (WhatsApp) | ⚠️ Coming soon      | WhatsApp card is deliberately disabled (`opacity-75`, `pointer-events-none`). Enable when ready. |
 
 ---
 
@@ -779,9 +826,9 @@ Hero section for the pricing page. Combines a gradient hero header, a billing pe
 
 #### Props
 
-| Prop | Type | Description |
-|---|---|---|
-| `billingPeriod` | `'monthly' \| 'annual'` | Controls which price is shown in each tier card |
+| Prop                    | Type                                 | Description                                            |
+| ----------------------- | ------------------------------------ | ------------------------------------------------------ |
+| `billingPeriod`         | `'monthly' \| 'annual'`              | Controls which price is shown in each tier card        |
 | `onBillingPeriodChange` | `(p: 'monthly' \| 'annual') => void` | Lifted state setter — called by billing toggle buttons |
 
 #### Layout
@@ -795,15 +842,15 @@ Hero section for the pricing page. Combines a gradient hero header, a billing pe
 
 ```ts
 interface Tier {
-  name: string
-  monthly: { price: string; suffix: string }
-  annual:  { price: string; suffix: string }
-  annualSub: string | null          // shown below price when billingPeriod === 'annual'
-  description: string
-  features: string[]
-  cta: string
-  href: string
-  highlighted: boolean              // only one tier may be true — triggers ring + scale treatment
+    name: string;
+    monthly: { price: string; suffix: string };
+    annual: { price: string; suffix: string };
+    annualSub: string | null; // shown below price when billingPeriod === 'annual'
+    description: string;
+    features: string[];
+    cta: string;
+    href: string;
+    highlighted: boolean; // only one tier may be true — triggers ring + scale treatment
 }
 ```
 
@@ -821,25 +868,25 @@ A full-width feature comparison table across Free, Pro, and Enterprise tiers. Vi
 
 #### Props
 
-| Prop | Type | Description |
-|---|---|---|
+| Prop            | Type                    | Description                                    |
+| --------------- | ----------------------- | ---------------------------------------------- |
 | `billingPeriod` | `'monthly' \| 'annual'` | Drives the price row shown in the table header |
 
 #### Data shapes
 
 ```ts
-type CellValue = boolean | string
+type CellValue = boolean | string;
 
 interface FeatureRow {
-  label: string
-  free: CellValue
-  pro: CellValue
-  enterprise: CellValue
+    label: string;
+    free: CellValue;
+    pro: CellValue;
+    enterprise: CellValue;
 }
 
 interface FeatureGroup {
-  category: string   // rendered as a full-width category header row
-  rows: FeatureRow[]
+    category: string; // rendered as a full-width category header row
+    rows: FeatureRow[];
 }
 ```
 
@@ -868,6 +915,7 @@ None. The FAQ copy is hardcoded in the component.
 #### Accordion notes
 
 The `Accordion` in `web/src/components/ui/accordion.tsx` wraps `@base-ui/react/accordion`, **not** Radix UI. Base UI's accordion:
+
 - Is always collapsible — do **not** pass a `collapsible` prop (it does not exist on the type and will cause TS2322).
 - Uses `data-open` / `data-closed` attributes instead of Radix's `data-state`.
 
@@ -881,17 +929,17 @@ Each `AccordionItem` uses: `rounded-xl border border-(--border-subtle) bg-(--bg-
 
 This document defines the product language and implementation rules. Keep the following ownership boundaries intact:
 
-| Concern | Source of truth | Rule |
-|---|---|---|
-| Product visual language | `docs/design/design-system.md` | Document decisions and exceptions here before spreading them across pages. |
-| CSS variable values | `web/src/lib/tokens.css` | Every custom token must have a light value in `:root` and a dark value in `.dark`. |
-| Tailwind exposure and utilities | `web/src/index.css` | Expose tokens in `@theme inline`; put resets in `@layer base` and reusable classes in `@layer components` or `@utility`. |
-| Component primitive configuration | `web/components.json` | Current configuration is `base-nova`, Base UI, Tailwind v4, Lucide, CSS variables, and `@/*` aliases. |
-| Shared behavior primitives | `web/src/components/ui/` | Extend or compose existing primitives before creating a new local primitive. |
-| Page composition | `web/src/pages/` and `web/src/components/` | Pages own data orchestration; shared components own reusable visual/interaction behavior. |
-| API and query functions | `web/src/lib/` | Keep HTTP calls and response types out of presentational components. |
-| Global client state | `web/src/stores/` | Use Zustand only for cross-route state such as auth and the active API key. |
-| Server state | TanStack Query | Use query keys, mutations, invalidation, loading, error, and empty states consistently. |
+| Concern                           | Source of truth                            | Rule                                                                                                                     |
+| --------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Product visual language           | `docs/design/design-system.md`             | Document decisions and exceptions here before spreading them across pages.                                               |
+| CSS variable values               | `web/src/lib/tokens.css`                   | Every custom token must have a light value in `:root` and a dark value in `.dark`.                                       |
+| Tailwind exposure and utilities   | `web/src/index.css`                        | Expose tokens in `@theme inline`; put resets in `@layer base` and reusable classes in `@layer components` or `@utility`. |
+| Component primitive configuration | `web/components.json`                      | Current configuration is `base-nova`, Base UI, Tailwind v4, Lucide, CSS variables, and `@/*` aliases.                    |
+| Shared behavior primitives        | `web/src/components/ui/`                   | Extend or compose existing primitives before creating a new local primitive.                                             |
+| Page composition                  | `web/src/pages/` and `web/src/components/` | Pages own data orchestration; shared components own reusable visual/interaction behavior.                                |
+| API and query functions           | `web/src/lib/`                             | Keep HTTP calls and response types out of presentational components.                                                     |
+| Global client state               | `web/src/stores/`                          | Use Zustand only for cross-route state such as auth and the active API key.                                              |
+| Server state                      | TanStack Query                             | Use query keys, mutations, invalidation, loading, error, and empty states consistently.                                  |
 
 ### 15.1 Compatibility baseline
 
@@ -957,11 +1005,15 @@ Use a compact, left-aligned header. A typical page header is:
 
 ```tsx
 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-  <div>
-    <h1 className="text-display text-3xl text-(--text-primary)">Page title</h1>
-    <p className="mt-1 text-sm leading-relaxed text-(--text-secondary)">Specific supporting description.</p>
-  </div>
-  <Button>Primary action</Button>
+    <div>
+        <h1 className="text-display text-3xl text-(--text-primary)">
+            Page title
+        </h1>
+        <p className="mt-1 text-sm leading-relaxed text-(--text-secondary)">
+            Specific supporting description.
+        </p>
+    </div>
+    <Button>Primary action</Button>
 </div>
 ```
 
@@ -1004,14 +1056,14 @@ mutation → pending → success toast + query invalidation
 
 ### 17.2 Required states
 
-| State | Visual treatment | Required behavior |
-|---|---|---|
-| Loading | Skeletons matching the final anatomy, not generic page-sized blocks | Keep layout stable and avoid content jumps. |
-| Empty | One semantic Lucide icon in a brand-light container, short explanation, next action | Explain whether there is no data or no scope selected. |
-| Error | Destructive/semantic callout with concise reason and retry | Do not expose raw stack traces or leave a dead end. |
-| Populated | Use the appropriate table, list, timeline, or operational card pattern | Support truncation, wrapping, and long real-world values. |
-| Mutating | Disable only the affected action and show an inline spinner or progress label | Keep unrelated page controls usable. |
-| Success | Sonner toast plus updated local/query state | Use outcome-oriented copy such as `Endpoint added`. |
+| State     | Visual treatment                                                                    | Required behavior                                         |
+| --------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Loading   | Skeletons matching the final anatomy, not generic page-sized blocks                 | Keep layout stable and avoid content jumps.               |
+| Empty     | One semantic Lucide icon in a brand-light container, short explanation, next action | Explain whether there is no data or no scope selected.    |
+| Error     | Destructive/semantic callout with concise reason and retry                          | Do not expose raw stack traces or leave a dead end.       |
+| Populated | Use the appropriate table, list, timeline, or operational card pattern              | Support truncation, wrapping, and long real-world values. |
+| Mutating  | Disable only the affected action and show an inline spinner or progress label       | Keep unrelated page controls usable.                      |
+| Success   | Sonner toast plus updated local/query state                                         | Use outcome-oriented copy such as `Endpoint added`.       |
 
 ### 17.3 Status semantics
 
@@ -1034,10 +1086,10 @@ Use the shared `Table` primitives for comparable records such as jobs, API keys,
 
 ```tsx
 <div className="overflow-hidden rounded-xl border border-(--border-subtle) bg-(--bg-card)">
-  <Table>
-    <TableHeader>...</TableHeader>
-    <TableBody>...</TableBody>
-  </Table>
+    <Table>
+        <TableHeader>...</TableHeader>
+        <TableBody>...</TableBody>
+    </Table>
 </div>
 ```
 
@@ -1093,17 +1145,21 @@ Do not use placeholder text as the only label. Do not use a raw HTML checkbox, s
 
 ```tsx
 <Dialog open={open} onOpenChange={setOpen}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle className="text-display text-2xl">Outcome-oriented title</DialogTitle>
-      <DialogDescription>What the form changes and any important constraint.</DialogDescription>
-    </DialogHeader>
-    <div className="space-y-6 py-2">Form fields</div>
-    <DialogFooter>
-      <Button variant="outline">Cancel</Button>
-      <Button>Save changes</Button>
-    </DialogFooter>
-  </DialogContent>
+    <DialogContent>
+        <DialogHeader>
+            <DialogTitle className="text-display text-2xl">
+                Outcome-oriented title
+            </DialogTitle>
+            <DialogDescription>
+                What the form changes and any important constraint.
+            </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-6 py-2">Form fields</div>
+        <DialogFooter>
+            <Button variant="outline">Cancel</Button>
+            <Button>Save changes</Button>
+        </DialogFooter>
+    </DialogContent>
 </Dialog>
 ```
 
