@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { API_BASE } from '@/lib/config'
+import { useWebStore } from '@/stores/webStore'
 
 export interface User {
   id: string
@@ -54,6 +55,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
     set({ accessToken: null, refreshToken: null, user: null })
+    // Drop any in-flight web job so a logged-out user falls back to the idle
+    // form (URL/upload + operation) instead of polling a job they can no
+    // longer see (anonymous key can't resolve an authenticated job → 404 loop).
+    useWebStore.getState().resetJob()
   },
 
   hydrate: async () => {

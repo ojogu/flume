@@ -96,7 +96,7 @@ async def create_job(
     # upload ID (web flow sends uploads/{uuid}). Fail fast on unknown/unconfirmed
     # uploads instead of letting the worker crash with a 404 later.
     source_uri = source.uri
-    if source_uri.startswith("uploads/"):
+    if source_uri and source_uri.startswith("uploads/"):
         upload = await upload_service.find_by_uri(source_uri, api_key.id)
         if not upload:
             try:

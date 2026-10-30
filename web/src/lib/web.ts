@@ -1,6 +1,7 @@
 import { API_BASE } from '@/lib/config'
 import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
+import { useWebStore } from '@/stores/webStore'
 
 const V1_BASE = API_BASE.replace('/internal', '/v1')
 
@@ -10,7 +11,7 @@ export const MONTHLY_LIMIT_AUTHENTICATED = 20
 export interface CreateJobPayload {
   source: {
     type: 'video' | 'audio'
-    uri: string
+    uri: string | null
     format?: string
   }
   pipeline: Array<{
@@ -116,7 +117,18 @@ export async function getJobForWeb(apiKey: string | null, jobId: string): Promis
     const res = await apiClient<{ status: string; data: JobDetailResponse }>(`/jobs/${jobId}`)
     return res.data
   }
-  return getJob(apiKey!, jobId)
+  try {
+    return await getJob(apiKey!, jobId)
+  } catch (e) {
+    // The job lives under a (possibly just logged-out) user's personal web key,
+    // invisible to the anonymous session key — so a 404/403 here means we can
+    // never resolve it. Clear the job context and let the UI fall back to the
+    // home form instead of polling forever.
+    if (e instanceof ApiError && (e.statusCode === 404 || e.statusCode === 403)) {
+      useWebStore.getState().resetJob()
+    }
+    throw e
+  }
 }
 
 export async function getDownloadUrlForWeb(apiKey: string | null, jobId: string): Promise<string> {

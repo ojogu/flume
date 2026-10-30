@@ -37,7 +37,8 @@ export function JobResult() {
   const title = (meta?.source?.title as string) ?? null
 
   const mediaParts: string[] = []
-  // Output file size from the final completed step — falls back to duration only.
+  // Size and duration both describe the output — taken from the final completed step,
+  // so trim/cut results show the new length. Duration falls back to the source's.
   const finalStep = [...(jobDetail.steps ?? [])]
     .reverse()
     .find((s) => s.status === 'complete')
@@ -45,10 +46,9 @@ export function JobResult() {
   if (file?.size_bytes && file.size_bytes > 0) {
     mediaParts.push(formatFileSize(file.size_bytes))
   }
-  if (meta?.media) {
-    const m = meta.media
-    if (m.duration_seconds) mediaParts.push(formatDuration(m.duration_seconds as number))
-  }
+  const outputMedia = finalStep?.output_artifact?.media as { duration_seconds?: number } | undefined
+  const duration = outputMedia?.duration_seconds ?? (meta?.media?.duration_seconds as number | undefined)
+  if (duration) mediaParts.push(formatDuration(duration))
 
   const handleProcessAnother = () => {
     resetJob()

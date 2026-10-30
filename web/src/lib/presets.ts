@@ -272,8 +272,12 @@ export function validateRequiredParams(
     if (val === undefined || val === null || val === '') {
       errors.push(`${key} is required`)
     }
-    if (field.type === 'array' && Array.isArray(val) && val.length === 0) {
-      errors.push(`${key} must have at least one item`)
+    if (field.type === 'array') {
+      if (Array.isArray(val) && val.length === 0) {
+        errors.push(`${key} must have at least one item`)
+      } else if (key === 'clips' && Array.isArray(val) && val.length < 2) {
+        errors.push(`${key} must have at least two items`)
+      }
     }
   }
   return errors

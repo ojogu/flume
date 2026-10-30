@@ -13,6 +13,7 @@ import { JobSourceCard } from '@/components/web/JobSourceCard'
 import { JobProgress } from '@/components/web/JobProgress'
 import { JobResult } from '@/components/web/JobResult'
 import { HistoryRow } from '@/components/web/HistoryRow'
+import { LoginBenefit } from '@/components/web/LoginBenefit'
 import { ActiveJobBanner } from '@/components/web/ActiveJobBanner'
 import { useWebStore } from '@/stores/webStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -109,7 +110,13 @@ export function WebPage() {
     initSession()
   }, [resetForm, initSession])
 
-  const canSubmit = session && sourceUri && selectedPreset && !isSubmitting && !currentJobId && !jobDetail
+  const isJoin = selectedPreset === 'join'
+  const clips = (presetParams.clips as unknown[]) ?? []
+  const clipsReady =
+    Array.isArray(clips) && clips.filter((c) => typeof c === 'string' && c.trim().length > 0).length >= 2
+  const sourceReady = isJoin ? clipsReady : Boolean(sourceUri)
+
+  const canSubmit = session && selectedPreset && sourceReady && !isSubmitting && !currentJobId && !jobDetail
 
   const handleSubmit = async () => {
     if (!session || !selectedPreset) return
@@ -124,7 +131,6 @@ export function WebPage() {
     }
     setValidationErrors([])
 
-    const isJoin = selectedPreset === 'join'
     const isDownload = selectedPreset === 'download'
 
     setSubmitting(true)
@@ -135,7 +141,7 @@ export function WebPage() {
       const payload = {
         source: {
           type: sourceType,
-          uri: isJoin ? '' : sourceUri,
+          uri: isJoin ? null : sourceUri,
         },
         pipeline: isDownload ? [] : [{ operation: selectedPreset, params: { ...getDefaultParams(op), ...presetParams } }],
       }
@@ -189,6 +195,7 @@ export function WebPage() {
             {!currentJobId && !jobDetail && (
               <>
                 <ActiveJobBanner />
+                {!isAuthenticated && <LoginBenefit />}
                 <SourceInput />
 
                 <div className="space-y-4">
