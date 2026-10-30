@@ -5,6 +5,9 @@ networks:
     driver: bridge
   app:
     driver: bridge
+  pgbouncer-net:
+    external: true
+    name: pgbouncer-net
 
 volumes:
   grafana_data:
@@ -52,6 +55,8 @@ services:
 
   backend:
     build:
+      args:
+        CACHEBUST: ${CACHEBUST:-1}
       context: ./backend
       dockerfile: Dockerfile
     ports:
@@ -80,6 +85,7 @@ services:
     networks:
       - observability
       - app
+      - pgbouncer-net
 
   worker:
     build:
@@ -112,6 +118,7 @@ services:
       - workspaces:/var/lib/flume/workspaces
     networks:
       - observability
+      - pgbouncer-net
 
   beat:
     build:
@@ -132,6 +139,7 @@ services:
       - queue
     networks:
       - observability
+      - pgbouncer-net
     volumes:
       - workspaces:/var/lib/flume/workspaces
 
@@ -154,6 +162,7 @@ services:
       - queue
     networks:
       - observability
+      - pgbouncer-net
 
   # ── PO Token provider for yt-dlp (YouTube bot-guard attestation) ──
   pot-provider:

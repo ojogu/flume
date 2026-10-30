@@ -7,6 +7,7 @@ WORKDIR /app
 # yt-dlp kept unpinned (-U) for fresh YouTube extractors on dep rebuilds;
 # it must stay ABOVE `COPY . .` so source edits never touch this layer.
 COPY pyproject.toml uv.lock ./
+ARG CACHEBUST=1
 RUN uv export --format requirements-txt --no-hashes -o requirements.txt \
  && uv pip install --system -r requirements.txt \
  && uv pip install --system --break-system-packages -U yt-dlp \
