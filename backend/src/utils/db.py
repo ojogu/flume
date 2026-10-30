@@ -5,6 +5,7 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -23,7 +24,10 @@ logger = get_logger(__name__)
 engine = create_async_engine(
     url=config.database_url,
     poolclass=NullPool,
-    future=True, 
+    future=True,
+    connect_args={
+        "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}",
+    },
 )
 
 

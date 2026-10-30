@@ -312,6 +312,17 @@ def register_error_handlers(app: FastAPI):
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ):
+        def _safe(val):
+            # FastAPI embeds the raw exception (e.g. ValueError) in each error's
+            # ctx — json.dumps can't serialize it, so stringify anything risky.
+            if isinstance(val, Exception):
+                return str(val)
+            if isinstance(val, dict):
+                return {k: _safe(v) for k, v in val.items()}
+            if isinstance(val, (list, tuple)):
+                return [_safe(v) for v in val]
+            return val
+
         error_details = []
         for error in exc.errors():
             field = " -> ".join(str(loc) for loc in error["loc"])
@@ -322,12 +333,22 @@ def register_error_handlers(app: FastAPI):
         request_id = request.headers.get("X-Request-ID", "unknown")
         exception_logger.error(f"Validation error: request_id={request_id}, path={request.url.path}, errors={error_message}")
 
+        data = [
+            {
+                "loc": e.get("loc"),
+                "msg": e.get("msg"),
+                "type": e.get("type"),
+                "ctx": _safe(e.get("ctx")),
+            }
+            for e in exc.errors()
+        ]
+
         return JSONResponse(
             content={
                 "status": "error",
                 "message": error_message,
                 "error_code": "validation_error",
-                "data": exc.errors(),
+                "data": data,
             },
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
