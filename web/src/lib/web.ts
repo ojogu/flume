@@ -144,6 +144,26 @@ export async function getJobForWeb(apiKey: string | null, jobId: string): Promis
   }
 }
 
+/**
+ * Cancel a running job. Logged-in users go through the JWT endpoint; anonymous
+ * users cancel with their session key on the public API.
+ */
+export async function cancelJobForWeb(apiKey: string | null, jobId: string): Promise<JobDetailResponse> {
+  if (useAuthStore.getState().accessToken) {
+    try {
+      const res = await apiClient<{ status: string; data: JobDetailResponse }>(`/jobs/${jobId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'cancel' }),
+      })
+      return res.data
+    } catch (e) {
+      if (e instanceof ApiClientError) throw new ApiError(e.message, e.statusCode, e.errorCode)
+      throw e
+    }
+  }
+  return v1Fetch<JobDetailResponse>(`/job/${jobId}/cancel`, apiKey!, { method: 'POST' })
+}
+
 export async function getDownloadUrlForWeb(apiKey: string | null, jobId: string): Promise<string> {
   if (useAuthStore.getState().accessToken) {
     const res = await apiClient<{ status: string; data: { url: string } }>(`/jobs/${jobId}/download`)

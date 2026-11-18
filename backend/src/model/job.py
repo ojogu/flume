@@ -19,9 +19,10 @@ class JobStatus(str, enum.Enum):
     PARTIAL_SUCCESS = "partial_success" #Some entries in a playlist failed but at least one succeeded
     FAILED = "failed" #Job could not complete (download error, FFmpeg failure, size limit exceeded, etc.)
     DEAD = "dead" #Job exceeded max retries — no further processing will occur
+    CANCELLED = "cancelled" #User cancelled the job before it finished — workers stop at the next check and discard output
 
 
-TERMINAL_JOB_STATUSES = {JobStatus.SUCCEEDED, JobStatus.PARTIAL_SUCCESS, JobStatus.FAILED, JobStatus.DEAD} #once a job reaches any of these, no further processing occurs.
+TERMINAL_JOB_STATUSES = {JobStatus.SUCCEEDED, JobStatus.PARTIAL_SUCCESS, JobStatus.FAILED, JobStatus.DEAD, JobStatus.CANCELLED} #once a job reaches any of these, no further processing occurs.
 
 
 class JobOrigin(str, enum.Enum):
@@ -41,6 +42,7 @@ class StepStatus(str, enum.Enum):
     RUNNING = "running"
     COMPLETE = "complete"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class Job(BaseModel):

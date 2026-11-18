@@ -245,6 +245,31 @@ curl -L -o output.mp4 \
   -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
 ```
 
+## POST /v1/job/{`job_id`}/cancel
+
+Cancels a `pending` or `processing` job. If the job is a playlist, its
+unfinished videos are cancelled with it. Running downloads are stopped, so
+cancelling a long playlist stops using bandwidth. A cancelled job does not
+count toward your monthly limit.
+
+Cancelling a job that has already finished is not an error — the job is
+returned unchanged, so a late request just shows its final status.
+
+**Requires auth:** `X-API-Key` header.
+
+**Status:** `200 OK`
+
+The response is a `JobDetailResponse` (see above) with `status` set to
+`cancelled`. A `job.cancelled` webhook event is sent for each cancelled job.
+
+```bash
+curl -X POST \
+  https://api.flume.ojogulabs.xyz/v1/job/550e8400-e29b-41d4-a716-446655440000/cancel \
+  -H "X-API-Key: flm_C40kpjzbjB8OPChdFWimkRbrsV6..."
+```
+
+**Errors:** `404` if the job doesn't exist or belongs to another API key.
+
 ## Job statuses
 
 | Status | Meaning |
@@ -255,3 +280,4 @@ curl -L -o output.mp4 \
 | `partial_success` | Some steps succeeded, some failed |
 | `failed` | A step failed before completion |
 | `dead` | Job could not be processed (e.g. exceeded retry limit) |
+| `cancelled` | Cancelled before it finished (see `POST /v1/job/{job_id}/cancel`) |

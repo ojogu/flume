@@ -221,6 +221,7 @@ class ApiKeyService:
         """Count jobs created by this API key in the current calendar month.
 
         Playlist children are not counted — a playlist uses one slot, the parent.
+        Cancelled jobs are not counted either, so cancelling a mistaken submit is free.
         """
         now = datetime.datetime.now(datetime.timezone.utc)
         cutoff = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -229,6 +230,7 @@ class ApiKeyService:
                 Job.api_key_id == api_key_id,
                 Job.created_at >= cutoff,
                 Job.parent_job_id.is_(None),
+                Job.status != "cancelled",
             )
         )
         return result.scalar() or 0

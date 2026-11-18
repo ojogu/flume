@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -285,24 +285,75 @@ class JobService:
         """Transition a job to a new status.
 
         Sets ``completed_at`` automatically when the target is a terminal state.
+        A cancelled job is never moved to another status here: a worker finishing
+        (or failing) after the user cancelled must not overwrite ``cancelled``.
         """
         job = await self.get_job(job_id)
         if not job:
             logger.warning(f"Job {job_id} not found")
             raise NotFoundError("Job not found")
 
-        job.status = status.value
-
+        values: dict = {"status": status.value}
         if status in TERMINAL_JOB_STATUSES:
-            job.completed_at = datetime.now(timezone.utc)
-
+            values["completed_at"] = datetime.now(timezone.utc)
         if error:
-            job.error = error
+            values["error"] = error
             logger.error(f"Job {job_id} failed: {error}")
 
-        await self.db.flush()
+        # Single guarded UPDATE — atomic against a cancel committing at the same moment.
+        stmt = update(Job).where(Job.id == job_id)
+        if status != JobStatus.CANCELLED:
+            stmt = stmt.where(Job.status != JobStatus.CANCELLED.value)
+        result = await self.db.execute(
+            stmt.values(**values).execution_options(synchronize_session="fetch")
+        )
         await self.db.commit()
+
+        if result.rowcount == 0:
+            logger.info(f"Job {job_id} is cancelled — ignoring status → {status.value}")
+            return
         logger.info(f"Job {job_id} status → {status.value}")
+
+    async def get_status(self, job_id: uuid.UUID) -> str | None:
+        """Current status straight from the database.
+
+        Queries the column rather than the ORM object, so it sees a cancel that
+        another process committed after this session loaded the job.
+        """
+        return await self.db.scalar(select(Job.status).where(Job.id == job_id))
+
+    async def should_stop(self, job_id: uuid.UUID) -> bool:
+        """True when a worker should abandon this job: it, or its playlist parent, was cancelled.
+
+        A child that is still pending/processing under a cancelled parent is
+        marked cancelled here too, which covers children created just after the
+        cancel was issued.
+        """
+        row = (
+            await self.db.execute(
+                select(Job.status, Job.parent_job_id).where(Job.id == job_id)
+            )
+        ).first()
+        if not row:
+            return False
+        status, parent_id = row
+        if status == JobStatus.CANCELLED.value:
+            return True
+        if parent_id and await self.get_status(parent_id) == JobStatus.CANCELLED.value:
+            await self.db.execute(
+                update(Job)
+                .where(
+                    Job.id == job_id,
+                    Job.status.in_((JobStatus.PENDING.value, JobStatus.PROCESSING.value)),
+                )
+                .values(
+                    status=JobStatus.CANCELLED.value,
+                    completed_at=datetime.now(timezone.utc),
+                )
+            )
+            await self.db.commit()
+            return True
+        return False
 
     # ── Retry ─────────────────────────────────
     # NOTE: after every db.commit() we call db.refresh(job) to re-fetch all attributes while still in the async call stack. 
@@ -350,6 +401,10 @@ class JobService:
             job.status = JobStatus.PENDING.value
             job.error = None
             job.completed_at = None
+
+            # a retried job that was cancelled must not be aborted by its old flag
+            from src.service.cancel import clear_cancel_flag
+            await clear_cancel_flag(job.id)
 
             for step in job.job_steps or []:
                 await self.db.delete(step)
@@ -400,6 +455,112 @@ class JobService:
             for s in steps_result.scalars().all()
         ]
 
+        return job, steps, api_key_name
+
+    # ── Cancel ────────────────────────────────
+
+    async def cancel_job_and_return(
+        self,
+        job_id: uuid.UUID,
+        user_id: uuid.UUID | None = None,
+        api_key_id: uuid.UUID | None = None,
+    ) -> tuple[Job, list[dict], str | None]:
+        """Cancel a job (and, for a playlist parent, its unfinished children).
+
+        Scope by ``user_id`` (JWT / dashboard) or ``api_key_id`` (public API).
+        Cancelling a job that already finished is not an error: the job is
+        returned unchanged, so a late click just shows the final state.
+
+        What this does:
+          * one guarded UPDATE moves pending/processing jobs to ``cancelled`` — it
+            cannot overwrite a job that finished in the meantime;
+          * unfinished steps are marked cancelled;
+          * a Redis flag tells any running yt-dlp download to abort (workers also
+            re-check the database before and after each step);
+          * a ``job.cancelled`` event is emitted per cancelled job.
+
+        Returns ``(job, steps, api_key_name)`` like ``retry_job_and_return``.
+        """
+        from src.model.event import EventType
+        from src.service.cancel import set_cancel_flag
+        from src.service.events import EventService
+
+        if user_id is not None:
+            job = await self.get_job_detail_by_user(user_id, job_id)
+        else:
+            job = await self.get_job_detail(job_id, api_key_id)
+        if not job:
+            raise NotFoundError("Job not found")
+
+        child_ids = list(
+            (
+                await self.db.execute(select(Job.id).where(Job.parent_job_id == job_id))
+            ).scalars()
+        )
+        now = datetime.now(timezone.utc)
+        cancelled_rows = (
+            await self.db.execute(
+                update(Job)
+                .where(
+                    Job.id.in_([job_id, *child_ids]),
+                    Job.status.in_(
+                        (JobStatus.PENDING.value, JobStatus.PROCESSING.value)
+                    ),
+                )
+                .values(status=JobStatus.CANCELLED.value, completed_at=now)
+                .returning(Job.id, Job.api_key_id)
+                .execution_options(synchronize_session="fetch")
+            )
+        ).all()
+        cancelled_ids = [r[0] for r in cancelled_rows]
+
+        if cancelled_ids:
+            await self.db.execute(
+                update(JobStep)
+                .where(
+                    JobStep.job_id.in_(cancelled_ids),
+                    JobStep.status.in_(
+                        (StepStatus.PENDING.value, StepStatus.RUNNING.value)
+                    ),
+                )
+                .values(status=StepStatus.CANCELLED.value)
+            )
+        await self.db.commit()
+        await self.db.refresh(job)  # re-fetch while still in async context
+
+        for cid in cancelled_ids:
+            await set_cancel_flag(cid)
+        logger.info(
+            f"Job {job_id} cancel requested — cancelled {len(cancelled_ids)} job(s) "
+            f"({len(child_ids)} children)"
+        )
+
+        event_service = EventService(self.db)
+        for cid, key_id in cancelled_rows:
+            await event_service.emit(
+                event_type=EventType.JOB_CANCELLED,
+                resource_id=cid,
+                data={"job_id": str(cid), "status": JobStatus.CANCELLED.value, "error": None},
+                api_key_id=key_id,
+            )
+
+        # A single playlist child was cancelled: let the parent recompute its status.
+        if job.parent_job_id and job_id in cancelled_ids:
+            await self.notify_child_complete(job_id)
+
+        api_key_name = await self.db.scalar(
+            select(ApiKey.name).where(ApiKey.id == job.api_key_id)
+        )
+        steps_result = await self.db.execute(
+            select(JobStep).where(JobStep.job_id == job_id).order_by(JobStep.step_index)
+        )
+        steps = [
+            {
+                **s.to_dict(),
+                "output_url": s.output_artifact.get("output_url") if s.output_artifact else None,
+            }
+            for s in steps_result.scalars().all()
+        ]
         return job, steps, api_key_name
 
     async def set_source_metadata(self, job_id: uuid.UUID, metadata: dict) -> None:
@@ -454,7 +615,7 @@ class JobService:
 
         if status == StepStatus.RUNNING:
             step.started_at = datetime.now(timezone.utc)
-        elif status in (StepStatus.COMPLETE, StepStatus.FAILED):
+        elif status in (StepStatus.COMPLETE, StepStatus.FAILED, StepStatus.CANCELLED):
             step.completed_at = datetime.now(timezone.utc)
 
         if output_artifact is not None:
@@ -564,6 +725,10 @@ class JobService:
 
         parent_id = child.parent_job_id
 
+        # A cancelled parent keeps its status; its children finishing must not reopen it.
+        if await self.get_status(parent_id) == JobStatus.CANCELLED.value:
+            return
+
         # touch the parent so an active playlist rises in history (sorted by updated_at)
         parent = await self.get_job(parent_id)
         if parent:
@@ -588,18 +753,31 @@ class JobService:
             .where(Job.status.in_((JobStatus.FAILED.value, JobStatus.DEAD.value)))
         )
 
+        cancelled = await self.db.scalar(
+            select(func.count(Job.id))
+            .where(Job.parent_job_id == parent_id)
+            .where(Job.status == JobStatus.CANCELLED.value)
+        )
+
         if succeeded == total_count:
             aggregate = JobStatus.SUCCEEDED
-        elif failed == total_count:
+        elif cancelled == total_count:
+            aggregate = JobStatus.CANCELLED
+        elif not succeeded and failed:
+            # nothing succeeded and at least one genuinely failed (the rest may be cancelled)
             aggregate = JobStatus.FAILED
         else:
             aggregate = JobStatus.PARTIAL_SUCCESS
 
         parent = await self.get_job(parent_id)
         if parent:
-            parent.status = aggregate.value
-            parent.completed_at = datetime.now(timezone.utc)
-            await self.db.flush()
+            # guarded: never overwrite a parent cancelled in the meantime
+            await self.db.execute(
+                update(Job)
+                .where(Job.id == parent_id, Job.status != JobStatus.CANCELLED.value)
+                .values(status=aggregate.value, completed_at=datetime.now(timezone.utc))
+                .execution_options(synchronize_session="fetch")
+            )
             await self.db.commit()
             logger.info(
                 "Parent %s → %s (succeeded=%d, failed=%d / total=%d)",

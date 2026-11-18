@@ -1,6 +1,6 @@
 import { apiClient } from './api'
 
-export type JobStatus = 'pending' | 'processing' | 'succeeded' | 'partial_success' | 'failed' | 'dead'
+export type JobStatus = 'pending' | 'processing' | 'succeeded' | 'partial_success' | 'failed' | 'dead' | 'cancelled'
 
 export type JobStepStatus = 'pending' | 'running' | 'complete' | 'completed' | 'failed'
 
@@ -137,6 +137,18 @@ export async function retryJob(id: string): Promise<Job> {
   const res = await apiClient<{ status: string; data: Job }>(
     `/jobs/${id}/status`,
     { method: 'PATCH', body: JSON.stringify({ action: 'retry' }) }
+  )
+  return res.data
+}
+
+/**
+ * Cancel a pending or processing job (a playlist's unfinished videos are cancelled with it).
+ * Cancelling a job that already finished returns it unchanged.
+ */
+export async function cancelJob(id: string): Promise<Job> {
+  const res = await apiClient<{ status: string; data: Job }>(
+    `/jobs/${id}/status`,
+    { method: 'PATCH', body: JSON.stringify({ action: 'cancel' }) }
   )
   return res.data
 }

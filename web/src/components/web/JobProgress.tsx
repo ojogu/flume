@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { CheckCircle, Circle, Loader2, AlertCircle } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { CheckCircle, Circle, Loader2, AlertCircle, X } from 'lucide-react'
 import { useWebStore } from '@/stores/webStore'
-import { getJobForWeb, type JobDetailResponse } from '@/lib/web'
+import { cancelJobForWeb, getJobForWeb, type JobDetailResponse } from '@/lib/web'
 import { isPlaylistParent } from '@/lib/jobs'
 import { JobFailureCard } from '@/components/web/JobFailureCard'
+import { JobCancelledCard } from '@/components/web/JobCancelledCard'
 import { useElapsedTime } from '@/hooks/useElapsedTime'
 import { cn } from '@/lib/utils'
 
@@ -39,10 +41,27 @@ export function JobProgress() {
     enabled: Boolean(session && currentJobId),
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      if (status === 'succeeded' || status === 'partial_success' || status === 'failed' || status === 'dead') return false
+      if (status === 'succeeded' || status === 'partial_success' || status === 'failed' || status === 'dead' || status === 'cancelled') return false
       return 2000
     },
   })
+
+  const queryClient = useQueryClient()
+  const [cancelling, setCancelling] = useState(false)
+
+  const handleCancel = async () => {
+    if (!currentJobId || cancelling) return
+    setCancelling(true)
+    try {
+      const updated = await cancelJobForWeb(session?.apiKey ?? null, currentJobId)
+      // show the result right away instead of waiting for the next poll
+      queryClient.setQueryData(['web-job', currentJobId], updated)
+    } catch {
+      toast.error("Couldn't cancel the job. Please try again.")
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   const job = jobQuery.data
   const steps = job?.steps ?? []
@@ -56,6 +75,7 @@ export function JobProgress() {
   // Snap to 100% on terminal success.
   const isSucceeded = job?.status === 'succeeded' || job?.status === 'partial_success'
   const isFailed = job?.status === 'failed' || job?.status === 'dead'
+  const isCancelled = job?.status === 'cancelled'
 
   // A playlist parent has no steps of its own — its progress is how many of its
   // videos have finished.
@@ -86,7 +106,7 @@ export function JobProgress() {
       setDisplayPct(100)
       return
     }
-    if (isFailed) return // freeze in place; failure card takes over
+    if (isFailed || isCancelled) return // freeze in place; failure/cancelled card takes over
     const timer = setInterval(() => {
       setDisplayPct((prev) => {
         if (realPct >= prev) {
@@ -96,7 +116,7 @@ export function JobProgress() {
       })
     }, 400)
     return () => clearInterval(timer)
-  }, [isSucceeded, isFailed, realPct])
+  }, [isSucceeded, isFailed, isCancelled, realPct])
 
   const progress = displayPct
 
@@ -131,6 +151,10 @@ export function JobProgress() {
     return <JobFailureCard job={job} />
   }
 
+  if (isCancelled) {
+    return <JobCancelledCard />
+  }
+
   if (isSucceeded) {
     return null
   }
@@ -142,9 +166,23 @@ export function JobProgress() {
           <Loader2 className="h-5 w-5 text-brand animate-spin" />
           <h3 className="font-semibold text-[var(--text-primary)]">Processing...</h3>
         </div>
-        <span className="text-sm text-[var(--text-muted)]">
-          {formatElapsed(elapsed)}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[var(--text-muted)]">
+            {formatElapsed(elapsed)}
+          </span>
+          <button
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] disabled:cursor-wait disabled:opacity-60"
+          >
+            {cancelling ? (
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            ) : (
+              <X className="h-3 w-3" aria-hidden="true" />
+            )}
+            {cancelling ? 'Cancelling…' : 'Cancel'}
+          </button>
+        </div>
       </div>
 
       <div className="w-full bg-[var(--bg-subtle)] rounded-full h-2 overflow-hidden">

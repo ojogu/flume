@@ -77,6 +77,7 @@ export function JobsPage() {
       case 'processing': return 'secondary'
       case 'pending': return 'outline'
       case 'partial_success': return 'secondary'
+      case 'cancelled': return 'outline'
       default: return 'outline'
     }
   }
@@ -110,6 +111,7 @@ export function JobsPage() {
               <SelectItem value="succeeded">Succeeded</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
               <SelectItem value="dead">Dead</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
           {counts && (

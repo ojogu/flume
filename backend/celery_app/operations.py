@@ -71,8 +71,17 @@ async def _execute_operation_async(job_id: str, step_index: int):
             logger.error(f"No JobStep at index {step_index} for job {job_id}")
             return
 
+        # Cancelled by the user (or its playlist was) — do no work.
+        if await job_service.should_stop(job_uuid):
+            logger.info(f"Job {job_id} cancelled — skipping step {step_index}")
+            return
+
         # Idempotency guard: skip if this step already reached a terminal state.
-        if step.status in (StepStatus.COMPLETE.value, StepStatus.FAILED.value):
+        if step.status in (
+            StepStatus.COMPLETE.value,
+            StepStatus.FAILED.value,
+            StepStatus.CANCELLED.value,
+        ):
             logger.warning(
                 f"Step {step_index} ({step.operation}) already {step.status} "
                 f"— skipping execution"
@@ -137,6 +146,13 @@ async def _execute_operation_async(job_id: str, step_index: int):
                 input_path=input_path,
                 workspace=workspace,
             )
+
+            # Cancelled while the step ran: discard its output instead of recording it.
+            if await job_service.should_stop(job_uuid):
+                logger.info(f"Job {job_id} cancelled during step {step_index} — discarding output")
+                storage._delete_workspace(job_uuid)
+                await job_service.update_job_step(step.id, StepStatus.CANCELLED)
+                return
 
             if result.success:
                 if result.artifact is None:
@@ -224,6 +240,10 @@ async def _handle_success(
     else:
         # Last step — upload to R2 and attach CDN URL to artifact.
         from src.service.storage import storage
+        if await job_service.should_stop(job_uuid):
+            logger.info(f"Job {job_id} cancelled before upload — discarding output")
+            storage._delete_workspace(job_uuid)
+            return
         from src.utils.config import config
         ext = Path(result.output_path).suffix.lstrip(".") or "mp4"
         api_key_short = str(job.api_key_id).split("-")[0]
@@ -249,6 +269,9 @@ async def _handle_success(
             f"Job {job_id} — final step {step_index} complete, marking SUCCEEDED — duration_ms={duration_ms:.2f}"
         )
         await job_service.update_status(job_uuid, JobStatus.SUCCEEDED)
+        if await job_service.get_status(job_uuid) == JobStatus.CANCELLED.value:
+            logger.info(f"Job {job_id} was cancelled during upload — not reporting success")
+            return
         await event_service.emit(
             event_type=EventType.JOB_COMPLETED,
             resource_id=job_uuid,
@@ -279,6 +302,13 @@ async def _handle_failure(
     """Persist step FAILED, emit STEP_FAILED + JOB_FAILED, notify parent."""
     job_uuid = job.id
     job_id = str(job_uuid)
+
+    # A step that errors because the user cancelled (e.g. its workspace was removed)
+    # is not a failure — keep the job cancelled and stay quiet.
+    if await job_service.get_status(job_uuid) == JobStatus.CANCELLED.value:
+        logger.info(f"Job {job_id} step {step_index} ({operation}) stopped — job cancelled")
+        await job_service.update_job_step(step.id, StepStatus.CANCELLED)
+        return
 
     logger.error(
         f"Job {job_id} step {step_index} ({operation}) FAILED — duration_ms={duration_ms:.2f}"

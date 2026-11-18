@@ -346,21 +346,31 @@ async def update_job_status(
     user: User = Depends(get_current_user),
     job_service: JobService = Depends(get_job_service),
 ):
-    """Update a job's status — supports retry action.
+    """Update a job's status — supports retry and cancel actions.
 
     Retry resets the job to PENDING, increments retry_count, clears error,and deletes existing steps so the orchestrator recreates them.
     If max retries are exceeded, job goes to DEAD state.
+
+    Cancel moves a pending/processing job (and a playlist's unfinished children) to
+    CANCELLED and stops running downloads. Cancelling a finished job returns it unchanged.
     """
-    if body.action != "retry":
+    if body.action == "cancel":
+        job, steps, api_key_name = await job_service.cancel_job_and_return(
+            job_id, user_id=user.id
+        )
+    elif body.action == "retry":
+        job, steps, api_key_name = await job_service.retry_job_and_return(job_id, user.id)
+    else:
         from src.core.exception_base import BadRequest
         raise BadRequest(f"Unknown action: {body.action}")
 
-    job, steps, api_key_name = await job_service.retry_job_and_return(job_id, user.id)
+    child_counts = await job_service.get_child_counts([job.id])
 
     data = InternalJobDetailResponse(
         **job.to_dict(),
         api_key_name=api_key_name,
         steps=steps,
+        **child_counts.get(job.id, {}),
     )
 
     return success(data=data.model_dump())

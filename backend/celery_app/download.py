@@ -19,6 +19,7 @@ from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
 from src.model.job import JobStatus, StepStatus
 from src.schema.download import DownloadResult, _ExtractedInfo, _FormatPreference
+from src.service.cancel import JobCancelled, is_cancel_requested, make_cancel_hook
 import yt_dlp
 
 from src.service.downloader import (
@@ -74,6 +75,11 @@ async def _download_task_async(job_id: str):
             logger.error(f"Job {job_id} not found — aborting download")
             return
 
+        # cancelled while queued (or its playlist was cancelled): don't touch the network
+        if await job_service.should_stop(job_uuid):
+            logger.info(f"Job {job_id} cancelled before download started — skipping")
+            return
+
         # find the download JobStep
         step = await job_service.get_pending_job_step(job_uuid, "download")
         if not step:
@@ -120,7 +126,15 @@ async def _download_task_async(job_id: str):
                         workspace_dir=str(workspace),
                         source_type=job.source_type,
                         fmt=fmt,
+                        job_id=job_id,
                     )
+
+            # cancelled while downloading: throw the file away, don't record or upload it
+            if await job_service.should_stop(job_uuid):
+                logger.info(f"Job {job_id} cancelled during download — discarding output")
+                storage._delete_workspace(job_uuid)
+                await job_service.update_job_step(step.id, StepStatus.CANCELLED)
+                return
 
             # persist source metadata on the job
             source_meta = result.artifact.model_dump(
@@ -170,6 +184,11 @@ async def _download_task_async(job_id: str):
                 )
             else:
                 # Download was the only step — upload to R2, finalize the job.
+                # Last chance to skip the upload if the user cancelled in the meantime.
+                if await job_service.should_stop(job_uuid):
+                    logger.info(f"Job {job_id} cancelled before upload — discarding output")
+                    storage._delete_workspace(job_uuid)
+                    return
                 ext = guess_container(result.local_path)
                 api_key_short = str(job.api_key_id).split("-")[0]
                 job_short = str(job_uuid).split("-")[0]
@@ -192,6 +211,10 @@ async def _download_task_async(job_id: str):
                 )
 
                 await job_service.update_status(job_uuid, JobStatus.SUCCEEDED)
+                if await job_service.get_status(job_uuid) == JobStatus.CANCELLED.value:
+                    # cancel landed between the upload and the status write — it wins
+                    logger.info(f"Job {job_id} was cancelled during upload — not reporting success")
+                    return
                 await job_service.notify_child_complete(job_uuid)
 
                 updated_job = await job_service.get_job(job_uuid)
@@ -216,6 +239,12 @@ async def _download_task_async(job_id: str):
 
             duration_ms = (time.perf_counter() - start) * 1000
             logger.info(f"Download complete for job {job_id} — {result.local_path} — duration_ms={duration_ms:.2f}")
+
+        except JobCancelled:
+            # the user cancelled mid-download: not a failure — no failed status, no events
+            logger.info(f"Job {job_id} download aborted — cancelled")
+            storage._delete_workspace(job_uuid)
+            await job_service.update_job_step(step.id, StepStatus.CANCELLED)
 
         except Exception as e:
             logger.error(f"Download failed for job {job_id}: {e}")
@@ -343,9 +372,11 @@ async def _download_clips(clips: list[str], workspace: Path, job_id: str) -> "Do
                 local_path = await _download_r2_object(clip_url, workspace, filename)
             else:
                 local_path = str(workspace / f"join_clip_{i}.mp4")
+                if is_cancel_requested(job_id):
+                    raise JobCancelled(f"job {job_id} cancelled")
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(
-                    None, _download_clip_sync, clip_url, str(workspace), i
+                    None, _download_clip_sync, clip_url, str(workspace), i, job_id
                 )
 
             clip_paths.append(local_path)
@@ -376,13 +407,15 @@ async def _download_clips(clips: list[str], workspace: Path, job_id: str) -> "Do
     )
 
 
-def _download_clip_sync(url: str, workspace_dir: str, index: int):
+def _download_clip_sync(url: str, workspace_dir: str, index: int, job_id: str | None = None):
     """Synchronous yt-dlp download with android_vr→web_safari fallback."""
     format_string = "bestvideo+bestaudio/best"
 
     for client in ("android_vr", "web_safari"):
         opts = _build_ydl_opts(workspace_dir, format_string, download=True, client=client)
         opts["outtmpl"] = str(Path(workspace_dir) / f"join_clip_{index}.%(ext)s")
+        if job_id:
+            opts["progress_hooks"] = [make_cancel_hook(job_id)]
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([url])

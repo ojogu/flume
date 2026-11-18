@@ -157,6 +157,11 @@ async def _process_job_async(job_id: str):
                     )
                     return
 
+                # cancelled while the metadata was being resolved: don't fan out or download
+                if await job_service.should_stop(job.id):
+                    logger.info(f"Job {job_id} cancelled during extraction — not dispatching")
+                    return
+
                 if info.is_playlist and not _is_single_post(info):
                     await _handle_playlist(job_service, job, info)
                 elif info.is_playlist:
@@ -174,6 +179,9 @@ async def _process_job_async(job_id: str):
                     await job_service.set_source_metadata(job.id, meta)
                     await _handle_single(job_service, job)
         except Exception as e:
+            if await job_service.get_status(job.id) == JobStatus.CANCELLED.value:
+                logger.info(f"Job {job_id} orchestration stopped ({e}) — job was cancelled")
+                return
             logger.error(f"Orchestration failed for job {job_id}: {e}")
             logger.exception(f"Orchestration failed for job {job_id}")
             await job_service.update_status(

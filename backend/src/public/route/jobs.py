@@ -272,3 +272,26 @@ async def get_job(
             steps=[StepResponse(**s.to_dict()) for s in job.job_steps],
         ).model_dump(),
     )
+
+
+@job_route.post("/{job_id}/cancel")
+async def cancel_job(
+    job_id: uuid.UUID,
+    api_key: ApiKey = Depends(get_api_key_from_header),
+    job_service: JobService = Depends(get_job_service),
+):
+    """Cancel a pending or processing job, scoped to the authenticated API key.
+
+    A playlist's unfinished videos are cancelled with it, and running downloads
+    stop. Cancelling a job that already finished is not an error: the job is
+    returned unchanged.
+    """
+    job, steps, _api_key_name = await job_service.cancel_job_and_return(
+        job_id, api_key_id=api_key.id
+    )
+    return success(
+        data=JobDetailResponse(
+            **job.to_dict(),
+            steps=[StepResponse(**s) for s in steps],
+        ).model_dump(),
+    )

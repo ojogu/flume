@@ -22,6 +22,7 @@ from src.schema.artifact import (
     _SourceInfo,
 )
 from src.schema.download import DownloadResult, _ExtractedInfo, _FormatPreference
+from src.service.cancel import make_cancel_hook
 from src.utils.config import config
 from src.utils.ffprobe import probe_media
 from src.utils.log import get_logger
@@ -291,6 +292,7 @@ def download(
     fmt: _FormatPreference = _FormatPreference.BEST,
     source_type: str = "video",
     playlist_item: int = 1,
+    job_id: str | None = None,
 ) -> DownloadResult:
     """Download media from *url* into *workspace_dir*.
 
@@ -302,6 +304,8 @@ def download(
         playlist_item: 1-based entry to fetch when *url* resolves to a multi-entry
             post (e.g. an X quote post whose entries all share one URL). A job
             downloads exactly one media item; for plain single-video URLs this is a no-op.
+        job_id: when given, the download aborts (raising ``JobCancelled``) as soon as
+            that job is cancelled, so a cancelled job stops using bandwidth.
 
     Returns:
         A ``DownloadResult`` with the local file path, stripped-down metadata, and pre-built ``Artifact`` schema ready for the FFmpeg pipeline.
@@ -318,6 +322,8 @@ def download(
     for client in ("android_vr", "web_safari"):
         opts = _build_ydl_opts(workspace_dir, format_string, download=True, client=client)
         opts["playlist_items"] = str(playlist_item)
+        if job_id:
+            opts["progress_hooks"] = [make_cancel_hook(job_id)]
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 logger.info(f"Downloading {url} (format={fmt.value}, client={client}, item={playlist_item})")
