@@ -27,7 +27,7 @@ function HistorySection({ isAuthenticated }: { isAuthenticated: boolean }) {
   const session = useWebStore((s) => s.session)
   const { data, isLoading } = useQuery({
     queryKey: ['web-history'],
-    queryFn: () => getJobs({ origin: 'web', per_page: 10 }),
+    queryFn: () => getJobs({ origin: 'web', per_page: 10, top_level: true }),
     enabled: isAuthenticated,
   })
 

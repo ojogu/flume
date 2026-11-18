@@ -63,6 +63,11 @@ async def create_job(
 
     count = await api_key_service.count_jobs_this_month(web_key.id)
     if count >= AUTHENTICATED_MONTHLY_LIMIT:
+        logger.warning(
+            f"Web job rejected: monthly limit reached — "
+            f"user_id={user.id}, api_key_id={web_key.id}, "
+            f"count={count}, limit={AUTHENTICATED_MONTHLY_LIMIT}"
+        )
         return JSONResponse(
             content={
                 "status": "error",
@@ -169,6 +174,9 @@ async def list_jobs(
     created_after: datetime | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    top_level: bool = Query(
+        False, description="Hide playlist children; they are listed under their parent"
+    ),
 ):
     """List all jobs belonging to the authenticated user, across all API keys."""
     jobs, total = await job_service.list_jobs_by_user(
@@ -179,7 +187,11 @@ async def list_jobs(
         created_after=created_after,
         page=page,
         per_page=per_page,
+        top_level=top_level,
     )
+
+    # Child totals for any playlist parents on this page (one grouped query)
+    child_counts = await job_service.get_child_counts([j.id for j in jobs])
 
     # Enrich jobs with api_key_name
     from sqlalchemy import select
@@ -200,6 +212,7 @@ async def list_jobs(
         InternalJobResponse(
             **j.to_dict(),
             api_key_name=api_key_names.get(j.api_key_id),
+            **child_counts.get(j.id, {}),
         )
         for j in jobs
     ]
@@ -220,12 +233,14 @@ async def get_job_counts(
     job_service: JobService = Depends(get_job_service),
     api_key_id: uuid.UUID | None = Query(None, description="Filter by API key"),
     origin: str | None = Query(None, alias="origin"),
+    top_level: bool = Query(False, description="Exclude playlist children"),
 ):
     """Return job counts grouped by status for the authenticated user."""
     counts = await job_service.get_counts_by_status(
         user_id=user.id,
         api_key_id=api_key_id,
         origin=origin,
+        top_level=top_level,
     )
     return success(data=counts)
 
@@ -265,13 +280,43 @@ async def get_job(
         for s in sorted_job_steps
     ]
 
+    child_counts = await job_service.get_child_counts([job.id])
+
     data = InternalJobDetailResponse(
         **job.to_dict(),
         api_key_name=api_key_name,
         steps=steps,
+        **child_counts.get(job.id, {}),
     )
 
     return success(data=data.model_dump())
+
+
+@internal_job_route.get("/{job_id}/children")
+async def list_job_children(
+    job_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    job_service: JobService = Depends(get_job_service),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+):
+    """List the videos inside a playlist job, in playlist order."""
+    parent = await job_service.get_job_detail_by_user(user_id=user.id, job_id=job_id)
+    if not parent:
+        from src.core.exception_base import NotFoundError
+        raise NotFoundError("Job not found")
+
+    children, total = await job_service.list_children_by_user(
+        user_id=user.id, parent_id=job_id, page=page, per_page=per_page
+    )
+    return success(
+        data=InternalJobListResponse(
+            total=total,
+            page=page,
+            per_page=per_page,
+            jobs=[InternalJobResponse(**c.to_dict()) for c in children],
+        ).model_dump(),
+    )
 
 
 @internal_job_route.get("/{job_id}/download")

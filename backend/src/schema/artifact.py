@@ -19,6 +19,7 @@ class _SourceInfo(BaseModel):
     url: str # original URL the user submitted
     title: str | None = None # human-readable title from the platform
     description: str | None = None # caption/description text extracted from the media
+    thumbnail: str | None = None # preview image URL from the platform, when available
 
 
 

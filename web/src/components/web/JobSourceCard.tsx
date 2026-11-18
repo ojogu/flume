@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useWebStore } from '@/stores/webStore'
 import { getJobForWeb, type JobDetailResponse } from '@/lib/web'
+import { getSourceThumbnail } from '@/lib/jobs'
 
 function getHostname(uri: string): string | null {
   try {
@@ -34,16 +35,13 @@ export function JobSourceCard() {
   const meta = getSourceMeta(job?.source_metadata ?? null)
   const title = (meta?.title as string) ?? uploadedFile?.name ?? sourceUri ?? null
   const platform = (meta?.platform as string) ?? null
-  const videoId = (meta?.video_id as string) ?? null
 
-  const isYouTube = platform === 'youtube' && Boolean(videoId)
-  const thumbnailUrl = isYouTube && !imgError
-    ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
-    : null
+  const thumbnail = getSourceThumbnail(job?.source_metadata ?? null)
+  const thumbnailUrl = thumbnail && !imgError ? thumbnail : null
 
   useEffect(() => {
     setImgError(false)
-  }, [videoId])
+  }, [thumbnail])
 
   const hostname = !platform && sourceUri ? getHostname(sourceUri) : null
   const subtitle = platform ?? hostname ?? null

@@ -1,7 +1,10 @@
-import { Download, RotateCcw } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Download, Folder, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 import { buttonVariants } from '@/components/ui/button'
 import { useWebStore } from '@/stores/webStore'
 import { getDownloadUrlForWeb } from '@/lib/web'
+import { isPlaylistParent } from '@/lib/jobs'
 import { cn } from '@/lib/utils'
 
 function formatDuration(seconds: number): string {
@@ -63,9 +66,52 @@ export function JobResult() {
       const url = await getDownloadUrlForWeb(session.apiKey, jobDetail.id)
       window.open(url, '_blank')
     } catch {
-      // fallback: let browser handle the redirect
-      window.open(`/v1/job/${jobDetail.id}/download`, '_blank')
+      toast.error("Couldn't start your download. Please try again.")
     }
+  }
+
+  // A playlist has no single file — its videos are downloaded from the folder.
+  if (isPlaylistParent(jobDetail)) {
+    const total = jobDetail.child_count ?? null
+    const failed = jobDetail.children_failed ?? 0
+    return (
+      <div className="rounded-xl border border-green-200 bg-green-50 p-6 dark:border-green-900 dark:bg-green-950 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+            <Folder className="h-4 w-4 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-[var(--text-primary)]">Your playlist is ready</h3>
+            {title && (
+              <p className="text-sm text-[var(--text-secondary)] truncate">{title}</p>
+            )}
+            {total !== null && (
+              <p className="text-xs text-[var(--text-muted)]">
+                {total} {total === 1 ? 'video' : 'videos'}
+                {failed > 0 ? ` · ${failed} failed` : ''}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Link
+            to={`/web/history/${jobDetail.id}`}
+            className={cn(buttonVariants({ variant: 'default', size: 'sm' }), 'gap-2')}
+          >
+            <Folder className="h-4 w-4" />
+            View videos
+          </Link>
+          <button
+            onClick={handleProcessAnother}
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2')}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Process another
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

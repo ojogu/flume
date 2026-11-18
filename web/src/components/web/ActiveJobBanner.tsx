@@ -14,7 +14,7 @@ export function ActiveJobBanner() {
 
   const { data } = useQuery({
     queryKey: ['web-active-job-banner'],
-    queryFn: () => getJobs({ origin: 'web', per_page: 1 }),
+    queryFn: () => getJobs({ origin: 'web', per_page: 1, top_level: true }),
     enabled: !!accessToken && !currentJobId,
     refetchInterval: (query) => {
       const job = query.state.data?.jobs?.[0]

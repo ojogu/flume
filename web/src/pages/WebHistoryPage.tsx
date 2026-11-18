@@ -18,7 +18,7 @@ export function WebHistoryPage() {
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['web-history-page', page],
-    queryFn: () => getJobs({ origin: 'web', page, per_page: PER_PAGE }),
+    queryFn: () => getJobs({ origin: 'web', page, per_page: PER_PAGE, top_level: true }),
     enabled: !!accessToken,
     refetchInterval: (query) => {
       const jobs = query.state.data?.jobs ?? []

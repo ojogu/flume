@@ -15,7 +15,11 @@ from celery_app.celery import bg_task
 from celery_app.utils import run_async_in_sync
 from src.model.event import EventType
 from src.model.job import Job, JobStatus
-from src.service.downloader import build_source_meta, extract_info
+from src.service.downloader import (
+    build_playlist_source_meta,
+    build_source_meta,
+    extract_info,
+)
 from src.service.jobs import JobService
 from src.utils.log import get_logger
 
@@ -235,6 +239,11 @@ async def _handle_playlist(job_service: JobService, parent: Job, info):
 
     # resolve per-entry URLs + metadata from extracted info
     entry_metas = [(info.entries[i].url, info.entries[i]) for i in selection]
+
+    # the parent is shown as a folder in history — give it a title/thumbnail/count
+    await job_service.set_source_metadata(
+        parent.id, build_playlist_source_meta(info, len(entry_metas))
+    )
 
     children = await job_service.create_child_jobs(
         parent_job=parent,

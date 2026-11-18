@@ -41,6 +41,39 @@ export interface Job {
   created_at: string
   updated_at: string
   steps?: JobStep[] // steps only in detail view
+  // playlist parents only: totals for their child jobs (absent/null for normal jobs)
+  child_count?: number | null
+  children_done?: number | null
+  children_failed?: number | null
+}
+
+/** A playlist parent is a folder: it has child jobs and no file of its own. */
+export function isPlaylistParent(
+  job: Pick<Job, 'child_count' | 'source_metadata'>,
+): boolean {
+  return (job.child_count ?? 0) > 0 || Boolean(job.source_metadata?.playlist)
+}
+
+type SourceMeta = Record<string, unknown> | null | undefined
+
+/** Preview image for a job: the saved thumbnail, else the YouTube still for older rows. */
+export function getSourceThumbnail(meta: SourceMeta): string | null {
+  if (!meta || typeof meta !== 'object') return null
+  const source = meta.source as Record<string, unknown> | undefined
+  const thumbnail = source?.thumbnail as string | undefined
+  if (thumbnail) return thumbnail
+  const platform = source?.platform as string | undefined
+  const videoId = source?.video_id as string | undefined
+  if (platform === 'youtube' && videoId) {
+    return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+  }
+  return null
+}
+
+export function getSourceTitle(meta: SourceMeta): string | null {
+  if (!meta || typeof meta !== 'object') return null
+  const source = meta.source as Record<string, unknown> | undefined
+  return (source?.title as string) || null
 }
 
 export interface JobsResponse {
@@ -57,6 +90,8 @@ export interface GetJobsParams {
   api_key_id?: string
   page?: number
   per_page?: number
+  /** Hide playlist children; they are listed inside their parent folder. */
+  top_level?: boolean
 }
 
 /**
@@ -81,6 +116,20 @@ export async function getJobs(params: GetJobsParams = {}): Promise<JobsResponse>
  */
 export async function getJob(id: string): Promise<Job> {
   const res = await apiClient<{ status: string; data: Job }>(`/jobs/${id}`)
+  return res.data
+}
+
+/**
+ * Fetch the videos inside a playlist job, in playlist order.
+ */
+export async function getJobChildren(
+  id: string,
+  page = 1,
+  perPage = 20,
+): Promise<JobsResponse> {
+  const res = await apiClient<{ status: string; data: JobsResponse }>(
+    `/jobs/${id}/children?page=${page}&per_page=${perPage}`,
+  )
   return res.data
 }
 

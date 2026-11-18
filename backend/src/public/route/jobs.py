@@ -60,6 +60,11 @@ async def create_job(
     if origin == "web":
         count = await api_key_service.count_jobs_this_month(api_key.id)
         if count >= WEB_SESSION_MONTHLY_LIMIT:
+            logger.warning(
+                f"Job rejected: monthly limit reached — "
+                f"api_key_id={api_key.id}, origin={origin}, "
+                f"count={count}, limit={WEB_SESSION_MONTHLY_LIMIT}"
+            )
             return JSONResponse(
                 content={
                     "status": "error",
@@ -73,6 +78,11 @@ async def create_job(
         from src.service.api import AUTHENTICATED_MONTHLY_LIMIT
         count = await api_key_service.count_jobs_this_month(api_key.id)
         if count >= AUTHENTICATED_MONTHLY_LIMIT:
+            logger.warning(
+                f"Job rejected: monthly limit reached — "
+                f"api_key_id={api_key.id}, origin={origin}, "
+                f"count={count}, limit={AUTHENTICATED_MONTHLY_LIMIT}"
+            )
             return JSONResponse(
                 content={
                     "status": "error",

@@ -1,5 +1,5 @@
 import { API_BASE } from '@/lib/config'
-import { apiClient } from '@/lib/api'
+import { apiClient, ApiClientError } from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
 import { useWebStore } from '@/stores/webStore'
 
@@ -34,6 +34,10 @@ export interface JobResponse {
   error: string | null
   created_at: string | null
   source_metadata?: Record<string, unknown> | null
+  // playlist parents only (logged-in endpoints)
+  child_count?: number | null
+  children_done?: number | null
+  children_failed?: number | null
 }
 
 export interface JobDetailResponse extends JobResponse {
@@ -99,12 +103,21 @@ export async function submitJob(apiKey: string, payload: CreateJobPayload): Prom
 }
 
 export async function submitJobAuth(payload: CreateJobPayload): Promise<JobResponse> {
-  const res = await apiClient<{ status: string; data: JobResponse }>('/jobs', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    headers: { 'X-Flume-Origin': 'web' },
-  })
-  return res.data
+  try {
+    const res = await apiClient<{ status: string; data: JobResponse }>('/jobs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: { 'X-Flume-Origin': 'web' },
+    })
+    return res.data
+  } catch (e) {
+    // apiClient throws its own error class; re-throw as ApiError so the submit
+    // handler shows the server's message (e.g. monthly limit) instead of a generic one.
+    if (e instanceof ApiClientError) {
+      throw new ApiError(e.message, e.statusCode, e.errorCode)
+    }
+    throw e
+  }
 }
 
 // ── Auth-aware fetchers for the web flow ─────────────────────────────────────

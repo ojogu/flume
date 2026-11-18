@@ -6,6 +6,7 @@ import { PricingPage } from '@/pages/PricingPage'
 import { PricingBlockedPage } from '@/pages/PricingBlockedPage'
 import { WebPage } from '@/pages/WebPage'
 import { WebHistoryPage } from '@/pages/WebHistoryPage'
+import { WebFolderPage } from '@/pages/WebFolderPage'
 import { CallbackPage } from '@/pages/CallbackPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -51,6 +52,10 @@ export const router = createBrowserRouter([
       {
         path: '/web/history',
         element: <WebHistoryPage />,
+      },
+      {
+        path: '/web/history/:jobId',
+        element: <WebFolderPage />,
       },
       {
         path: '/bot',

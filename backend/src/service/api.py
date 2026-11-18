@@ -218,13 +218,17 @@ class ApiKeyService:
             raise DatabaseError()
 
     async def count_jobs_this_month(self, api_key_id: uuid.UUID) -> int:
-        """Count jobs created by this API key in the current calendar month."""
+        """Count jobs created by this API key in the current calendar month.
+
+        Playlist children are not counted — a playlist uses one slot, the parent.
+        """
         now = datetime.datetime.now(datetime.timezone.utc)
         cutoff = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         result = await self.db.execute(
             select(func.count()).where(
                 Job.api_key_id == api_key_id,
                 Job.created_at >= cutoff,
+                Job.parent_job_id.is_(None),
             )
         )
         return result.scalar() or 0

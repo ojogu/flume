@@ -91,10 +91,12 @@ class JobService:
         created_after: datetime | None = None,
         page: int = 1,
         per_page: int = 20,
+        top_level: bool = False,
     ) -> tuple[list[Job], int]:
         """Paginated job listing for all API keys belonging to a user.
 
         Optional ``api_key_id`` filter narrows to a single key.
+        ``top_level`` hides playlist children (they are listed inside their parent).
         Returns ``(jobs, total_count)`` ordered by creation time descending.
         """
         base = (
@@ -111,6 +113,8 @@ class JobService:
             base = base.where(Job.status == status)
         if created_after:
             base = base.where(Job.created_at >= created_after)
+        if top_level:
+            base = base.where(Job.parent_job_id.is_(None))
 
         total = await self.db.scalar(select(func.count()).select_from(base.subquery()))
 
@@ -129,8 +133,12 @@ class JobService:
         user_id: uuid.UUID,
         api_key_id: uuid.UUID | None = None,
         origin: str | None = None,
+        top_level: bool = False,
     ) -> dict:
-        """Return job counts grouped by status for all API keys belonging to a user."""
+        """Return job counts grouped by status for all API keys belonging to a user.
+
+        ``top_level`` excludes playlist children so counts match the top-level list.
+        """
         base = (
             select(Job.status, func.count(Job.id))
             .join(ApiKey, Job.api_key_id == ApiKey.id)
@@ -141,6 +149,8 @@ class JobService:
             base = base.where(Job.api_key_id == api_key_id)
         if origin:
             base = base.where(Job.origin == origin)
+        if top_level:
+            base = base.where(Job.parent_job_id.is_(None))
 
         result = await self.db.execute(base.group_by(Job.status))
         counts = {row[0]: row[1] for row in result.all()}
@@ -165,6 +175,59 @@ class JobService:
             .where(ApiKey.user_id == user_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_child_counts(
+        self, parent_ids: list[uuid.UUID]
+    ) -> dict[uuid.UUID, dict[str, int]]:
+        """Child totals per parent, in one grouped query.
+
+        Returns ``{parent_id: {"child_count", "children_done", "children_failed"}}``
+        for parents that have children; parents without children are absent.
+        ``DEAD`` children count as failed.
+        """
+        if not parent_ids:
+            return {}
+        result = await self.db.execute(
+            select(Job.parent_job_id, Job.status, func.count(Job.id))
+            .where(Job.parent_job_id.in_(parent_ids))
+            .group_by(Job.parent_job_id, Job.status)
+        )
+        counts: dict[uuid.UUID, dict[str, int]] = {}
+        for parent_id, status, n in result.all():
+            c = counts.setdefault(
+                parent_id, {"child_count": 0, "children_done": 0, "children_failed": 0}
+            )
+            c["child_count"] += n
+            if status == JobStatus.SUCCEEDED.value:
+                c["children_done"] += n
+            elif status in (JobStatus.FAILED.value, JobStatus.DEAD.value):
+                c["children_failed"] += n
+        return counts
+
+    async def list_children_by_user(
+        self,
+        user_id: uuid.UUID,
+        parent_id: uuid.UUID,
+        page: int = 1,
+        per_page: int = 20,
+    ) -> tuple[list[Job], int]:
+        """Paginated children of a playlist parent, scoped to the user's API keys.
+
+        Ordered by ``playlist_entry_index`` ascending. Returns ``(jobs, total)``.
+        """
+        base = (
+            select(Job)
+            .join(ApiKey, Job.api_key_id == ApiKey.id)
+            .where(ApiKey.user_id == user_id)
+            .where(Job.parent_job_id == parent_id)
+        )
+        total = await self.db.scalar(select(func.count()).select_from(base.subquery()))
+        result = await self.db.execute(
+            base.order_by(Job.playlist_entry_index.asc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+        return list(result.scalars().all()), total or 0
 
     async def create_job(
         self,
@@ -500,6 +563,14 @@ class JobService:
             return  # no parent to notify
 
         parent_id = child.parent_job_id
+
+        # touch the parent so an active playlist rises in history (sorted by updated_at)
+        parent = await self.get_job(parent_id)
+        if parent:
+            parent.updated_at = datetime.now(timezone.utc)
+            await self.db.flush()
+            await self.db.commit()
+
         terminal_count, total_count = await self.count_terminal_children(parent_id)
 
         if terminal_count < total_count:
@@ -514,7 +585,7 @@ class JobService:
         failed = await self.db.scalar(
             select(func.count(Job.id))
             .where(Job.parent_job_id == parent_id)
-            .where(Job.status == JobStatus.FAILED.value)
+            .where(Job.status.in_((JobStatus.FAILED.value, JobStatus.DEAD.value)))
         )
 
         if succeeded == total_count:
@@ -563,6 +634,15 @@ class JobService:
         job = await self.get_job_detail(job_id, api_key_id)
         if not job:
             raise NotFoundError("Job not found")
+
+        has_children = await self.db.scalar(
+            select(func.count(Job.id)).where(Job.parent_job_id == job.id)
+        )
+        if has_children:
+            raise BadRequest(
+                "This job is a playlist and has no single file. "
+                "Download its videos individually."
+            )
 
         if job.status not in (
             JobStatus.SUCCEEDED.value,

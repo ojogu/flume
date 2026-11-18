@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CheckCircle, Circle, Loader2, AlertCircle } from 'lucide-react'
 import { useWebStore } from '@/stores/webStore'
 import { getJobForWeb, type JobDetailResponse } from '@/lib/web'
+import { isPlaylistParent } from '@/lib/jobs'
 import { JobFailureCard } from '@/components/web/JobFailureCard'
 import { useElapsedTime } from '@/hooks/useElapsedTime'
 import { cn } from '@/lib/utils'
@@ -56,8 +57,19 @@ export function JobProgress() {
   const isSucceeded = job?.status === 'succeeded' || job?.status === 'partial_success'
   const isFailed = job?.status === 'failed' || job?.status === 'dead'
 
+  // A playlist parent has no steps of its own — its progress is how many of its
+  // videos have finished.
+  const isPlaylist = job ? isPlaylistParent(job) : false
+  const childTotal = job?.child_count ?? 0
+  const childFinished = (job?.children_done ?? 0) + (job?.children_failed ?? 0)
+
   const [displayPct, setDisplayPct] = useState(5)
-  const realPct = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0
+  const realPct =
+    isPlaylist && childTotal > 0
+      ? (childFinished / childTotal) * 100
+      : steps.length > 0
+        ? (completedSteps / steps.length) * 100
+        : 0
 
   // Reset the creep when step rows are replaced (retry deletes + recreates them)
   const stepIdsKey = steps.map((s) => s.id).join(',')
@@ -141,6 +153,14 @@ export function JobProgress() {
           style={{ width: `${progress}%` }}
         />
       </div>
+
+      {isPlaylist && (
+        <p className="text-sm text-[var(--text-secondary)]">
+          {childTotal > 0
+            ? `${childFinished} of ${childTotal} videos done`
+            : 'Getting your videos ready…'}
+        </p>
+      )}
 
       <div className="space-y-2">
         {steps.map((step) => (

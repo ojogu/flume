@@ -41,6 +41,8 @@ class _ExtractedInfo(BaseModel):
     url: str
     title: str
     description: str | None = None
+    # preview image URL from the platform (best available), None when yt-dlp gives none
+    thumbnail: str | None = None
 
     # playlist detection — entries is None for single videos
     is_playlist: bool = False

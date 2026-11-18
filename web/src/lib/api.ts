@@ -10,7 +10,7 @@ interface ApiError {
   error_code?: string
 }
 
-class ApiClientError extends Error {
+export class ApiClientError extends Error {
   statusCode: number
   errorCode?: string
 

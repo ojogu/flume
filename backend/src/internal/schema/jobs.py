@@ -34,6 +34,10 @@ class InternalJobResponse(BaseModel):
     completed_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    # playlist parents only (None for normal jobs): lets the UI render a folder
+    child_count: int | None = None
+    children_done: int | None = None
+    children_failed: int | None = None
 
 
 class InternalStepResponse(BaseModel):

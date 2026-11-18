@@ -154,6 +154,20 @@ def _safe_float(value: object) -> float | None:
         return None
 
 
+def _pick_thumbnail(raw: dict) -> str | None:
+    """Best preview image URL from a yt-dlp info dict.
+
+    yt-dlp sets ``thumbnail`` to its preferred choice; otherwise ``thumbnails`` is
+    sorted worst-to-best, so the last entry is the best.
+    """
+    if raw.get("thumbnail"):
+        return raw["thumbnail"]
+    for t in reversed(raw.get("thumbnails") or []):
+        if t and t.get("url"):
+            return t["url"]
+    return None
+
+
 def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
     """Pull just the fields we need from yt-dlp's response.
 
@@ -171,6 +185,8 @@ def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
             url=raw.get("webpage_url") or "",
             title=raw.get("title") or "",
             description=raw.get("description"),
+            # playlists often have no image of their own — fall back to the first entry's
+            thumbnail=_pick_thumbnail(raw) or next((e.thumbnail for e in entries if e.thumbnail), None),
             is_playlist=True,
             playlist_title=raw.get("title"),
             playlist_count=raw.get("playlist_count") or len(entries),
@@ -183,6 +199,7 @@ def _raw_to_extracted_info(raw: dict) -> _ExtractedInfo:
         url=raw.get("webpage_url") or "",
         title=raw.get("title") or "",
         description=raw.get("description"),
+        thumbnail=_pick_thumbnail(raw),
         duration_seconds=_safe_float(raw.get("duration")),
         width=raw.get("width"),
         height=raw.get("height"),
@@ -207,6 +224,7 @@ def build_source_meta(info: _ExtractedInfo) -> dict:
             "url": info.url,
             "title": info.title,
             "description": info.description,
+            "thumbnail": info.thumbnail,
         },
         "media": {
             "duration_seconds": info.duration_seconds,
@@ -217,6 +235,28 @@ def build_source_meta(info: _ExtractedInfo) -> dict:
             "audio_codec": info.audio_codec,
             "video_bitrate": info.video_bitrate,
             "audio_bitrate": info.audio_bitrate,
+        },
+    }
+
+
+def build_playlist_source_meta(info: _ExtractedInfo, selected_count: int) -> dict:
+    """source_metadata for a playlist parent job (the "folder").
+
+    Carries the same ``source`` keys as a normal job (so title/thumbnail lookups
+    work unchanged) plus a ``playlist`` block with entry counts.
+    """
+    return {
+        "source": {
+            "platform": info.platform,
+            "video_id": info.video_id,
+            "url": info.url,
+            "title": info.playlist_title or info.title,
+            "description": info.description,
+            "thumbnail": info.thumbnail,
+        },
+        "playlist": {
+            "count": info.playlist_count,
+            "selected_count": selected_count,
         },
     }
 
@@ -334,6 +374,7 @@ def build_artifact(info: _ExtractedInfo, local_path: str, job_id: str = "unknown
         url=info.url,
         title=info.title,
         description=info.description,
+        thumbnail=info.thumbnail,
     )
 
     try:
