@@ -153,8 +153,18 @@ async def _process_job_async(job_id: str):
                     )
                     return
 
-                if info.is_playlist:
+                if info.is_playlist and not _is_single_post(info):
                     await _handle_playlist(job_service, job, info)
+                elif info.is_playlist:
+                    # One post with several media (e.g. an X quote post): its entries
+                    # all share one URL, so children couldn't tell them apart. Process
+                    # the post as a single job for its own media (entry 1).
+                    logger.info(
+                        f"Job {job_id} — multi-media post, using entry 1 of {info.playlist_count}"
+                    )
+                    meta = build_source_meta(info.entries[0])
+                    await job_service.set_source_metadata(job.id, meta)
+                    await _handle_single(job_service, job)
                 else:
                     meta = build_source_meta(info)
                     await job_service.set_source_metadata(job.id, meta)
@@ -175,6 +185,17 @@ async def _process_job_async(job_id: str):
                 },
                 api_key_id=job.api_key_id,
             )
+
+
+def _is_single_post(info) -> bool:
+    """True when a multi-entry result is one post carrying several media.
+
+    Real playlists (YouTube etc.) give each entry its own URL, so children can
+    download their own video. Posts like X quote posts give every entry the
+    same URL, so fanning out would just fetch the same media repeatedly.
+    """
+    entries = info.entries or []
+    return len(entries) > 1 and len({e.url for e in entries}) == 1
 
 
 async def _handle_single(job_service: JobService, job: Job):

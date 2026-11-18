@@ -250,6 +250,7 @@ def download(
     *,
     fmt: _FormatPreference = _FormatPreference.BEST,
     source_type: str = "video",
+    playlist_item: int = 1,
 ) -> DownloadResult:
     """Download media from *url* into *workspace_dir*.
 
@@ -258,6 +259,9 @@ def download(
         workspace_dir: Absolute path to the job's isolated workspace directory. Must already exist (caller creates it).
         fmt: Quality preference — default BEST.
         source_type: ``"video"`` or ``"audio"`` — affects format-string selection.
+        playlist_item: 1-based entry to fetch when *url* resolves to a multi-entry
+            post (e.g. an X quote post whose entries all share one URL). A job
+            downloads exactly one media item; for plain single-video URLs this is a no-op.
 
     Returns:
         A ``DownloadResult`` with the local file path, stripped-down metadata, and pre-built ``Artifact`` schema ready for the FFmpeg pipeline.
@@ -273,9 +277,10 @@ def download(
     raw: dict = {}
     for client in ("android_vr", "web_safari"):
         opts = _build_ydl_opts(workspace_dir, format_string, download=True, client=client)
+        opts["playlist_items"] = str(playlist_item)
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
-                logger.info(f"Downloading {url} (format={fmt.value}, client={client})")
+                logger.info(f"Downloading {url} (format={fmt.value}, client={client}, item={playlist_item})")
                 raw = ydl.extract_info(url, download=True)
                 logger.info(f"Download complete — title={raw.get('title', 'unknown')} (client={client})")
                 break
@@ -284,6 +289,13 @@ def download(
                 logger.warning(f"android_vr blocked for {url}, falling back to web_safari: {exc}")
                 continue
             raise
+
+    # A multi-entry URL comes back as a playlist wrapper around the one entry we
+    # asked for — unwrap it so the artifact carries that video's real metadata.
+    if raw.get("_type") == "playlist":
+        entries = [e for e in (raw.get("entries") or []) if e is not None]
+        if entries:
+            raw = entries[0]
 
     ext = raw.get("ext", "mp4")
     local_path = str(Path(workspace_dir) / f"input.{ext}")
